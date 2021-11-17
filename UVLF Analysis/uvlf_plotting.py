@@ -102,7 +102,7 @@ for model in models:
                   linestyle=model.linestyle, label = model.label, color = model.color)  
 # fluff
 fig.supxlabel('log[$L_{\\nu}^{UV}$ ergs$^{-1}$ s Hz]')
-fig.supylabel('log[$\phi(L_\\nu^{UV})$ cMpc$^{-1}$ dex$^{-1}$]', x=0.01)
+fig.supylabel('log[$\phi(L_\\nu^{UV})$ cMpc$^{3}$ dex]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()
     if i<len(redshift):

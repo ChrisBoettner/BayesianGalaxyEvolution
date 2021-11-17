@@ -96,7 +96,7 @@ for model in models:
                   linestyle=model.linestyle, label = model.label, color = model.color)      
 # fluff
 fig.supxlabel('log[$M_*/M_\odot$]')
-fig.supylabel('log[$\phi(M_*)$ cMpc$^{-1}$ dex$^{-1}$]', x=0.01)
+fig.supylabel('log[$\phi(M_*)$ cMpc$^3^$ dex]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()
     if i<len(redshift):
