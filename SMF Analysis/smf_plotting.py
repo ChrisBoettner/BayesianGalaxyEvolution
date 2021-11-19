@@ -12,8 +12,12 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 import numpy as np
 import matplotlib.pyplot as plt
 
-from smhr import calculate_SHMR, feedback_function
+from smf_modelling import fit_SMF_model
 from data_processing import group, z_ordered_data
+
+################## CHOOSE FITTING METHOD ######################################
+fitting_method = 'least_squares'    
+mode           = 'loading'          # 'saving', 'loading' or 'temp'
 
 ################## LOAD DATA ##################################################
 # get z=1,2,3,4 for Davidson, z=1,2,3 for Ilbert
@@ -44,13 +48,14 @@ hmfs = raise10(hmfs)
 ################## CALCULATE SHMR #############################################
 # model classes with estimated smfs and plotting information
 class smf_model():
-    def __init__(self, smfs, hmfs, feedback):
-        parameter, modelled_smf, ssr = calculate_SHMR(smfs, hmfs, feedback)
+    def __init__(self, smfs, hmfs, feedback_name, fitting_method, mode):
+        parameter, modelled_smf, cost = fit_SMF_model(smfs, hmfs, feedback_name,
+                                                      fitting_method, mode)
         self.parameter = smf_object(parameter)
         self.smf       = smf_object(modelled_smf)
-        self.ssr       = smf_object(ssr)
+        self.cost      = smf_object(cost)
         
-        self._feedback = feedback
+        self.feedback_name = feedback_name
     def plot_parameter(self, color, marker, linestyle, label):
         self.color     = color
         self.marker    = marker
@@ -58,21 +63,21 @@ class smf_model():
         self.label     = label
         return(self)
     
-    def shmr(self, z):
-        fb_func   = feedback_function(self._feedback)[0]
-        shmr_func = lambda m: fb_func(m, *self.parameter.at_z(z))
-        return(shmr_func)
-    
 class smf_object():
     def __init__(self, data):
         self.data = data
     def at_z(self, redshift):
+        if redshift == 0:
+            raise ValueError('Redshift 0 not in data')
         return(self.data[redshift-1])
 
 ## CREATE MODEL OBJECTS
-no_feedback   = smf_model(smfs, hmfs, 'none').plot_parameter('black', 'o', '-',  'No Feedback')
-sn_feedback   = smf_model(smfs, hmfs, 'sn'  ).plot_parameter('C1',    's', '--', 'Stellar Feedback')
-snbh_feedback = smf_model(smfs, hmfs, 'both').plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
+no_feedback   = smf_model(smfs, hmfs, 'none',
+                          fitting_method, mode).plot_parameter('black', 'o', '-',  'No Feedback')
+sn_feedback   = smf_model(smfs, hmfs, 'sn',
+                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
+snbh_feedback = smf_model(smfs, hmfs, 'both',
+                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
 models = [no_feedback, sn_feedback, snbh_feedback]
 
 ################## PLOTTING ###################################################
@@ -96,7 +101,7 @@ for model in models:
                   linestyle=model.linestyle, label = model.label, color = model.color)      
 # fluff
 fig.supxlabel('log[$M_*/M_\odot$]')
-fig.supylabel('log[$\phi(M_*)$ cMpc$^3^$ dex]', x=0.01)
+fig.supylabel('log[$\phi(M_*)$ cMpc$^3$ dex]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()
     if i<len(redshift):
@@ -133,23 +138,9 @@ fig.subplots_adjust(hspace=0, wspace=0)
 for a in ax:
     a.minorticks_on()
     a.tick_params(axis='x', which='minor', bottom=False)
-# exclude out of bounds data points
-ax[2].set_ylim([-0.012,0.5])
-ax[2].arrow(8, 0.44, 0, 0.03,
-          head_width=0.04, head_length=0.02, color = snbh_feedback.color)
-ax[2].arrow(10, 0.44, 0, 0.03,
-          head_width=0.04, head_length=0.02, color = snbh_feedback.color)
-
-## SUM OF SQUARED RESIDUALS
-# fig, ax = plt.subplots()
-# fig.supxlabel('$z$')
-# fig.supylabel('SSR', x=0.01)
-# for model in models:
-#     ax.scatter(redshift, model.ssr.data, 
-#               marker = model.marker, label = model.label, color = model.color)
-#     ax.set_yscale('log')
-# ax.legend()
-# fig.tight_layout()
-# fig.subplots_adjust(hspace=0, wspace=0)
-# ax.minorticks_on()
-# ax.tick_params(axis='x', which='minor', bottom=False)
+#exclude out of bounds data points
+#ax[2].set_ylim([-0.012,0.5])
+#ax[2].arrow(8, 0.44, 0, 0.03,
+#          head_width=0.04, head_length=0.02, color = snbh_feedback.color)
+#ax[2].arrow(10, 0.44, 0, 0.03,
+#          head_width=0.04, head_length=0.02, color = snbh_feedback.color)
