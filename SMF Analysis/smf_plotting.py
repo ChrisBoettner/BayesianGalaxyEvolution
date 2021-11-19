@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 from smf_modelling import fit_SMF_model
 from data_processing import group, z_ordered_data
 
+SOMETHING IS GOING WRONG I THINK (WITH CONSTANT A). CHECK NOTEBOOK
+
 ################## CHOOSE FITTING METHOD ######################################
 fitting_method = 'least_squares'    
 mode           = 'loading'          # 'saving', 'loading' or 'temp'
