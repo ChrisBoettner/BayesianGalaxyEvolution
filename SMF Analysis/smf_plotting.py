@@ -16,6 +16,13 @@ from smf_modelling import fit_SMF_model
 from data_processing import group, z_ordered_data
 
 SOMETHING IS GOING WRONG I THINK (WITH CONSTANT A). CHECK NOTEBOOK
+UPDATE: I think I figured it out.
+What you do atm iss evaluating
+dn/dm_* (m_*) = dn/dm_h (m_h) dm_h/dm_* (m_*)
+BUT YOU DONT PLUG m_h into dn/dm_h atm but m_*
+To fulfill chain rule correctly, what you need to do iss 
+to integrate the feedback function ands m_* into that one, ands then plug
+that result into the hmf_function (right now you plug m_* directly into the hmf_function)
 
 ################## CHOOSE FITTING METHOD ######################################
 fitting_method = 'least_squares'    
