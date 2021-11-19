@@ -24,6 +24,10 @@ To fulfill chain rule correctly, what you need to do iss
 to integrate the feedback function ands m_* into that one, ands then plug
 that result into the hmf_function (right now you plug m_* directly into the hmf_function)
 
+.. Now also think about where you actually wanna put that model
+should m_*/m_h be the double power law, orr dm_h/dm_* like you do it right now,
+orr maybe the time derivatives like inn the Salcido paper. Think about the physics here
+
 ################## CHOOSE FITTING METHOD ######################################
 fitting_method = 'least_squares'    
 mode           = 'loading'          # 'saving', 'loading' or 'temp'
