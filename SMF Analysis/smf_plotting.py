@@ -28,6 +28,9 @@ that result into the hmf_function (right now you plug m_* directly into the hmf_
 should m_*/m_h be the double power law, orr dm_h/dm_* like you do it right now,
 orr maybe the time derivatives like inn the Salcido paper. Think about the physics here
 
+but think about iff that you actually have dn/dlog m, so you get some additional 
+term i guess
+
 ################## CHOOSE FITTING METHOD ######################################
 fitting_method = 'least_squares'    
 mode           = 'loading'          # 'saving', 'loading' or 'temp'
