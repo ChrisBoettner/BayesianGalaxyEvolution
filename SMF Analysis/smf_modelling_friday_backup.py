@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Nov 19 21:34:38 2021
+
+@author: boettner
+"""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -5,9 +12,8 @@ Created on Thu Nov 18 16:03:46 2021
 
 @author: boettner
 """
-import numpy as np
+
 from scipy.interpolate import interp1d
-from pynverse import inversefunc
 import leastsq_fitting
 import mcmc_fitting
 
@@ -64,29 +70,11 @@ class smf_model_class():
         self.hmf_function   = interp1d(*hmf.T) # turn hmf data into evaluable function (using linear interpolation)
         self.feedback_model = feedback_model(feedback_name, m_crit) # choose feedback model function
         
-    def function(self, m_star, params):
+    def function(self, m, params):
         '''
-        Create SMF model function
-        dn/dlogm_*(m_*) = dn/dlogm_h(m_h(m_*)) * m_*/m_h * dm_h/dm_*(m_*)
-                        = dn/dlogm_h(m_h)      * m_*/m_h * 1/[dm_*/dm_h(m_h)]
+        Create SMF model function by multiplying HMF function with feedback model function.
         '''
-        fb_function   = lambda m: self.feedback_model.function(m, *params)
-        fb_derivative = self.feedback_model.derivative
-        
-        # using input m_* value, invert m_*(m_h) to get m_h
-        m_h = inversefunc(fb_function, y_values=m_star)
-        print(m_star)
-        print(params)
-        print(m_h)
-        
-        # calculate dm_h/dm_*(m_*) by using inverse rule
-        # dm_h/dm_*(m_*) = 1/[dm_*/dm_h(m_h)]
-        inverse_derivative = 1/fb_derivative(m_h,*params)
-        
-        if np.any(params<0):
-            return()
-        
-        return(self.hmf_function(m_h) * m_star/m_h * inverse_derivative)
+        return(self.hmf_function(m) * self.feedback_model.function(m, *params))
 
 # DEFINE THE FEEDBACK MODELS
 def feedback_model(feedback_name, m_crit):
@@ -113,10 +101,6 @@ class no_feedback():
         self.m_c           = m_crit
         self.initial_guess = [0.01]
     def function(self, m, A):
-        # the function m_* = f(m_h)
-        return(A*m)
-    def derivative(self, m, A):
-        # the derivative dm_*/dm_h = f(m_h)
         return(A)
     
 class supernova_feedback():
@@ -125,11 +109,7 @@ class supernova_feedback():
         self.m_c           = m_crit
         self.initial_guess = [0.01, 1] 
     def function(self, m, A, alpha):
-        # the function m_* = f(m_h)
-        return( A * (m/self.m_c)**alpha *m)    
-    def derivative(self, m, A, alpha):
-        # the derivative dm_*/dm_h = f(m_h)
-        return(A * (alpha+1) * (m/self.m_c)**alpha)
+        return( A * (m/self.m_c)**alpha)    
 
 class supernova_blackhole_feedvack():
     def __init__(self, feedback_name, m_crit):
@@ -137,15 +117,7 @@ class supernova_blackhole_feedvack():
         self.m_c           = m_crit
         self.initial_guess = [0.01, 1, 1]
     def function(self, m, A, alpha, beta):
-        # the function m_* = f(m_h)
         return(A * 1/((m/self.m_c)**(-alpha)+(m/self.m_c)**(beta)))        
-    def derivative(self, m, A, alpha, beta):
-        # the derivative dm_*/dm_h = f(m_h)
-        x = (m/self.m_c)
-        q = alpha+beta
-        numerator   = A*x**alpha *(-(beta-1)*x**q + alpha + 1)
-        denominator = (x**q +1)**2
-        return(numerator/denominator)    
 
 
             

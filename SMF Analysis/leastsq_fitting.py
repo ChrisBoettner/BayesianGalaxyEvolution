@@ -23,8 +23,9 @@ def lsq_fit(smf, hmf, smf_model, z = 0):
     cost          = cost_function(par, smf, smf_model)
     
     # create data for modelled smf (for plotting)
-    modelled_smf = hmf.copy()
-    modelled_smf[:,1] = smf_model.function(hmf[:,0], par)
+    m_range      = np.logspace(6,12,1000)
+    modelled_phi = smf_model.function(m_range, par)
+    modelled_smf = np.array([m_range, modelled_phi]).T
     return(par, modelled_smf, cost)
 
 ## LEAST SQUARE HELP FUNCTIONS
@@ -40,7 +41,7 @@ def cost_function(params, smf, smf_model):
     
     phi_mod = smf_model.function(m_obs, params)
     
-    if not within_bounds(params, [0,0,0], [1,10,10]):
+    if not within_bounds(params, [0,0,0], [1,1,1]):
         return(1e+10) # return inf (or huge value) if outside of bounds
     
     cost = np.linalg.norm(np.log10(phi_obs) - np.log10(phi_mod))**2   

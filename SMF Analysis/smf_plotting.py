@@ -15,21 +15,24 @@ import matplotlib.pyplot as plt
 from smf_modelling import fit_SMF_model
 from data_processing import group, z_ordered_data
 
-SOMETHING IS GOING WRONG I THINK (WITH CONSTANT A). CHECK NOTEBOOK
-UPDATE: I think I figured it out.
-What you do atm iss evaluating
-dn/dm_* (m_*) = dn/dm_h (m_h) dm_h/dm_* (m_*)
-BUT YOU DONT PLUG m_h into dn/dm_h atm but m_*
-To fulfill chain rule correctly, what you need to do iss 
-to integrate the feedback function ands m_* into that one, ands then plug
-that result into the hmf_function (right now you plug m_* directly into the hmf_function)
+# SOMETHING IS GOING WRONG I THINK (WITH CONSTANT A). CHECK NOTEBOOK
+# UPDATE: I think I figured it out.
+# What you do atm iss evaluating
+# dn/dm_* (m_*) = dn/dm_h (m_h) dm_h/dm_* (m_*)
+# BUT YOU DONT PLUG m_h into dn/dm_h atm but m_*
+# To fulfill chain rule correctly, what you need to do iss 
+# to integrate the feedback function ands m_* into that one, ands then plug
+# that result into the hmf_function (right now you plug m_* directly into the hmf_function)
 
-.. Now also think about where you actually wanna put that model
-should m_*/m_h be the double power law, orr dm_h/dm_* like you do it right now,
-orr maybe the time derivatives like inn the Salcido paper. Think about the physics here
+# .. Now also think about where you actually wanna put that model
+# should m_*/m_h be the double power law, orr dm_h/dm_* like you do it right now,
+# orr maybe the time derivatives like inn the Salcido paper. Think about the physics here
 
-but think about iff that you actually have dn/dlog m, so you get some additional 
-term i guess
+# but think about iff that you actually have dn/dlog m, so you get some additional 
+# term i guess
+
+# --TRYING TO FIX THAT NOW IN SMF MODELLING, BUT MADE BACKUP
+# --ALSO CHANGED bounds inn least_squares cost function!!!
 
 ################## CHOOSE FITTING METHOD ######################################
 fitting_method = 'least_squares'    
