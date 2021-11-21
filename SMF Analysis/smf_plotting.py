@@ -12,7 +12,7 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 import numpy as np
 import matplotlib.pyplot as plt
 
-from smf_modelling import fit_SMF_model
+from smf_modelling_saturday_try import fit_SMF_model
 from data_processing import group, z_ordered_data
 
 # SOMETHING IS GOING WRONG I THINK (WITH CONSTANT A). CHECK NOTEBOOK
@@ -93,11 +93,12 @@ class smf_object():
 ## CREATE MODEL OBJECTS
 no_feedback   = smf_model(smfs, hmfs, 'none',
                           fitting_method, mode).plot_parameter('black', 'o', '-',  'No Feedback')
-sn_feedback   = smf_model(smfs, hmfs, 'sn',
-                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
-snbh_feedback = smf_model(smfs, hmfs, 'both',
-                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
-models = [no_feedback, sn_feedback, snbh_feedback]
+#sn_feedback   = smf_model(smfs, hmfs, 'sn',
+#                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
+#snbh_feedback = smf_model(smfs, hmfs, 'both',
+#                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
+#models = [no_feedback, sn_feedback, snbh_feedback]
+models = [no_feedback]
 
 ################## PLOTTING ###################################################
 plt.close('all')
@@ -139,24 +140,24 @@ ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=Fa
               prop={'size': 12})
 
 ## PARAMETER EVOLUTION      
-fig, ax = plt.subplots(3,1, sharex=True)
-ax[0].set_ylabel('A')
-ax[1].set_ylabel(r'$\alpha$')
-ax[2].set_ylabel(r'$\beta$')
-fig.supxlabel('$z$')
-for model in models:
-    parameter_number = len(model.parameter.data[0])
-    for i in range(parameter_number):
-        param_at_z = [model.parameter.at_z(z)[i] for z in redshift]
-        ax[i].scatter(redshift, param_at_z,
-                      marker = model.marker, label = model.label, color = model.color)
-ax[0].legend()
-fig.align_ylabels(ax)
-fig.tight_layout()
-fig.subplots_adjust(hspace=0, wspace=0)
-for a in ax:
-    a.minorticks_on()
-    a.tick_params(axis='x', which='minor', bottom=False)
+# fig, ax = plt.subplots(3,1, sharex=True)
+# ax[0].set_ylabel('A')
+# ax[1].set_ylabel(r'$\alpha$')
+# ax[2].set_ylabel(r'$\beta$')
+# fig.supxlabel('$z$')
+# for model in models:
+#     parameter_number = len(model.parameter.data[0])
+#     for i in range(parameter_number):
+#         param_at_z = [model.parameter.at_z(z)[i] for z in redshift]
+#         ax[i].scatter(redshift, param_at_z,
+#                       marker = model.marker, label = model.label, color = model.color)
+# ax[0].legend()
+# fig.align_ylabels(ax)
+# fig.tight_layout()
+# fig.subplots_adjust(hspace=0, wspace=0)
+# for a in ax:
+#     a.minorticks_on()
+#     a.tick_params(axis='x', which='minor', bottom=False)
 #exclude out of bounds data points
 #ax[2].set_ylim([-0.012,0.5])
 #ax[2].arrow(8, 0.44, 0, 0.03,

@@ -1,14 +1,12 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov 18 16:03:46 2021
+Created on Fri Nov 19 21:34:38 2021
 
 @author: boettner
 """
+
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.special import hyp2f1
-from pynverse import inversefunc
 import leastsq_fitting
 import mcmc_fitting
 
@@ -65,22 +63,18 @@ class smf_model_class():
         self.hmf_function   = interp1d(*hmf.T) # turn hmf data into evaluable function (using linear interpolation)
         self.feedback_model = feedback_model(feedback_name, m_crit) # choose feedback model function
         
-    def function(self, m_star, params):
+    def function(self, m, params):
         '''
-        Create SMF model function
-        dn/dlogm_*(m_*) = dn/dlogm_h(m_*) * m_*/m_h * 1/[dm_*/dm_h(m_h)]
+        Create SMF model function by multiplying HMF function with feedback model function.
         '''
-        fb_function   = lambda m: self.feedback_model.function(m, *params)
-        fb_derivative = lambda m: self.feedback_model.derivative(m, *params)
+        print(params)
+        print(m)
         
         # check that parameters are sensible, otherwise invert function will
         # fail to determine halo masses
         if np.any(params<0) or (params[0]==0):
             return(1e+10) # basically makes cost func infinite
-        
-        # using input m_* value, invert m_*(m_h) to get m_h
-        m_h = stellar_to_halo_mass(fb_function, m_star)       
-        return(self.hmf_function(m_star) * m_star/m_h * 1/fb_derivative(m_h))
+        return(self.hmf_function(self.feedback_model.function(m, *params)))
 
 # DEFINE THE FEEDBACK MODELS
 def feedback_model(feedback_name, m_crit):
@@ -105,55 +99,26 @@ class no_feedback():
     def __init__(self, feedback_name, m_crit):
         self.name          = feedback_name
         self.m_c           = m_crit
-        self.initial_guess = [0.01]
-    def derivative(self, m_h, A):
-            # the derivative dm_*/dm_h = f(m_h)
-            # (chosen first from physics)
-        return(A)
-    def function(self, m_h, A):
-            # the stellar mas as a function of halo mass m_* = f(m_h)
-            # (integral of derivative function)
-        return(A*m_h)
+        self.initial_guess = [100]
+    def function(self, m, A):
+        return(A*m)
     
 class supernova_feedback():
     def __init__(self, feedback_name, m_crit):
         self.name          = feedback_name
         self.m_c           = m_crit
-        self.initial_guess = [0.01, 1] 
-    def derivative(self, m_h, A, alpha):
-            # the derivative dm_*/dm_h = f(m_h)
-            # (chosen first from physics)
-        return(A * (m_h/self.m_c)**alpha)
-    def function(self, m_h, A, alpha):
-            # the stellar mas as a function of halo mass m_* = f(m_h)
-            # (integral of derivative function)
-        return( A/(alpha+1) * (m_h/self.m_c)**alpha *m_h)    
+        self.initial_guess = [100, 1] 
+    def function(self, m, A, alpha):
+        return( A * (m/self.m_c)**alpha *m)    
 
 class supernova_blackhole_feedvack():
     def __init__(self, feedback_name, m_crit):
         self.name          = feedback_name
         self.m_c           = m_crit
-        self.initial_guess = [0.01, 1, 1]
-    def derivative(self, m_h, A, alpha, beta):
-            # the derivative dm_*/dm_h = f(m_h)
-            # (chosen first from physics)
-            return(A * 1/((m_h/self.m_c)**(-alpha)+(m_h/self.m_c)**beta)) 
-    def function(self, m_h, A, alpha, beta):
-            # the stellar mas as a function of halo mass m_* = f(m_h)
-            # (integral of derivative function)
-            x        = m_h/self.m_c
-            exp_sum  = alpha+beta
-            f_param  = (alpha+1)/exp_sum           
-            return(A/(alpha+1) * m_h * x**alpha * hyp2f1(1,f_param,f_param+1, - x**exp_sum))
-   
-def stellar_to_halo_mass(func, m_star):
-    '''
-    Calculates halo mass m_h for a given input stellar mass m_* and the 
-    feedback model function m_* (m_h)
-    Needed since we only define stellar masses as function of halo masses in 
-    model, but observations are stellar masses. 
-    The function for stellar + black hole feedback is not easily invertible, so 
-    numerical it is.
-    '''
-    inverse_func = inversefunc(func)
-    return(inverse_func(m_star))
+        self.initial_guess = [100, 1, 1]
+    def function(self, m, A, alpha, beta):
+        return(A * 1/((m/self.m_c)**(-alpha)+(m/self.m_c)**(beta)) *m)        
+
+
+            
+        

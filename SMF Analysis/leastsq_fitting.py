@@ -6,7 +6,7 @@ Created on Wed Nov  3 15:55:20 2021
 @author: boettner
 """
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, least_squares
 
 ## MAIN FUNCTION
 def lsq_fit(smf, hmf, smf_model, z = 0):
@@ -17,15 +17,15 @@ def lsq_fit(smf, hmf, smf_model, z = 0):
     '''
                                          
     # fit smf model to data based on pre-defined cost function
-    fitting       = minimize(cost_function, smf_model.feedback_model.initial_guess,
+    fitting       = least_squares(cost_function, smf_model.feedback_model.initial_guess,
                                   args = (smf, smf_model))
     par           = fitting.x
-    cost          = cost_function(par, smf, smf_model)
+    cost          = fitting.cost/len(smf) # normalise cost
     
     # create data for modelled smf (for plotting)
-    m_range      = np.logspace(6,12,1000)
-    modelled_phi = smf_model.function(m_range, par)
-    modelled_smf = np.array([m_range, modelled_phi]).T
+    m_star_range = np.logspace(6,12,1000)
+    modelled_phi = smf_model.function(m_star_range, par)
+    modelled_smf = np.array([m_star_range, modelled_phi]).T
     return(par, modelled_smf, cost)
 
 ## LEAST SQUARE HELP FUNCTIONS
@@ -41,11 +41,11 @@ def cost_function(params, smf, smf_model):
     
     phi_mod = smf_model.function(m_obs, params)
     
-    if not within_bounds(params, [0,0,0], [1,1,1]):
+    if not within_bounds(params, [0,0,0], [np.inf,np.inf,np.inf]):
         return(1e+10) # return inf (or huge value) if outside of bounds
-    
-    cost = np.linalg.norm(np.log10(phi_obs) - np.log10(phi_mod))**2   
-    return(cost/len(smf)) # otherwise return normalised cost
+
+    res = np.log10(phi_obs) - np.log10(phi_mod)
+    return(res) # otherwise return cost
     
 
 ## HELP FUNCTIONS
