@@ -15,25 +15,6 @@ import matplotlib.pyplot as plt
 from smf_modelling_saturday_try import fit_SMF_model
 from data_processing import group, z_ordered_data
 
-# SOMETHING IS GOING WRONG I THINK (WITH CONSTANT A). CHECK NOTEBOOK
-# UPDATE: I think I figured it out.
-# What you do atm iss evaluating
-# dn/dm_* (m_*) = dn/dm_h (m_h) dm_h/dm_* (m_*)
-# BUT YOU DONT PLUG m_h into dn/dm_h atm but m_*
-# To fulfill chain rule correctly, what you need to do iss 
-# to integrate the feedback function ands m_* into that one, ands then plug
-# that result into the hmf_function (right now you plug m_* directly into the hmf_function)
-
-# .. Now also think about where you actually wanna put that model
-# should m_*/m_h be the double power law, orr dm_h/dm_* like you do it right now,
-# orr maybe the time derivatives like inn the Salcido paper. Think about the physics here
-
-# but think about iff that you actually have dn/dlog m, so you get some additional 
-# term i guess
-
-# --TRYING TO FIX THAT NOW IN SMF MODELLING, BUT MADE BACKUP
-# --ALSO CHANGED bounds inn least_squares cost function!!!
-
 ################## CHOOSE FITTING METHOD ######################################
 fitting_method = 'least_squares'    
 mode           = 'loading'          # 'saving', 'loading' or 'temp'
@@ -84,7 +65,7 @@ class smf_model():
     
 class smf_object():
     def __init__(self, data):
-        self.data = data
+        self.data = np.array(data)
     def at_z(self, redshift):
         if redshift == 0:
             raise ValueError('Redshift 0 not in data')
@@ -93,12 +74,11 @@ class smf_object():
 ## CREATE MODEL OBJECTS
 no_feedback   = smf_model(smfs, hmfs, 'none',
                           fitting_method, mode).plot_parameter('black', 'o', '-',  'No Feedback')
-#sn_feedback   = smf_model(smfs, hmfs, 'sn',
-#                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
-#snbh_feedback = smf_model(smfs, hmfs, 'both',
-#                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
-#models = [no_feedback, sn_feedback, snbh_feedback]
-models = [no_feedback]
+sn_feedback   = smf_model(smfs, hmfs, 'sn',
+                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
+snbh_feedback = smf_model(smfs, hmfs, 'both',
+                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
+models = [no_feedback, sn_feedback, snbh_feedback]
 
 ################## PLOTTING ###################################################
 plt.close('all')
@@ -140,17 +120,17 @@ ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=Fa
               prop={'size': 12})
 
 ## PARAMETER EVOLUTION      
-# fig, ax = plt.subplots(3,1, sharex=True)
-# ax[0].set_ylabel('A')
-# ax[1].set_ylabel(r'$\alpha$')
-# ax[2].set_ylabel(r'$\beta$')
-# fig.supxlabel('$z$')
-# for model in models:
-#     parameter_number = len(model.parameter.data[0])
-#     for i in range(parameter_number):
-#         param_at_z = [model.parameter.at_z(z)[i] for z in redshift]
-#         ax[i].scatter(redshift, param_at_z,
-#                       marker = model.marker, label = model.label, color = model.color)
+fig, ax = plt.subplots(3,1, sharex=True)
+ax[0].set_ylabel('A')
+ax[1].set_ylabel(r'$\alpha$')
+ax[2].set_ylabel(r'$\beta$')
+fig.supxlabel('$z$')
+for model in models:
+    parameter_number = len(model.parameter.data[0])
+    for i in range(parameter_number):
+        param_at_z = [model.parameter.at_z(z)[i] for z in redshift]
+        ax[i].scatter(redshift, param_at_z,
+                      marker = model.marker, label = model.label, color = model.color)
 # ax[0].legend()
 # fig.align_ylabels(ax)
 # fig.tight_layout()

@@ -8,6 +8,8 @@ Created on Wed Nov  3 15:55:20 2021
 import numpy as np
 from scipy.optimize import minimize, least_squares
 
+import pdb
+
 ## MAIN FUNCTION
 def lsq_fit(smf, hmf, smf_model, z = 0):
     '''
@@ -24,6 +26,8 @@ def lsq_fit(smf, hmf, smf_model, z = 0):
     
     # create data for modelled smf (for plotting)
     m_star_range = np.logspace(6,12,1000)
+    #pdb.set_trace()
+    #print(par)
     modelled_phi = smf_model.function(m_star_range, par)
     modelled_smf = np.array([m_star_range, modelled_phi]).T
     return(par, modelled_smf, cost)
@@ -41,7 +45,7 @@ def cost_function(params, smf, smf_model):
     
     phi_mod = smf_model.function(m_obs, params)
     
-    if not within_bounds(params, [0,0,0], [np.inf,np.inf,np.inf]):
+    if not within_bounds(params, [0,0,0], [1,np.inf,np.inf]):
         return(1e+10) # return inf (or huge value) if outside of bounds
 
     res = np.log10(phi_obs) - np.log10(phi_mod)
@@ -51,12 +55,12 @@ def cost_function(params, smf, smf_model):
 ## HELP FUNCTIONS
 def within_bounds(values, lower_bounds, upper_bounds):
     '''
-    Checks if list of values is within lower and upper bounds (if value is equal
-    to bound, also return true). All three arrays must have same length.
+    Checks if list of values is within lower and upper bounds (strictly
+    within bounds). All three arrays must have same length.
     '''
     is_within = []
     for i in range(len(values)):
-        is_within.append((values[i] >= lower_bounds[i]) & (values[i] <= upper_bounds[i]))
+        is_within.append((values[i] > lower_bounds[i]) & (values[i] < upper_bounds[i]))
         
     # return True if all elements are within bounds, otherwise False
     if all(is_within)==True:
