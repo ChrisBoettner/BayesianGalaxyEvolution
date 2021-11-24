@@ -78,7 +78,7 @@ class smf_model_class():
         
         # calculate halo masses from stellar masses using model
         m_h = self.feedback_model.calculate_m_h(m_star, *params) 
-        return(self.hmf_function(m_h) * self.feedback_model.calculate_dlogmh_dlogmstar(m_h,*params))
+        return(self.hmf_function(m_h) * self.feedback_model.calculate_dlogmstar_dlogmh(m_h,*params))
 
 # DEFINE THE FEEDBACK MODELS
 def feedback_model(feedback_name, m_crit):
@@ -110,7 +110,7 @@ class no_feedback():
         return(A*m_h)
     def calculate_m_h(self, m_star, A):
         return(m_star/A)
-    def calculate_dlogmh_dlogmstar(self, m_h, A):
+    def calculate_dlogmstar_dlogmh(self, m_h, A):
         return(1)        
     
 class supernova_feedback():
@@ -122,8 +122,8 @@ class supernova_feedback():
         return( A/(alpha+1) * (m_h/self.m_c)**alpha * m_h)
     def calculate_m_h(self, m_star, A, alpha):
         return((m_star* (alpha+1)/A* self.m_c**alpha)**(1/(alpha+1)))
-    def calculate_dlogmh_dlogmstar(self, m_h, A, alpha):
-        return(1/(alpha+1))
+    def calculate_dlogmstar_dlogmh(self, m_h, A, alpha):
+        return(alpha+1)
 
 class supernova_blackhole_feedback():
     def __init__(self, feedback_name, m_crit):
@@ -140,11 +140,11 @@ class supernova_blackhole_feedback():
         gradient    = lambda m_halo : self._calculate_dmstar_dmh(m_halo, A, alpha, beta)
         m_h = invert_function(m_star_func, gradient, m_star) 
         return(m_h)
-    def calculate_dlogmh_dlogmstar(self, m_h, A, alpha, beta):
+    def calculate_dlogmstar_dlogmh(self, m_h, A, alpha, beta):
         eta = (alpha+1)/(alpha+beta)
         alphabet = alpha+beta
         x = (m_h/self.m_c)
-        return((1+x**alphabet)/(1+alpha)*hyp2f1(1, eta, eta+1, -x**alphabet))
+        return((1+alpha)/(1+x**alphabet)*1/hyp2f1(1, eta, eta+1, -x**alphabet))
     def _calculate_dmstar_dmh(self, m_h,A,alpha,beta): # just used to calc inverse
         return(A * 1/((m_h/self.m_c)**(-alpha)+(m_h/self.m_c)**(beta)))
 

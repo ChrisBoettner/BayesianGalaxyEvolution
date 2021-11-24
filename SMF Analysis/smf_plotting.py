@@ -12,7 +12,7 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 import numpy as np
 import matplotlib.pyplot as plt
 
-from smf_modelling_saturday_try import fit_SMF_model
+from smf_modelling import fit_SMF_model
 from data_processing import group, z_ordered_data
 
 ################## CHOOSE FITTING METHOD ######################################
