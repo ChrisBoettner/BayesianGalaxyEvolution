@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 19 21:34:38 2021
+Created on Fri Nov 26 12:28:34 2021
 
 @author: boettner
 """
@@ -8,8 +9,11 @@ Created on Fri Nov 19 21:34:38 2021
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import root_scalar
+from scipy.special import hyp2f1
 import leastsq_fitting
 import mcmc_fitting
+
+ALTERNATIVE IN THE SENSE THAT dm_*/dm_h gets fixed, nott m_*(m_h)
 
 ## MAIN FUNCTION
 def fit_SMF_model(smfs, hmfs, feedback_name, fitting_method = 'least_squares',
@@ -41,25 +45,19 @@ def fit_SMF_model(smfs, hmfs, feedback_name, fitting_method = 'least_squares',
     
     parameter = []; modelled_smf = []; cost = []
     for i in range(len(smfs)):
-        smf = np.copy(smfs[i])[smfs[i][:,1]>1e-6] # cut unreliable values
-        hmf = np.copy(hmfs[i+1])                  # list starts at z=0 not 1, like smf
+        smf = smfs[i][smfs[i][:,1]>1e-6] # cut unreliable values
+        hmf = hmfs[i+1]                  # list starts at z=0 not 1, like smf
         
-        # convert units from 1 solar mass to 10^10 solar masses for numerical stability
-        base_unit = 1e+10
-        smf[:,0]    = smf[:,0]/base_unit
-        hmf[:,0]    = hmf[:,0]/base_unit
-        if i==0:    
-            m_crit  = m_crit/base_unit
         # if just sn feedback is fitted, ignore values above high-mass knee, because 
         # they screw up the fit
         if feedback_name == 'sn':
             smf = smf[smf[:,0]<m_crit]  
         
         smf_model = smf_model_class(hmf, feedback_name, m_crit) 
+        
         # fit and fit parameter
         params, mod_smf, c = fit(smf, hmf, smf_model, z=i+1) 
         parameter.append(params)
-        mod_smf[:,0] = mod_smf[:,0]*base_unit # return to 1 solar mass unit   
         modelled_smf.append(mod_smf)
         cost.append(c)      
     return(parameter, modelled_smf, cost)
@@ -74,10 +72,6 @@ class smf_model_class():
         '''
         Create SMF model function by multiplying HMF function with feedback model 
         derivative.
-        IMPORTANT: If calculated halo mass m_h is bigger than the largest one 
-        given in HMFs by Pratika, set to highest available value instead. (Should
-        not really be a problem, since this only happens at z=2, where the value 
-        is only minimally bigger)
         '''
         
         # check that parameters are sensible, otherwise invert function will
@@ -86,12 +80,7 @@ class smf_model_class():
             return(1e+10) # basically makes cost func infinite
         
         # calculate halo masses from stellar masses using model
-        m_h = self.feedback_model.calculate_m_h(m_star, *params)   
-        
-        # if halo masses in HMFs is exceeded, set to this value
-        m_h_max = 89125 # maximum mass in HMFs in 10^10 solar masses
-        m_h[m_h>m_h_max] = m_h_max
-        
+        m_h = self.feedback_model.calculate_m_h(m_star, *params) 
         return(self.hmf_function(m_h) / self.feedback_model.calculate_dlogmstar_dlogmh(m_h,*params))
 
 # DEFINE THE FEEDBACK MODELS
@@ -126,16 +115,16 @@ class no_feedback():
         return(m_star/A)
     def calculate_dlogmstar_dlogmh(self, m_h, A):
         return(1)        
-
+    
 class supernova_feedback():
     def __init__(self, feedback_name, m_crit):
         self.name          = feedback_name
         self.m_c           = m_crit
         self.initial_guess = [0.01, 1] 
     def calculate_m_star(self, m_h, A, alpha):
-        return( A * (m_h/self.m_c)**alpha * m_h)
+        return( A/(alpha+1) * (m_h/self.m_c)**alpha * m_h)
     def calculate_m_h(self, m_star, A, alpha):
-        return((m_star/A* self.m_c**alpha)**(1/(alpha+1)))
+        return((m_star* (alpha+1)/A* self.m_c**alpha)**(1/(alpha+1)))
     def calculate_dlogmstar_dlogmh(self, m_h, A, alpha):
         return(alpha+1)
 
@@ -145,22 +134,22 @@ class supernova_blackhole_feedback():
         self.m_c           = m_crit
         self.initial_guess = [0.01, 1, 0.3]
     def calculate_m_star(self, m_h, A, alpha, beta):
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(A * m_h/(sn + bh))
+        eta = (alpha+1)/(alpha+beta)
+        alphabet = alpha+beta
+        x = (m_h/self.m_c)
+        return(A/(alpha+1) * self.m_c * x**(1+alpha) * hyp2f1(1, eta, eta+1, -x**alphabet))
     def calculate_m_h(self, m_star, A, alpha, beta):
         m_star_func = lambda m_halo : self.calculate_m_star(m_halo, A, alpha, beta)
         gradient    = lambda m_halo : self._calculate_dmstar_dmh(m_halo, A, alpha, beta)
         m_h = invert_function(m_star_func, gradient, m_star) 
         return(m_h)
     def calculate_dlogmstar_dlogmh(self, m_h, A, alpha, beta):
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(1 - np.log(10) * (-alpha*sn + beta * bh)/(sn + bh))
+        eta = (alpha+1)/(alpha+beta)
+        alphabet = alpha+beta
+        x = (m_h/self.m_c)
+        return((1+alpha)/(1+x**alphabet)*1/hyp2f1(1, eta, eta+1, -x**alphabet))
     def _calculate_dmstar_dmh(self, m_h,A,alpha,beta): # just used to calc inverse
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(A * ((1+alpha)*sn+(1-beta)*bh)/(sn + bh)**2)
+        return(A * 1/((m_h/self.m_c)**(-alpha)+(m_h/self.m_c)**(beta)))
 
 
         
