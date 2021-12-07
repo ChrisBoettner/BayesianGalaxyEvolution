@@ -86,7 +86,9 @@ class smf_model_class():
             return(1e+10) # basically makes cost func infinite
         
         # calculate halo masses from stellar masses using model
-        m_h = self.feedback_model.calculate_m_h(m_star, *params)   
+        m_h = self.feedback_model.calculate_m_h(m_star, *params)
+        if np.any(np.isnan(m_h)):
+            print('Error: Some of the calculated m_h values contain Nans')
         
         # if halo masses in HMFs is exceeded, set to this value
         m_h_max = 89125 # maximum mass in HMFs in 10^10 solar masses
@@ -144,37 +146,52 @@ class supernova_blackhole_feedback():
         self.name          = feedback_name
         self.m_c           = m_crit
         self.initial_guess = [0.01, 1, 0.3]
+        
     def calculate_m_star(self, m_h, A, alpha, beta):
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
         return(A * m_h/(sn + bh))
+    
     def calculate_m_h(self, m_star, A, alpha, beta):
         m_star_func = lambda m_halo : self.calculate_m_star(m_halo, A, alpha, beta)
-        gradient    = lambda m_halo : self._calculate_dmstar_dmh(m_halo, A, alpha, beta)
-        m_h = invert_function(m_star_func, gradient, m_star) 
+        fprime      = lambda m_halo : self._calculate_dmstar_dmh(m_halo, A, alpha, beta)
+        fprime2     = lambda m_halo : self._calculate_d2mstar_dmh2(m_halo, A, alpha, beta)
+        m_h = invert_function(m_star_func, fprime, fprime2, m_star) 
         return(m_h)
     def calculate_dlogmstar_dlogmh(self, m_h, A, alpha, beta):
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
         return(1 - np.log(10) * (-alpha*sn + beta * bh)/(sn + bh))
-    def _calculate_dmstar_dmh(self, m_h,A,alpha,beta): # just used to calc inverse
+    def _calculate_dmstar_dmh(self, m_h,A,alpha,beta): # first derivative, just used to calc inverse
+        if m_h<0:
+            return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
         return(A * ((1+alpha)*sn+(1-beta)*bh)/(sn + bh)**2)
-
-
+    def _calculate_d2mstar_dmh2(self, m_h,A,alpha,beta): # second derivative, just used to calc inverse
+        if m_h<0:
+            return(np.nan)
+        x = m_h/self.m_c; a = alpha; b = beta
+        denom = x**(-a) + x**b
+        first_num  = (1+a)*(-a)*x**(-a-1)+(1-b)*b*x**(b-1)
+        second_num = -2*((1+a)* x**(-a)+(1+b)*x**b)*(-a*x**(-a-1)+b*x**(b-1))
+        return(A/self.m_c * (first_num/denom**2 + second_num/denom**3))
         
 ## HELP FUNCTIONS
-def invert_function(func, fprime, y):
+def invert_function(func, fprime,fprime2, y):
     '''
     For a function y=f(x), calculate x values for an input set of y values.
 
     '''
-    x = []
-    
+    x = []      
     for val in y:
         root_func = lambda m: func(m) - val
-        x.append(root_scalar(root_func, fprime = fprime, x0 = val*100, rtol=1e-8).root)
+        root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, method='halley',
+                             x0 = val*100, rtol=1e-8).root
+        if np.isnan(root): # use Newton's method if Halley's method doesn't work
+            root = root_scalar(root_func, fprime = fprime, method = 'newton',
+                                 x0 = val*100, rtol=1e-8).root            
+        x.append(root)
     return(np.array(x))
 
             

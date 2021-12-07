@@ -22,7 +22,7 @@ def lsq_fit(smf, hmf, smf_model, z = 0):
                                   args = (smf, smf_model))
     par           = fitting.x
     cost          = fitting.cost/len(smf) # normalise cost
-
+    
     # create data for modelled smf (for plotting)
     m_star_range = np.logspace(-3,2,1000)
     modelled_phi = smf_model.function(m_star_range, par)
@@ -45,8 +45,7 @@ def cost_function(params, smf, smf_model):
     if not within_bounds(params, [0,0,0], [1,np.inf,1]):
         return(1e+10) # return inf (or huge value) if outside of bounds
     
-    print('using relative errors for fitting right now')
-    res = (phi_obs-phi_mod)/phi_obs
+    res = np.log10(phi_obs) - np.log10(phi_mod)
     return(res) # otherwise return cost
     
 

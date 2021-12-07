@@ -12,12 +12,12 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 import numpy as np
 import matplotlib.pyplot as plt
 
-from smf_modelling import fit_SMF_model
+from smf_modelling   import fit_SMF_model
 from data_processing import group, z_ordered_data
 
 ################## CHOOSE FITTING METHOD ######################################
 fitting_method = 'least_squares'    
-mode           = 'loading'          # 'saving', 'loading' or 'temp'
+mode           = 'temp'          # 'saving', 'loading' or 'temp'
 
 ################## LOAD DATA ##################################################
 # get z=1,2,3,4 for Davidson, z=1,2,3 for Ilbert
