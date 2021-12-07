@@ -120,10 +120,11 @@ ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=Fa
               prop={'size': 12})
 
 ## PARAMETER EVOLUTION      
-fig, ax = plt.subplots(3,1, sharex=True)
+fig, ax = plt.subplots(4,1, sharex=True)
 ax[0].set_ylabel('A')
-ax[1].set_ylabel(r'$\alpha$')
-ax[2].set_ylabel(r'$\beta$')
+ax[1].set_ylabel(r'$m_c$')
+ax[2].set_ylabel(r'$\alpha$')
+ax[3].set_ylabel(r'$\beta$')
 fig.supxlabel('$z$')
 for model in models:
     parameter_number = len(model.parameter.data[0])

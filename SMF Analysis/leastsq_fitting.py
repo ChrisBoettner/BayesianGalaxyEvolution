@@ -6,9 +6,7 @@ Created on Wed Nov  3 15:55:20 2021
 @author: boettner
 """
 import numpy as np
-from scipy.optimize import minimize, least_squares
-
-import pdb
+from scipy.optimize import least_squares
 
 ## MAIN FUNCTION
 def lsq_fit(smf, hmf, smf_model, z = 0):
@@ -25,6 +23,7 @@ def lsq_fit(smf, hmf, smf_model, z = 0):
     
     # create data for modelled smf (for plotting)
     m_star_range = np.logspace(-3,2,1000)
+
     modelled_phi = smf_model.function(m_star_range, par)
     modelled_smf = np.array([m_star_range, modelled_phi]).T
     return(par, modelled_smf, cost)
@@ -42,7 +41,7 @@ def cost_function(params, smf, smf_model):
     
     phi_mod = smf_model.function(m_obs, params)
     
-    if not within_bounds(params, [0,0,0], [1,np.inf,1]):
+    if not within_bounds(params, [0,0,0,0], [1,np.inf,np.inf, 1]):
         return(1e+10) # return inf (or huge value) if outside of bounds
     
     res = np.log10(phi_obs) - np.log10(phi_mod)

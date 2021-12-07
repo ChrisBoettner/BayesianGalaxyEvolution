@@ -13,7 +13,7 @@ import mcmc_fitting
 
 ## MAIN FUNCTION
 def fit_SMF_model(smfs, hmfs, feedback_name, fitting_method = 'least_squares',
-                  mode = 'loading', m_crit=1e+11):
+                  mode = 'loading'):
     '''
     Fit the modelled SMF (modelled from HMF + feedback) to the observed SMF (for
     all redshifts).
@@ -47,15 +47,9 @@ def fit_SMF_model(smfs, hmfs, feedback_name, fitting_method = 'least_squares',
         # convert units from 1 solar mass to 10^10 solar masses for numerical stability
         base_unit = 1e+10
         smf[:,0]    = smf[:,0]/base_unit
-        hmf[:,0]    = hmf[:,0]/base_unit
-        if i==0:    
-            m_crit  = m_crit/base_unit
-        # if just sn feedback is fitted, ignore values above high-mass knee, because 
-        # they screw up the fit
-        if feedback_name == 'sn':
-            smf = smf[smf[:,0]<m_crit]  
+        hmf[:,0]    = hmf[:,0]/base_unit 
         
-        smf_model = smf_model_class(hmf, feedback_name, m_crit) 
+        smf_model = smf_model_class(hmf, feedback_name) 
         # fit and fit parameter
         params, mod_smf, c = fit(smf, hmf, smf_model, z=i+1) 
         parameter.append(params)
@@ -66,9 +60,9 @@ def fit_SMF_model(smfs, hmfs, feedback_name, fitting_method = 'least_squares',
 
 ## CREATE THE SMF MODEL
 class smf_model_class():
-    def __init__(self, hmf, feedback_name, m_crit):
+    def __init__(self, hmf, feedback_name):
         self.hmf_function   = interp1d(*hmf.T) # turn hmf data into evaluable function (using linear interpolation)
-        self.feedback_model = feedback_model(feedback_name, m_crit) # choose feedback model function
+        self.feedback_model = feedback_model(feedback_name) # choose feedback model function
         
     def function(self, m_star, params):
         '''
@@ -87,17 +81,26 @@ class smf_model_class():
         
         # calculate halo masses from stellar masses using model
         m_h = self.feedback_model.calculate_m_h(m_star, *params)
-        if np.any(np.isnan(m_h)):
-            print('Error: Some of the calculated m_h values contain Nans')
-        
+
         # if halo masses in HMFs is exceeded, set to this value
         m_h_max = 89125 # maximum mass in HMFs in 10^10 solar masses
         m_h[m_h>m_h_max] = m_h_max
         
+        # test_m_h = np.logspace(-10,10,1000)
+        # if np.any(self.feedback_model.calculate_dlogmstar_dlogmh(test_m_h,*params)<=0):
+        #     print("make this better")
+        #     return(1e+10)
+        
+        if self.feedback_model.name == 'both':
+            beta = params[-1]    
+            if beta >= 1/np.log(10):
+                print('this works, write this down correctly')
+                return(1e+10)
+        
         return(self.hmf_function(m_h) / self.feedback_model.calculate_dlogmstar_dlogmh(m_h,*params))
 
 # DEFINE THE FEEDBACK MODELS
-def feedback_model(feedback_name, m_crit):
+def feedback_model(feedback_name):
     '''
     Return feedback model that relates SMF and HMF, including model function, 
     model name and initial guess for fitting, that related SMF and HMF. 
@@ -108,19 +111,18 @@ def feedback_model(feedback_name, m_crit):
         both    : supernova and black hole feedback
     '''
     if feedback_name == 'none':  
-        model = no_feedback(feedback_name, m_crit)
+        model = no_feedback(feedback_name)
     if feedback_name == 'sn':  
-        model = supernova_feedback(feedback_name, m_crit)
+        model = supernova_feedback(feedback_name)
     if feedback_name == 'both':  
-        model = supernova_blackhole_feedback(feedback_name, m_crit)
+        model = supernova_blackhole_feedback(feedback_name)
     return(model)
 
 # the feedback models with all necessary parameter and functional equations
 # see overleaf notes where these equations come from
 class no_feedback():
-    def __init__(self, feedback_name, m_crit):
+    def __init__(self, feedback_name):
         self.name          = feedback_name
-        self.m_c           = m_crit
         self.initial_guess = [0.01]
     def calculate_m_star(self, m_h, A):
         return(A*m_h)
@@ -130,55 +132,51 @@ class no_feedback():
         return(1)        
 
 class supernova_feedback():
-    def __init__(self, feedback_name, m_crit):
+    def __init__(self, feedback_name):
         self.name          = feedback_name
-        self.m_c           = m_crit
-        self.initial_guess = [0.01, 1] 
-    def calculate_m_star(self, m_h, A, alpha):
-        return( A * (m_h/self.m_c)**alpha * m_h)
-    def calculate_m_h(self, m_star, A, alpha):
-        return((m_star/A* self.m_c**alpha)**(1/(alpha+1)))
-    def calculate_dlogmstar_dlogmh(self, m_h, A, alpha):
+        self.initial_guess = [0.01, 1e+2, 1] 
+    def calculate_m_star(self, m_h, A, m_c, alpha):
+        return( A * (m_h/m_c)**alpha * m_h)
+    def calculate_m_h(self, m_star, A, m_c, alpha):
+        return((m_star/A* m_c**alpha)**(1/(alpha+1)))
+    def calculate_dlogmstar_dlogmh(self, m_h, m_c, A, alpha):
         return(alpha+1)
 
 class supernova_blackhole_feedback():
-    def __init__(self, feedback_name, m_crit):
+    def __init__(self, feedback_name):
         self.name          = feedback_name
-        self.m_c           = m_crit
-        self.initial_guess = [0.01, 1, 0.3]
-        
-    def calculate_m_star(self, m_h, A, alpha, beta):
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(A * m_h/(sn + bh))
-    
-    def calculate_m_h(self, m_star, A, alpha, beta):
-        m_star_func = lambda m_halo : self.calculate_m_star(m_halo, A, alpha, beta)
-        fprime      = lambda m_halo : self._calculate_dmstar_dmh(m_halo, A, alpha, beta)
-        fprime2     = lambda m_halo : self._calculate_d2mstar_dmh2(m_halo, A, alpha, beta)
-        m_h = invert_function(m_star_func, fprime, fprime2, m_star) 
+        self.initial_guess = [0.01, 1e+2, 1, 0.3]       
+    def calculate_m_star(self, m_h, A, m_c, alpha, beta):
+        sn = (m_h/m_c)**(-alpha)
+        bh = (m_h/m_c)**beta
+        return(A * m_h/(sn + bh))    
+    def calculate_m_h(self, m_star, A, m_c, alpha, beta):
+        m_star_func = lambda m_halo : self.calculate_m_star(m_halo, A, m_c, alpha, beta)
+        fprime      = lambda m_halo : self._calculate_dmstar_dmh(m_halo, A, m_c, alpha, beta)
+        fprime2     = lambda m_halo : self._calculate_d2mstar_dmh2(m_halo, A, m_c, alpha, beta)
+        m_h = invert_function(m_star_func, fprime, fprime2, m_star, [A,m_c,alpha,beta]) 
         return(m_h)
-    def calculate_dlogmstar_dlogmh(self, m_h, A, alpha, beta):
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
+    def calculate_dlogmstar_dlogmh(self, m_h, A, m_c, alpha, beta):
+        sn = (m_h/m_c)**(-alpha)
+        bh = (m_h/m_c)**beta
         return(1 - np.log(10) * (-alpha*sn + beta * bh)/(sn + bh))
-    def _calculate_dmstar_dmh(self, m_h,A,alpha,beta): # first derivative, just used to calc inverse
+    def _calculate_dmstar_dmh(self, m_h, A, m_c, alpha, beta): # first derivative, just used to calc inverse
         if m_h<0:
             return(np.nan)
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
+        sn = (m_h/m_c)**(-alpha)
+        bh = (m_h/m_c)**beta
         return(A * ((1+alpha)*sn+(1-beta)*bh)/(sn + bh)**2)
-    def _calculate_d2mstar_dmh2(self, m_h,A,alpha,beta): # second derivative, just used to calc inverse
+    def _calculate_d2mstar_dmh2(self, m_h, A, m_c, alpha, beta): # second derivative, just used to calc inverse
         if m_h<0:
             return(np.nan)
-        x = m_h/self.m_c; a = alpha; b = beta
+        x = m_h/m_c; a = alpha; b = beta
         denom = x**(-a) + x**b
         first_num  = (1+a)*(-a)*x**(-a-1)+(1-b)*b*x**(b-1)
         second_num = -2*((1+a)* x**(-a)+(1+b)*x**b)*(-a*x**(-a-1)+b*x**(b-1))
-        return(A/self.m_c * (first_num/denom**2 + second_num/denom**3))
+        return(A/m_c * (first_num/denom**2 + second_num/denom**3))
         
 ## HELP FUNCTIONS
-def invert_function(func, fprime,fprime2, y):
+def invert_function(func, fprime,fprime2, y, params):
     '''
     For a function y=f(x), calculate x values for an input set of y values.
 
@@ -187,12 +185,13 @@ def invert_function(func, fprime,fprime2, y):
     for val in y:
         root_func = lambda m: func(m) - val
         root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, method='halley',
-                             x0 = val*100, rtol=1e-8).root
+                             x0 = val*100, rtol=1e-6).root
         if np.isnan(root): # use Newton's method if Halley's method doesn't work
             root = root_scalar(root_func, fprime = fprime, method = 'newton',
-                                 x0 = val*100, rtol=1e-8).root            
+                                 x0 = val*100, rtol=1e-6).root            
         x.append(root)
-    return(np.array(x))
+    x = np.array(x)
+    return(x)
 
             
         
