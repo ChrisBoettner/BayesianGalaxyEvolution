@@ -122,7 +122,7 @@ ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=Fa
 ## PARAMETER EVOLUTION      
 fig, ax = plt.subplots(4,1, sharex=True)
 ax[0].set_ylabel('A')
-ax[1].set_ylabel(r'$m_c$')
+ax[1].set_ylabel(r'log[$M_c/M_\odot$]')
 ax[2].set_ylabel(r'$\alpha$')
 ax[3].set_ylabel(r'$\beta$')
 fig.supxlabel('$z$')

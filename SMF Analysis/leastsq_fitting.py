@@ -14,7 +14,7 @@ def lsq_fit(smf, hmf, smf_model, z = 0):
     Calculate parameter that match observed SMFs to modelled SMFs using least
     squares regression and a pre-defined cost function (which is not the usual
     one! See cost_function for details). 
-    '''                      
+    '''                    
     # fit smf model to data based on pre-defined cost function
     fitting       = least_squares(cost_function, smf_model.feedback_model.initial_guess,
                                   args = (smf, smf_model))
@@ -23,13 +23,13 @@ def lsq_fit(smf, hmf, smf_model, z = 0):
     
     # create data for modelled smf (for plotting)
     m_star_range = np.logspace(-3,2,1000)
-
+    
     modelled_phi = smf_model.function(m_star_range, par)
     modelled_smf = np.array([m_star_range, modelled_phi]).T
     return(par, modelled_smf, cost)
 
 ## LEAST SQUARE HELP FUNCTIONS
-def cost_function(params, smf, smf_model):
+def cost_function(params, smf, smf_model, fix_mc = True):
     '''
     Cost function for fitting. Includes physically sensible bounds for parameter.
     IMPORTANT :   We minimize the log of the phi_obs and phi_mod, instead of the
@@ -39,9 +39,13 @@ def cost_function(params, smf, smf_model):
     m_obs   = smf[:,0]
     phi_obs = smf[:,1]
     
+    if fix_mc and len(params)>1:
+        print('fixing m_c')
+        params[1] = 1e+2 #10^10 solar masses 
+    
     phi_mod = smf_model.function(m_obs, params)
     
-    if not within_bounds(params, [0,0,0,0], [1,np.inf,np.inf, 1]):
+    if not within_bounds(params, *smf_model.feedback_model.bounds):
         return(1e+10) # return inf (or huge value) if outside of bounds
     
     res = np.log10(phi_obs) - np.log10(phi_mod)
