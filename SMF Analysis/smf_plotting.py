@@ -12,73 +12,27 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 import numpy as np
 import matplotlib.pyplot as plt
 
-from smf_modelling   import fit_SMF_model
-from data_processing import group, z_ordered_data
+from smf_modelling   import model_container
+from data_processing import load_data
 
-################## CHOOSE FITTING METHOD ######################################
-fitting_method = 'least_squares'    
-mode           = 'temp'          # 'saving', 'loading' or 'temp'
+import astropy.units as u
+from astropy.cosmology import Planck18, z_at_value
 
-################## LOAD DATA ##################################################
-# get z=1,2,3,4 for Davidson, z=1,2,3 for Ilbert
-davidson    = np.load('data/Davidson2017SMF.npz'); davidson = {i:davidson[j] for i,j in [['0','2'],['1','4'],['2','6'],['3','8']]}
-ilbert      = np.load('data/Ilbert2013SMF.npz');   ilbert = {i:ilbert[j] for i,j in [['0','2'],['1','4'],['2','6']]}
-duncan      = np.load('data/Duncan2014SMF.npz')      
-song        = np.load('data/Song2016SMF.npz')       
-bhatawdekar = np.load('data/Bhatawdekar2018SMF.npz')
-stefanon    = np.load('data/Stefanon2021SMF.npz')
-hmfs        = np.load('data/HMF.npz'); hmfs = [hmfs[str(i)] for i in range(20)]   
+# coose option
+fitting_method = 'mcmc' # 'least_squares' or 'mcmc'   
+mode           = 'saving'          # 'saving', 'loading' or 'temp'
 
-## TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
-davidson    = group(davidson,    [1,2,3,4]   ).plot_parameter('black', 'o', 'Davidson2017')
-ilbert      = group(ilbert,      [1,2,3]     ).plot_parameter('black', 'H', 'Ilbert2013')
-duncan      = group(duncan,      [4,5,6,7]   ).plot_parameter('black', 'v', 'Duncan2014')
-song        = group(song,        [6,7,8]     ).plot_parameter('black', 's', 'Song2016')
-bhatawdekar = group(bhatawdekar, [6,7,8,9]   ).plot_parameter('black', '^', 'Bhatawdekar2019')
-stefanon    = group(stefanon,    [6,7,8,9,10]).plot_parameter('black', 'X', 'Stefanon2021')
-groups      = [davidson, ilbert, duncan, song, bhatawdekar, stefanon]
+# load data
+groups, smfs, hmfs = load_data()
 
-## DATA SORTED BY REDSHIFT
-smfs = z_ordered_data(groups)
-# undo log for easier fitting
-raise10 = lambda list_log: [10**list_log[i] for i in range(len(list_log))]
-smfs = raise10(smfs)
-hmfs = raise10(hmfs)
-
-################## CALCULATE SHMR #############################################
-# model classes with estimated smfs and plotting information
-class smf_model():
-    def __init__(self, smfs, hmfs, feedback_name, fitting_method, mode):
-        parameter, modelled_smf, cost = fit_SMF_model(smfs, hmfs, feedback_name,
-                                                      fitting_method, mode)
-        self.parameter = smf_object(parameter)
-        self.smf       = smf_object(modelled_smf)
-        self.cost      = smf_object(cost)
-        
-        self.feedback_name = feedback_name
-    def plot_parameter(self, color, marker, linestyle, label):
-        self.color     = color
-        self.marker    = marker
-        self.linestyle = linestyle
-        self.label     = label
-        return(self)
-    
-class smf_object():
-    def __init__(self, data):
-        self.data = np.array(data)
-    def at_z(self, redshift):
-        if redshift == 0:
-            raise ValueError('Redshift 0 not in data')
-        return(self.data[redshift-1])
-
-## CREATE MODEL OBJECTS
-no_feedback   = smf_model(smfs, hmfs, 'none',
+# create model smfs
+no_feedback   = model_container(smfs, hmfs, 'none',
                           fitting_method, mode).plot_parameter('black', 'o', '-',  'No Feedback')
-sn_feedback   = smf_model(smfs, hmfs, 'sn',
-                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
-snbh_feedback = smf_model(smfs, hmfs, 'both',
-                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
-models = [no_feedback, sn_feedback, snbh_feedback]
+#sn_feedback   = model_container(smfs, hmfs, 'sn',
+#                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
+#snbh_feedback = model_container(smfs, hmfs, 'both',
+#                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
+models = [no_feedback, sn_feedback]
 
 ################## PLOTTING ###################################################
 plt.close('all')
@@ -120,28 +74,27 @@ ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=Fa
               prop={'size': 12})
 
 ## PARAMETER EVOLUTION      
-fig, ax = plt.subplots(4,1, sharex=True)
+fig, ax = plt.subplots(3,1, sharex=True)
 ax[0].set_ylabel('A')
-ax[1].set_ylabel(r'log[$M_c/M_\odot$]')
-ax[2].set_ylabel(r'$\alpha$')
-ax[3].set_ylabel(r'$\beta$')
-fig.supxlabel('$z$')
+ax[1].set_ylabel(r'$\alpha$')
+ax[2].set_ylabel(r'$\beta$')
+ax[2].set_xlabel('Lookback time [Gyr]')
 for model in models:
     parameter_number = len(model.parameter.data[0])
     for i in range(parameter_number):
         param_at_z = [model.parameter.at_z(z)[i] for z in redshift]
-        ax[i].scatter(redshift, param_at_z,
+        t          = [Planck18.lookback_time(z).value for z in redshift]
+        ax[i].scatter(t, param_at_z,
                       marker = model.marker, label = model.label, color = model.color)
-# ax[0].legend()
-# fig.align_ylabels(ax)
-# fig.tight_layout()
-# fig.subplots_adjust(hspace=0, wspace=0)
-# for a in ax:
-#     a.minorticks_on()
-#     a.tick_params(axis='x', which='minor', bottom=False)
-#exclude out of bounds data points
-#ax[2].set_ylim([-0.012,0.5])
-#ax[2].arrow(8, 0.44, 0, 0.03,
-#          head_width=0.04, head_length=0.02, color = snbh_feedback.color)
-#ax[2].arrow(10, 0.44, 0, 0.03,
-#          head_width=0.04, head_length=0.02, color = snbh_feedback.color)
+# second axis
+def z_to_t(z):
+    z = np.array(z)
+    t = np.array([Planck18.lookback_time(k).value for k in z])
+    return(t)
+def t_to_z(t):
+    t = np.array(t)
+    z = np.array([z_at_value(Planck18.lookback_time, k*u.Gyr) for k in t])
+    return(z)
+zax = ax[0].secondary_xaxis('top', functions=(t_to_z, z_to_t))
+zax.set_xlabel('Redshift $z$')
+_ = zax.set_xticks(range(1,11))
