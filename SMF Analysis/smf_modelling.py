@@ -64,11 +64,12 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         smf_model = smf_model_class(smf, hmf, feedback_name, m_c, z=i+1) 
         
         # create new prior from distribution of previous iteration
-        prior_hist = mcmc_fitting.dist_from_hist(smf_model, posterior_samp) 
+        print('NOW USING N-D PRIOR')
+        prior = mcmc_fitting.dist_from_hist_nd(smf_model, posterior_samp) 
         
         # fit parameter
         params, mod_smf, posterior_samp = fit_model(smf_model,
-                                               fitting_method, prior_hist, mode)
+                                               fitting_method, prior, mode)
         parameter.append(params)  
         modelled_smf.append(mod_smf)
         distribution.append(posterior_samp)     

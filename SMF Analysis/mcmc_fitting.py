@@ -7,7 +7,6 @@ Created on Thu Nov 18 12:13:22 2021
 """
 
 import numpy as np
-from scipy.stats import uniform, rv_histogram
 import emcee
 
 import os
@@ -23,10 +22,10 @@ def mcmc_fit(smf_model, prior = None, mode = 'temp'):
                   mass are included.
     '''
     # initalize saving for mcmc runs
-    save_path = '/data/users/boettner/SMF/mcmc_runs/'
     if mode == 'temp':
         savefile = None
     else:
+        save_path = '/data/users/boettner/SMF/mcmc_runs/'
         filename = save_path + smf_model.feedback_model.name + str(smf_model.z) + 'prior.h5'
         savefile = emcee.backends.HDFBackend(filename)
     
@@ -43,8 +42,8 @@ def mcmc_fit(smf_model, prior = None, mode = 'temp'):
         with Pool() as pool:
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
                                             log_probability, args=(smf_model, prior),
-                                            backend=savefile, pool=pool)
-            sampler.run_mcmc(walker_pos, 3000, progress=True)
+                                            backend=savefile, pool = pool)
+            sampler.run_mcmc(walker_pos, 50000, progress=True)
     if mode == 'loading':
         # load from savefile 
         sampler = savefile
@@ -72,14 +71,14 @@ def log_probability(params, smf_model, prior):
 
     '''
     
+    # PRIOR
     # check if parameter are within bounds
     if not within_bounds(params, *smf_model.feedback_model.bounds):
         return(-np.inf)
-    
-    # prior
+    # prior prob
     l_prior    = log_prior(params, prior) 
     
-    # likelihood
+    # LIKELIHOOD
     log_L   = log_likelihood(params, smf_model)
     return(l_prior + log_L)
 
@@ -118,52 +117,95 @@ def log_prior(params, prior_hist):
     value of that parameter. Assuming the parameter are independent, the total 
     probability is then the product of the individual probabilities.
     '''
-    indiv_prob = [prior_hist[i].pdf(params[i]) for i in range(len(params))]
-    total_prob = np.prod(indiv_prob) # assuming independent parameter,
-                                     # total prob is product of indiv probs
+    hists = prior_hist[0]
+    edges = prior_hist[1]
+    
+    # find indices for bins in histogram that the params belong to
+    ind = []
+    for i in range(len(params)):
+        ind.append(np.argwhere(params[i]<edges[i])[0][0]-1)
+    
+    # if probabilities are assumed independent: get probability for each param
+    # from corresponding histogram and then multiply all together to get total
+    # probability
+    if len(hists)>1:
+        indiv_prob = [hists[i][ind[i]] for i in range(len(params))]
+        total_prob = np.prod(indiv_prob)
+        
+    # if probabilities are not assumed independent: get total probability form
+    # n-dimensional histogram    
+    else: 
+        total_prob = hists[0][tuple(ind)]
+                                         
     if total_prob == 0: 
-        return(0) # otherwise log will throw an error
+        return(-np.inf) # otherwise log will throw an error
     return(np.log10(total_prob))
 
 ## PRIOR FUNCTIONS
-def dist_from_hist(smf_model, dist):
+def dist_from_hist_nd(smf_model, dist):
     '''
-    Creates prior from a sample distribution (derived from a previous mcmc run).
-    For now, we assume that all parameter are independent and their marginal 1D
-    distributions reflect the full probability for the parameter.
-    Returns list of probability distributions for each parameter.
+    Create n-dimensional histogram from a sample distribution 
+    (derived from a previous mcmc run).
+    Returns normalized histogram (probabilities) and edges of histogram, both as
+    lists for compatiblity with other prior functions.
+    
+    IMPORTANT: If sample distribution is None type, assume uniform distribution. 
+    '''
+    if dist is None:
+        return(uniform_prior(smf_model, dist))
+    if dist.shape[1] == 1:
+        return(dist_from_hist_1d(smf_model, dist))
+    
+    bounds= list(zip(*smf_model.feedback_model.bounds))
+    
+    hist_nd, edges = np.histogramdd(dist, bins=100, range=bounds, density=True)
+    return([hist_nd], edges)
+    
+
+def dist_from_hist_1d(smf_model, dist):
+    '''
+    Create n histograms from a sample distribution (derived from a previous 
+    mcmc run). Here we assume that all parameter are independent and their 
+    marginal 1D distributions reflect the full probability for the parameter.
+    Returns normalized histograms (probabilities) and edges of histograms, both
+    as lists.
     
     IMPORTANT: If sample distribution is None type, assume uniform distribution. 
     
     '''
     if dist is None:
-        return(uniform_prior(smf_model))
-    param_num = dist.shape[1]
-    dists     = []
-    for i in range(param_num):
-        lower_bound = smf_model.feedback_model.bounds[0][i]
-        upper_bound = smf_model.feedback_model.bounds[1][i]
-        hist        = np.histogram(dist[:,i],range=[lower_bound,upper_bound],
-                                   density=True, bins = 100)
-        dists.append(rv_histogram(hist))
-    return(dists)
+        return(uniform_prior(smf_model, dist))
+    hists     = []
+    edges     = []
+    for i in range(dist.shape[1]):
+        lower_bound  = smf_model.feedback_model.bounds[0][i]
+        upper_bound  = smf_model.feedback_model.bounds[1][i]
+        hist, edge   = np.histogram(dist[:,i], range=(lower_bound,upper_bound),
+                                    density=True, bins = 100)
+        hists.append(hist)
+        edges.append(edge)
+    return(hists, edges)
 
-def uniform_prior(smf_model):
+def uniform_prior(smf_model, dist):
     '''
-    Create uniform prior from n independent uniform distributions, where n is 
-    the number of parameters in the model.
-    Returns list of probability distributions for each parameter. 
+    Create n histograms that match n independent uniform prior.
+    Returns normalized histograms (probabilities) and edges of histograms, both
+    as lists.
     '''
     if smf_model.z>1:
         print("Warning: using uniform prior for z>1")
         
     param_num = len(smf_model.feedback_model.initial_guess)
-    dists     = []
+    hists     = []
+    edges     = []
     for i in range(param_num):
         lower_bound = smf_model.feedback_model.bounds[0][i]
         upper_bound = smf_model.feedback_model.bounds[1][i]
-        dists.append(uniform(loc = lower_bound, scale = upper_bound))
-    return(dists)
+        hist        = np.array([1/(upper_bound-lower_bound)])
+        edge        = np.array([lower_bound, upper_bound])
+        hists.append(hist)
+        edges.append(edge)
+    return(hists, edges)
 
         
 ## HELP FUNCTIONS

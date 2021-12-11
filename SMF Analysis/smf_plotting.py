@@ -20,19 +20,19 @@ from astropy.cosmology import Planck18, z_at_value
 
 # coose option
 fitting_method = 'mcmc' # 'least_squares' or 'mcmc'   
-mode           = 'saving'          # 'saving', 'loading' or 'temp'
+mode           = 'temp'          # 'saving', 'loading' or 'temp'
 
 # load data
 groups, smfs, hmfs = load_data()
 
 # create model smfs
-no_feedback   = model_container(smfs, hmfs, 'none',
-                          fitting_method, mode).plot_parameter('black', 'o', '-',  'No Feedback')
-#sn_feedback   = model_container(smfs, hmfs, 'sn',
-#                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
+#no_feedback   = model_container(smfs, hmfs, 'none',
+#                          fitting_method, mode).plot_parameter('black', 'o', '-',  'No Feedback')
+sn_feedback   = model_container(smfs, hmfs, 'sn',
+                          fitting_method, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
 #snbh_feedback = model_container(smfs, hmfs, 'both',
 #                          fitting_method, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
-models = [no_feedback, sn_feedback]
+models = [no_feedback,sn_feedback,snbh_feedback]
 
 ################## PLOTTING ###################################################
 plt.close('all')
