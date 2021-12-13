@@ -13,7 +13,7 @@ import os
 from multiprocessing import Pool
 
 ## MAIN FUNCTION
-def mcmc_fit(smf_model, prior = None, mode = 'temp'):
+def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     '''
     Calculate parameter that match observed SMFs to modelled SMFs using MCMC
     fitting by maximizing the logprobability function which is the product of the
@@ -26,7 +26,7 @@ def mcmc_fit(smf_model, prior = None, mode = 'temp'):
         savefile = None
     else:
         save_path = '/data/users/boettner/SMF/mcmc_runs/'
-        filename = save_path + smf_model.feedback_model.name + str(smf_model.z) + 'prior.h5'
+        filename = save_path + smf_model.filename +'.h5'
         savefile = emcee.backends.HDFBackend(filename)
     
     # select initial walker positions near initial guess
@@ -68,7 +68,6 @@ def log_probability(params, smf_model, prior):
     Calculate total probability (which will be maximized by MCMC fitting).
     Total probability is given by likelihood*prior_probability, meaning
     logprobability = loglikelihood+logprior
-
     '''
     
     # PRIOR
@@ -79,7 +78,7 @@ def log_probability(params, smf_model, prior):
     l_prior    = log_prior(params, prior) 
     
     # LIKELIHOOD
-    log_L   = log_likelihood(params, smf_model)
+    log_L   = log_likelihood(params, smf_model)  
     return(l_prior + log_L)
 
 def log_likelihood(params, smf_model):
@@ -102,7 +101,7 @@ def log_likelihood(params, smf_model):
     # for bad parameter combinations, inversion of m_star will fail so that
     # m_h can't be calculated and phi_mod can't be estimated. If that is the case
     # reject step
-    if np.any(np.isnan(phi_mod)):
+    if not np.all(np.isfinite(phi_mod)):
         return(-np.inf)
     
     # calc residuals (IMPORTANT: log values!)   
@@ -119,7 +118,7 @@ def log_prior(params, prior_hist):
     '''
     hists = prior_hist[0]
     edges = prior_hist[1]
-    
+    #import pdb; pdb.set_trace()
     # find indices for bins in histogram that the params belong to
     ind = []
     for i in range(len(params)):
@@ -142,70 +141,99 @@ def log_prior(params, prior_hist):
     return(np.log10(total_prob))
 
 ## PRIOR FUNCTIONS
-def dist_from_hist_nd(smf_model, dist):
+def dist_from_hist_nd(smf_model, dist, dist_bounds):
     '''
     Create n-dimensional histogram from a sample distribution 
     (derived from a previous mcmc run).
     Returns normalized histogram (probabilities) and edges of histogram, both as
-    lists for compatiblity with other prior functions.
+    lists for compatiblity with other prior functions. Also returns new set of 
+    bounds for the histogram, to be used on the next iteration.
+    
+    IMPORTANT: If number of parameters of model are fewer than the columns in
+               dist, we marginalise over the later columns of dist.
     
     IMPORTANT: If sample distribution is None type, assume uniform distribution. 
     '''
     if dist is None:
-        return(uniform_prior(smf_model, dist))
+        return(uniform_prior(smf_model, dist, dist_bounds))
     if dist.shape[1] == 1:
-        return(dist_from_hist_1d(smf_model, dist))
+        return(dist_from_hist_1d(smf_model, dist, dist_bounds))
     
-    bounds= list(zip(*smf_model.feedback_model.bounds))
+    param_num = len(smf_model.feedback_model.initial_guess)
     
-    hist_nd, edges = np.histogramdd(dist, bins=100, range=bounds, density=True)
-    return([hist_nd], edges)
+    dist_bounds_new = list(zip(*smf_model.feedback_model.bounds))
+    if dist_bounds is None: # if bounds are not provided, use the ones from model
+        dist_bounds    = dist_bounds_new
+    
+    hist_nd, edges = np.histogramdd(dist, bins=100, range=dist_bounds, density=True)
+    
+    # marginalise over parameters if new model has fewer parameter than given
+    # in dist (assume later columns in model are to be marginalised over)
+    marg_variables = hist_nd.ndim - param_num
+    if marg_variables>0:
+        for n in range(marg_variables):
+            hist_nd = np.sum(hist_nd, axis = -1)
+        edges = edges[:-marg_variables]
+    return([[hist_nd], edges], dist_bounds_new)
     
 
-def dist_from_hist_1d(smf_model, dist):
+def dist_from_hist_1d(smf_model, dist, dist_bounds):
     '''
     Create n histograms from a sample distribution (derived from a previous 
     mcmc run). Here we assume that all parameter are independent and their 
     marginal 1D distributions reflect the full probability for the parameter.
     Returns normalized histograms (probabilities) and edges of histograms, both
-    as lists.
+    as lists. Also returns new set of bounds for the histogram, to be used on 
+    the next iteration.
+    
+    IMPORTANT: If number of parameters of model are fewer than the columns in
+               dist, we assume the additional columns of dist are to be ignored.
     
     IMPORTANT: If sample distribution is None type, assume uniform distribution. 
     
     '''
     if dist is None:
-        return(uniform_prior(smf_model, dist))
+        return(uniform_prior(smf_model, dist, dist_bounds))
     hists     = []
     edges     = []
-    for i in range(dist.shape[1]):
-        lower_bound  = smf_model.feedback_model.bounds[0][i]
-        upper_bound  = smf_model.feedback_model.bounds[1][i]
+    
+    param_num = len(smf_model.feedback_model.initial_guess)
+    dist_bounds_new = list(zip(*smf_model.feedback_model.bounds))
+    if dist_bounds is None: # if bounds are not provided, use the ones from model
+        dist_bounds    = dist_bounds_new
+    
+    # if dist.shape[1] > param_num, ignore the later columns of dist
+    for i in range(param_num):
+        lower_bound = dist_bounds[i][0]
+        upper_bound = dist_bounds[i][1]
         hist, edge   = np.histogram(dist[:,i], range=(lower_bound,upper_bound),
                                     density=True, bins = 100)
         hists.append(hist)
         edges.append(edge)
-    return(hists, edges)
+    return([hists, edges], dist_bounds)
 
-def uniform_prior(smf_model, dist):
+def uniform_prior(smf_model, dist, dist_bounds):
     '''
     Create n histograms that match n independent uniform prior.
     Returns normalized histograms (probabilities) and edges of histograms, both
-    as lists.
+    as lists. Also returns new set of bounds for the histogram, to be used on 
+    the next iteration.
     '''
-    if smf_model.z>1:
-        print("Warning: using uniform prior for z>1")
-        
-    param_num = len(smf_model.feedback_model.initial_guess)
     hists     = []
     edges     = []
+    param_num = len(smf_model.feedback_model.initial_guess)
+    dist_bounds_new = list(zip(*smf_model.feedback_model.bounds))
+    if dist_bounds is None: # if bounds are not provided, use the ones from model
+        dist_bounds    = dist_bounds_new
+
     for i in range(param_num):
-        lower_bound = smf_model.feedback_model.bounds[0][i]
-        upper_bound = smf_model.feedback_model.bounds[1][i]
+        lower_bound = dist_bounds[i][0]
+        upper_bound = dist_bounds[i][1]
         hist        = np.array([1/(upper_bound-lower_bound)])
         edge        = np.array([lower_bound, upper_bound])
         hists.append(hist)
         edges.append(edge)
-    return(hists, edges)
+    return([hists, edges], dist_bounds)
 
         
 ## HELP FUNCTIONS

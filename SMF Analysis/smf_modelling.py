@@ -17,9 +17,9 @@ class model_container():
     Container object that contains all important information about modelled
     SMF.
     '''
-    def __init__(self, smfs, hmfs, feedback_name, fitting_method, mode):
+    def __init__(self, smfs, hmfs, feedback_name, fitting_method, prior_name, mode):
         parameter, modelled_smf, distribution = fit_SMF_model(smfs, hmfs, feedback_name,
-                                                              fitting_method, mode)
+                                                              fitting_method, prior_name, mode)
         self.feedback_name = feedback_name
         
         self.parameter     = smf_data(parameter)
@@ -37,7 +37,7 @@ class model_container():
 class smf_data():
     # easily retrieve data at certain redshift
     def __init__(self, data):
-        self.data = np.array(data)
+        self.data = data
     def at_z(self, redshift):
         if redshift == 0:
             raise ValueError('Redshift 0 not in data')
@@ -45,10 +45,20 @@ class smf_data():
 
 ## MAIN FUNCTIONS   
 def fit_SMF_model(smfs, hmfs, feedback_name,
-                  fitting_method = 'least_squares', mode = 'temp',
+                  fitting_method, prior_name, mode,
                   m_c = 1e+12):
     '''
     Perform SMF fit for all redshifts.
+    
+    feedback_name can either be a single string (then this model is used for all
+    redshifts) or a list of strings corresponding to the model used for each redshift.
+    
+    Choose between 3 different prior model:
+        uniform  : assume uniform prior within bounds for each redshift
+        marginal : use marginalized distribution for parameter from previous 
+                   redshift (assuming independence of parameter)
+        full     : use full distribution for parameter from previous 
+                   redshift (assuming dependence of parameter)
     
     IMPORTANT : Critical mass is pre-set to 1e+12. If m_c = False, 
                 also fit this value.
@@ -56,27 +66,43 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
     
     parameter = []; modelled_smf = []; distribution = []
     posterior_samp = None
+    bounds         = None
     for i in range(len(smfs)):
         smf = np.copy(smfs[i])
         hmf = np.copy(hmfs[i+1]) # list starts at z=0 not 1, like smf
         
         # create model object
-        smf_model = smf_model_class(smf, hmf, feedback_name, m_c, z=i+1) 
-        
+        # (choose feedback model based on feedback_name input)
+        if isinstance(feedback_name, str):
+            smf_model    = smf_model_class(smf, hmf, feedback_name, m_c, z=i+1) 
+            smf_model.filename = smf_model.feedback_model.name + str(smf_model.z) + prior_name
+        elif len(feedback_name) == len(smfs):
+            smf_model = smf_model_class(smf, hmf, feedback_name[i], m_c, z=i+1) 
+            smf_model.filename = 'changing' + str(smf_model.z) + prior_name
+        else:
+            raise ValueError('feedback_name must either be a string or a \
+                              list of strings with the same length as smfs.')
+
         # create new prior from distribution of previous iteration
-        print('NOW USING N-D PRIOR')
-        prior = mcmc_fitting.dist_from_hist_nd(smf_model, posterior_samp) 
+        if prior_name == 'uniform':
+            prior, b = mcmc_fitting.uniform_prior(smf_model, posterior_samp, bounds) 
+        if prior_name == 'marginal':
+            prior, b = mcmc_fitting.dist_from_hist_1d(smf_model, posterior_samp, bounds) 
+        if prior_name == 'full':
+            prior, b = mcmc_fitting.dist_from_hist_nd(smf_model, posterior_samp, bounds) 
+        bounds = b
         
         # fit parameter
         params, mod_smf, posterior_samp = fit_model(smf_model,
-                                               fitting_method, prior, mode)
+                                                    fitting_method, prior, 
+                                                    prior_name, mode)
         parameter.append(params)  
         modelled_smf.append(mod_smf)
         distribution.append(posterior_samp)     
         
     return(parameter, modelled_smf, distribution)
 
-def fit_model(smf_model, fitting_method, prior, mode):
+def fit_model(smf_model, fitting_method, prior, prior_name, mode):
     '''
     Fit the modelled SMF (modelled from HMF + feedback) to the observed SMF
     Three feedback models: 'none', 'sn', 'both'
@@ -94,7 +120,7 @@ def fit_model(smf_model, fitting_method, prior, mode):
         fit = leastsq_fitting.lsq_fit
     elif fitting_method == 'mcmc':
         def fit(smf_model): # choose saving/loading mode and prior
-            return(mcmc_fitting.mcmc_fit(smf_model, prior, mode))
+            return(mcmc_fitting.mcmc_fit(smf_model, prior, prior_name, mode))
     
     # create model and perform fit
     params, mod_smf, dist = fit(smf_model)
@@ -120,6 +146,8 @@ class smf_model_class():
         self.feedback_model = feedback_model(feedback_name, m_c) # choose feedback model function
         self.z              = z
         self.unit           = base_unit
+        
+        self.filename       = None
     def function(self, m_star, params):
         '''
         Create SMF model function by multiplying HMF function with feedback model 
