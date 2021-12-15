@@ -110,6 +110,9 @@ def fit_model(smf_model, fitting_method, prior, prior_name, mode):
     IMPORTANT : Abundances (phi values) below 1e-6 are cut off because they 
                 cant be measured reliably.
     
+    IMPORTANT : For 'sn' model, only consider data points up to 10^11 solar 
+                masses.
+    
     Returns:
     params        : set of fitted parameter (A, alpha, beta)
     modelled_smf  : modelled SMF obtained from scaling HMF
@@ -134,6 +137,10 @@ class smf_model_class():
     def __init__(self, smf, hmf, feedback_name, m_c, z, base_unit =  1e+10):
         # cut unreliable values    
         smf = smf[smf[:,1]>1e-6]
+        
+        if feedback_name == 'sn':
+            # cut unreliable values    
+            smf = smf[smf[:,0]<=1e+11]
         
         # Change units from 1 solar mass to 10^10 solar masses for numerical stability
         smf[:,0]    = smf[:,0]/base_unit
@@ -207,7 +214,7 @@ class no_feedback():
         return(1)        
 
 class supernova_feedback():
-    def __init__(self, feedback_name,m_c):
+    def __init__(self, feedback_name, m_c):
         self.name          = feedback_name
         self.m_c           = m_c      
         self.initial_guess = [0.01, 1]
