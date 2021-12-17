@@ -56,10 +56,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     # at the calculated parameter
     par  = np.median(posterior, axis=0)  
     
-    # create data for modelled smf (for plotting)
-    modelled_smf = np.copy(smf_model.hmf)
-    modelled_smf[:,1] = smf_model.function(smf_model.hmf[:,0], par)
-    return(par, modelled_smf, posterior)
+    return(par, posterior)
 
 
 ## MCMC HELP FUNCTIONS

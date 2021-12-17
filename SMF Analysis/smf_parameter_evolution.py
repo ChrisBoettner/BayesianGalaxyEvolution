@@ -21,16 +21,30 @@ from astropy.cosmology import Planck18, z_at_value
 # coose option
 fitting_method = 'mcmc'     # 'least_squares' or 'mcmc'   
 prior_model    = 'full'     # 'uniform', 'marginal' or 'full'
-mode           = 'loading'  # 'saving', 'loading' or 'temp'
+mode           = 'saving'   # 'saving', 'loading' or 'temp'
 
 # load data
 groups, smfs, hmfs = load_data()
 
 # create model smfs
 feedbacks = ['both']*4+['sn']*6
-model = model_container(smfs, hmfs, feedbacks, fitting_method,
-                        prior_model, mode).plot_parameter('C0', 'o', '-', '')
-
+prior_model = ['full', 'uniform', 'marginal']
+print("feedbacks")
+for p in prior_model:
+    model = model_container(smfs, hmfs, feedbacks, fitting_method,
+                            p, mode).plot_parameter('C0', 'o', '-', '')
+print("sn")
+for p in prior_model:
+    model = model_container(smfs, hmfs, 'sn', fitting_method,
+                            p, mode).plot_parameter('C0', 'o', '-', '')
+print("none")
+for p in prior_model:
+    model = model_container(smfs, hmfs, 'none', fitting_method,
+                            p, mode).plot_parameter('C0', 'o', '-', '')
+print("both")
+for p in prior_model:
+    model = model_container(smfs, hmfs, 'both', fitting_method,
+                            p, mode).plot_parameter('C0', 'o', '-', '')
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')

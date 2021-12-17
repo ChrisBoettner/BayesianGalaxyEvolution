@@ -20,14 +20,8 @@ def lsq_fit(smf_model):
                                   args = (smf_model,))
     par           = fitting.x
     
-    # create data for modelled smf (for plotting)
-    m_star_range = np.logspace(-3,2,1000)
-    
-    modelled_phi = smf_model.function(m_star_range, par)
-    modelled_smf = np.array([m_star_range, modelled_phi]).T
-    
     par_distribution = None # for compatibility with mcmc fit
-    return(par, modelled_smf, par_distribution)
+    return(par, par_distribution)
 
 ## LEAST SQUARE HELP FUNCTIONS
 def cost_function(params, smf_model):
