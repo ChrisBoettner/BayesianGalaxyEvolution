@@ -1,0 +1,53 @@
+Data processed to npz files
+
+##
+Rows: log(masses)  log(value)  error_lower(log)  error_upper(log)
+##
+
+Readshift bins:
+Duncan2014	Davidson2017	Bhatawdekar2019
+4		0.370		6
+5		0.667		7
+6		0.943		8
+7		1.285		9
+		1.738
+		2.219
+		2.683
+		3.271
+		3.754
+
+
+######## DUNCAN 2014 ########
+Files of form 'Duncan14_MF_z'*' .cat' with * from 4-7
+
+z = 4-7
+Chabrier IMF
+Contiuum and Nebula Spectra
+
+Additional information:
+- 68 percentile error bars
+
+
+######## DAVIDSON 2017 ########
+Files of form 'mf_mass2b_fl5b_act_Vmax'*'.dat' with * from 0-8
+
+z = 0.2-4
+Chabrier
+
+Additional information:
+- only active galaxies
+- z-values given in header are mean values, for exact bin sizes see paper or data readme
+
+######## BHATAWDEKAR 2019 ########
+Digitized using Plot Digitizer
+
+z = 6-9
+Chabrier?
+
+Additional information:
+- also Song2016 data (but hopefully corrected to Chabrier IMF?)
+
+
+
+
+
