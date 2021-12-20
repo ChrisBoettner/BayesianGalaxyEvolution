@@ -1,0 +1,14 @@
+# Seaborn colorblind palette
+axes.prop_cycle: cycler('color', ['0072B2', '009E73', 'D55E00', 'CC79A7', 'F0E442', '56B4E9'])
+patch.facecolor: 0072B2
+
+axes.labelsize   : 18.0  # fontsize of the x any y labels
+xtick.labelsize  : 18.0  # fontsize of the tick labels
+ytick.labelsize  : 18.0  # fontsize of the tick labels
+legend.fontsize  : 18.0
+font.family      : serif
+font.serif       : Computer Modern Roman
+text.usetex      : True  # use latex for all text handling
+figure.figsize   : 16.6, 8.4
+figure.titlesize : 24
+lines.linewidth  : 2.75
