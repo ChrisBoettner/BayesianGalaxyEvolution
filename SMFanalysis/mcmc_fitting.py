@@ -26,7 +26,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
         savefile = None
     else:
         #save_path = '/data/users/boettner/SMF/mcmc_runs/'
-	save_path = '/data/users/p305250/SMF/mcmc_runs/' + smf_model.feedback_model.name +'/'
+        save_path = '/data/users/p305250/SMF/mcmc_runs/' + smf_model.feedback_model.name +'/'
         filename = save_path + smf_model.filename +'.h5'
         savefile = emcee.backends.HDFBackend(filename)
     
