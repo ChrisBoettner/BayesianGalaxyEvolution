@@ -12,8 +12,7 @@ from smf_modelling   import model_container
 from data_processing import load_data
 
 # coose option
-fitting_method = 'mcmc'     # 'least_squares' or 'mcmc'   
-prior_model    = 'full'     # 'uniform', 'marginal' or 'full'
+fitting_method = 'mcmc'     # 'least_squares' or 'mcmc'
 mode           = 'saving'   # 'saving', 'loading' or 'temp'
 
 # load data
