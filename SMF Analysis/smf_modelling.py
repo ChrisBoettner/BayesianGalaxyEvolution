@@ -129,9 +129,9 @@ def fit_model(smf_model, fitting_method, prior, prior_name, mode):
     
     # create data for modelled smf (for plotting)   
     modelled_smf = np.copy(smf_model.hmf)
+    modelled_smf = modelled_smf[modelled_smf[:,0]>1e+07/smf_model.unit]
     modelled_smf = modelled_smf[modelled_smf[:,0]<1e+13/smf_model.unit]
     modelled_smf[:,1] = smf_model.function(modelled_smf[:,0], params)
-    #modelled_smf =np.array([[1,1],[1,1]])
     
     # return to 1 solar mass unit 
     modelled_smf[:,0] = modelled_smf[:,0]*smf_model.unit
@@ -192,18 +192,18 @@ def feedback_model(feedback_name, m_c):
         both    : supernova and black hole feedback
     '''
     if feedback_name == 'none':  
-        model = no_feedback(feedback_name, m_c)
+        model = no_feedback(m_c)
     if feedback_name == 'sn':  
-        model = supernova_feedback(feedback_name, m_c)
+        model = supernova_feedback(m_c)
     if feedback_name == 'both':  
-        model = supernova_blackhole_feedback(feedback_name, m_c)
+        model = supernova_blackhole_feedback(m_c)
     return(model)
 
 # the feedback models with all necessary parameter and functional equations
 # see overleaf notes where these equations come from
 class no_feedback():
-    def __init__(self, feedback_name, m_c):
-        self.name          = feedback_name
+    def __init__(self, m_c):
+        self.name          = 'none'
         self.m_c           = m_c
         self.initial_guess = [0.01]
         self.bounds        = [[0], [2]]
@@ -215,8 +215,8 @@ class no_feedback():
         return(1)        
 
 class supernova_feedback():
-    def __init__(self, feedback_name, m_c):
-        self.name          = feedback_name
+    def __init__(self, m_c):
+        self.name          = 'sn'
         self.m_c           = m_c      
         self.initial_guess = [0.01, 1]
         self.bounds        = [[0, 0], [2, 3]]
@@ -263,8 +263,8 @@ class supernova_feedback():
         return(x0)
 
 class supernova_blackhole_feedback():
-    def __init__(self, feedback_name, m_c):
-        self.name          = feedback_name
+    def __init__(self, m_c):
+        self.name          = 'both'
         self.m_c           = m_c
         self.initial_guess = [0.01, 1, 0.3]       
         self.bounds        = [[0, 0, 0], [2, 3, 0.8]]

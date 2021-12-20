@@ -29,18 +29,21 @@ groups, smfs, hmfs = load_data()
 # create model smfs
 feedbacks = ['both']*4+['sn']*6
 prior_model = ['full', 'uniform', 'marginal']
-print("feedbacks")
-for p in prior_model:
-    model = model_container(smfs, hmfs, feedbacks, fitting_method,
-                            p, mode).plot_parameter('C0', 'o', '-', '')
-print("sn")
-for p in prior_model:
-    model = model_container(smfs, hmfs, 'sn', fitting_method,
-                            p, mode).plot_parameter('C0', 'o', '-', '')
 print("none")
 for p in prior_model:
     model = model_container(smfs, hmfs, 'none', fitting_method,
                             p, mode).plot_parameter('C0', 'o', '-', '')
+
+print("sn")
+for p in prior_model:
+    model = model_container(smfs, hmfs, 'sn', fitting_method,
+                            p, mode).plot_parameter('C0', 'o', '-', '')
+
+print("feedbacks")
+for p in prior_model:
+    model = model_container(smfs, hmfs, feedbacks, fitting_method,
+                            p, mode).plot_parameter('C0', 'o', '-', '')
+    
 print("both")
 for p in prior_model:
     model = model_container(smfs, hmfs, 'both', fitting_method,
