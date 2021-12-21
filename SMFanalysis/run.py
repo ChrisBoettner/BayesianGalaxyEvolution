@@ -13,8 +13,7 @@ from smf_modelling   import model_container
 from data_processing import load_data
 
 # coose option
-fitting_method = 'mcmc'     # 'least_squares' or 'mcmc'   
-prior_model    = 'full'     # 'uniform', 'marginal' or 'full'
+fitting_method = 'mcmc'     # 'least_squares' or 'mcmc'
 mode           = 'saving'   # 'saving', 'loading' or 'temp'
 
 # load data
@@ -43,6 +42,7 @@ print(prior_model[f_choose])
 start = timeit.default_timer()
 model_container(smfs, hmfs, feedback_model[f_choose], fitting_method,
                 prior_mode[p_choose], mode)
+                
 end  = timeit.default_timer()
 print('DONE')
 print(end-start)
