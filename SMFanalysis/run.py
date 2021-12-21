@@ -37,7 +37,7 @@ f_choose = int(sys.argv[1])
 p_choose = int(sys.argv[2])
 
 print(feedback_model[f_choose])
-print(prior_model[f_choose])
+print(prior_mode[p_choose])
 
 start = timeit.default_timer()
 model_container(smfs, hmfs, feedback_model[f_choose], fitting_method,
