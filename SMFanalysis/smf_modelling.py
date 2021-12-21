@@ -75,15 +75,17 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         # create model object
         # (choose feedback model based on feedback_name input)
         if isinstance(feedback_name, str):
-            smf_model    = smf_model_class(smf, hmf, feedback_name, m_c, z=i+1) 
-            smf_model.filename = smf_model.feedback_model.name + str(smf_model.z) + prior_name
+            smf_model           = smf_model_class(smf, hmf, feedback_name, m_c, z=i+1)
+            smf_model.directory =  smf_model.feedback_model.name
         elif len(feedback_name) == len(smfs):
-            smf_model = smf_model_class(smf, hmf, feedback_name[i], m_c, z=i+1) 
-            smf_model.filename = 'changing' + str(smf_model.z) + prior_name
+            smf_model           = smf_model_class(smf, hmf, feedback_name[i], m_c, z=i+1) 
+            smf_model.directory =  'changing'
         else:
             raise ValueError('feedback_name must either be a string or a \
                               list of strings with the same length as smfs.')
-
+                              
+        smf_model.filename  = smf_model.directory + str(smf_model.z) + prior_name
+        
         # create new prior from distribution of previous iteration
         if prior_name == 'uniform':
             prior, b = mcmc_fitting.uniform_prior(smf_model, posterior_samp, bounds) 
@@ -155,6 +157,7 @@ class smf_model_class():
         self.z              = z
         self.unit           = base_unit
         
+        self.directory      = None
         self.filename       = None
     def function(self, m_star, params):
         '''
@@ -177,6 +180,8 @@ class smf_model_class():
         # if halo masses in HMFs is exceeded, set to this value
         m_h_max = np.amax(self.hmf[:,0])
         m_h[m_h>m_h_max] = m_h_max
+        m_h_min = np.amin(self.hmf[:,0])
+        m_h[m_h<m_h_min] = m_h_min
         return(self.hmf_function(m_h) / self.feedback_model.calculate_dlogmstar_dlogmh(m_h,*params))
 
 ## DEFINE THE FEEDBACK MODELS
