@@ -56,8 +56,8 @@ for model in models:
         ax[z-1].plot(np.log10(model.smf.at_z(z)[:,0]), np.log10(model.smf.at_z(z)[:,1]),
                   linestyle=model.linestyle, label = model.label, color = model.color)      
 # fluff
-fig.supxlabel('log[$M_*/M_\odot$]')
-fig.supylabel('log[$\phi(M_*)$ cMpc$^3$ dex]', x=0.01)
+fig.supxlabel('log $M_*$ [$M_\odot$]')
+fig.supylabel('log $\phi(M_*)$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()
     if i<len(redshift):
@@ -93,6 +93,7 @@ for model in models:
             ax[i].set_xscale('log')
             ax[i].set_xticks(range(1,11)); ax[2].set_xticklabels(range(1,11))
             ax[i].minorticks_off()
+fig.align_ylabels(ax)
 # legend
 handles, labels = [], []
 for a in ax:

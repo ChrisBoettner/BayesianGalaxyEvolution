@@ -18,15 +18,13 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     Calculate parameter that match observed SMFs to modelled SMFs using MCMC
     fitting by maximizing the logprobability function which is the product of the
     loglikelihood and logprior.
-    IMPORTANT   : When fitting the sn feedback model, only values up th the critical
-                  mass are included.
     '''
     # initalize saving for mcmc runs
     if mode == 'temp':
         savefile = None
     else:
         #save_path = '/data/users/boettner/SMF/mcmc_runs/'
-        save_path = '/data/p305250/SMF/mcmc_runs/' + smf_model.feedback_model.name +'/'
+        save_path = '/data/p305250/SMF/mcmc_runs/' + smf_model.directory +'/'
         filename = save_path + smf_model.filename +'.h5'
         savefile = emcee.backends.HDFBackend(filename)
     

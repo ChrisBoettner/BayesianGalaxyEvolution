@@ -26,7 +26,7 @@ class model_container():
         self.smf           = smf_data(modelled_smf)
         self.distribution  = smf_data(distribution)
         
-        self.model         = smf_model
+        self.model         = smf_data(smf_model)
         
     def plot_parameter(self, color, marker, linestyle, label):
         # style parameter for fit
@@ -226,7 +226,7 @@ class supernova_feedback():
         self.initial_guess = [0.01, 1]
         self.bounds        = [[0, 0], [2, 3]]
     def calculate_m_star(self, m_h, A, alpha):
-        if np.isnan(m_h) or m_h<0:
+        if np.isnan(m_h).any() or np.any(m_h<0):
             return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         return(A * m_h/(1 + sn))   
@@ -274,7 +274,7 @@ class supernova_blackhole_feedback():
         self.initial_guess = [0.01, 1, 0.3]       
         self.bounds        = [[0, 0, 0], [2, 3, 0.8]]
     def calculate_m_star(self, m_h, A, alpha, beta):
-        if np.isnan(m_h) or m_h<0:
+        if np.isnan(m_h).any() or np.any(m_h<0):
             return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
