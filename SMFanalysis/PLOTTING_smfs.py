@@ -41,7 +41,7 @@ plt.close('all')
 
 redshift = np.arange(1,11)  
 ## STELLAR MASS FUNCTION
-fig, ax = plt.subplots(4,3, sharex=True, sharey=True); ax = ax.flatten()
+fig, ax = plt.subplots(4,3, sharey=True); ax = ax.flatten()
 fig.subplots_adjust(top=0.982,bottom=0.113,left=0.075,right=0.991,hspace=0.0,wspace=0.0)
 # plot group data
 for g in groups:
@@ -63,6 +63,7 @@ for i, a in enumerate(ax):
     if i<len(redshift):
         a.text(0.97, 0.94, str(i+0.5) + '$<$z$<$' +str(i+1.5), size = 11,
                horizontalalignment='right', verticalalignment='top', transform=a.transAxes)
+ax[-1].axis('off'); ax[-2].axis('off')
 # legend
 handles, labels = [], []
 for a in ax:
@@ -73,45 +74,4 @@ by_label = dict(zip(labels, handles))
 ax[0].legend( list(by_label.values())[:3], list(by_label.keys())[:3], frameon=False,
              prop={'size': 12}, loc = 3)
 ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=False,
-              prop={'size': 12})
-
-## PARAMETER EVOLUTION      
-fig, ax = plt.subplots(3,1, sharex = True)
-ax[0].set_ylabel('A')
-ax[1].set_ylabel(r'$\alpha$')
-ax[2].set_ylabel(r'$\beta$')
-#ax[2].set_xlabel('Lookback time [Gyr]')
-ax[2].set_xlabel('Redshift $z$')
-for model in models:
-    for z in redshift:
-        param_at_z = model.parameter.at_z(z)
-        for i in range(len(param_at_z)):
-            # t = Planck18.lookback_time(z).value
-            ax[i].scatter(z, param_at_z[i],
-                          marker = model.marker, label = model.label, color = model.color)
-            ax[i].set_xlim([0.95,10.5])
-            ax[i].set_xscale('log')
-            ax[i].set_xticks(range(1,11)); ax[2].set_xticklabels(range(1,11))
-            ax[i].minorticks_off()
-fig.align_ylabels(ax)
-# legend
-handles, labels = [], []
-for a in ax:
-    handles_, labels_ = a.get_legend_handles_labels()
-    handles += handles_
-    labels += labels_
-by_label = dict(zip(labels, handles))
-ax[0].legend( list(by_label.values()), list(by_label.keys()), frameon=False,
-             prop={'size': 16})
-#second axis
-# def z_to_t(z):
-#     z = np.array(z)
-#     t = np.array([Planck18.lookback_time(k).value for k in z])
-#     return(t)
-# def t_to_z(t):
-#     t = np.array(t)
-#     z = np.array([z_at_value(Planck18.lookback_time, k*u.Gyr) for k in t])
-#     return(z)
-# zax = ax[0].secondary_xaxis('top', functions=(z_to_t, t_to_z))
-# zax.set_xlabel('Redshift $z$')
-# _ = zax.set_xticks(range(1,11))
+              prop={'size': 12}, loc = 4)
