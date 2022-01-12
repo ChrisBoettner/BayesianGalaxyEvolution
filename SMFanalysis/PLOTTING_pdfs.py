@@ -18,7 +18,7 @@ from data_processing import load_data
 
 # coose option
 fitting_method = 'mcmc' 
-mode           = 'loading'  
+mode           = 'temp'  
 
 # load data
 groups, smfs, hmfs = load_data()
@@ -36,6 +36,7 @@ groups, smfs, hmfs = load_data()
 
 # load model
 feedback_model = ['both']*4+['sn']*6
+#feedback_model = 'both'
 prior_model = 'full'
 # create model smfs
 model   = model_container(smfs, hmfs, feedback_model, fitting_method,
@@ -65,8 +66,8 @@ for a in ax.flatten():
 for i, a in enumerate(ax[0,:]):
     a.set_title(r'$z=$ ' + str(i+1))
     
-ax[0,0].set_xlim(0,ax[0,0].get_xlim()[1])
-ax[0,0].set_xticks([0,0.1,0.2]); ax[0,0].set_xticklabels(['0','0.1','0.2'])
+ax[0,0].set_xlim(0,0.07)
+ax[0,0].set_xticks([0,0.05]); ax[0,0].set_xticklabels(['0','0.05'])
 ax[1,0].set_xlim(0,ax[1,0].get_xlim()[1])
 ax[1,0].set_xticks([0,1,2]); ax[1,0].set_xticklabels(['0','1','2'])
 ax[2,0].set_xlim(0,ax[2,0].get_xlim()[1])

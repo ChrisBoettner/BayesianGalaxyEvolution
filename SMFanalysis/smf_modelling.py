@@ -8,6 +8,7 @@ Created on Fri Nov 19 21:34:38 2021
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import root_scalar
+from astropy.cosmology import Planck18
 import leastsq_fitting
 import mcmc_fitting
 
@@ -47,8 +48,7 @@ class smf_data():
 
 ## MAIN FUNCTIONS   
 def fit_SMF_model(smfs, hmfs, feedback_name,
-                  fitting_method, prior_name, mode,
-                  m_c = 1e+12):
+                  fitting_method, prior_name, mode):
     '''
     Perform SMF fit for all redshifts.
     
@@ -62,7 +62,7 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         full     : use full distribution for parameter from previous 
                    redshift (assuming dependence of parameter)
     
-    IMPORTANT : Critical mass is pre-set to 1e+12.
+    IMPORTANT : Critical mass calculated according to model by Bower et al.
     '''
     
     parameter = []; modelled_smf = []; distribution = []; smf_models = []
@@ -71,6 +71,9 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
     for i in range(len(smfs)):
         smf = np.copy(smfs[i])
         hmf = np.copy(hmfs[i+1]) # list starts at z=0 not 1, like smf
+        
+        # calc m_crit according to Bower et al.
+        m_c = calculate_m_crit(z=i+1)
         
         # create model object
         # (choose feedback model based on feedback_name input)
@@ -324,6 +327,17 @@ class supernova_blackhole_feedback():
         return(x0)
         
 ## HELP FUNCTIONS
+def calculate_m_crit(z):
+    '''
+    Calculate critical mass at a given redshift in solar masses, following the
+    model by Bower et al. 2017.
+    https://doi.org/10.1093/mnras/stw2735
+    '''
+    omega_m = Planck18.Om(z=z)
+    omega_l = Planck18.Ode(z=z)
+    delta_z = np.power(omega_m*(1+z)**3+omega_l, 1/3)
+    return(np.power(delta_z,-3/8)*1e+12)
+
 def invert_function(func, fprime, fprime2, x0_func, y, args):
     '''
     For a function y=f(x), calculate x values for an input set of y values.
