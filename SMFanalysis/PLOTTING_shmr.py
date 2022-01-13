@@ -37,7 +37,7 @@ model = model_container(smfs, hmfs, feedback_model, fitting_method,
 #%%
 plt.close('all')
 
-redshift = np.arange(1,11)
+redshift = [1,3,5,7,9]
 ## SHMR
 fig, ax = plt.subplots(1,1, sharex = True) #figsize = [8.4, 16.6]
 fig.supxlabel('log $M_\mathrm{h}$ [$M_\odot$]')
@@ -47,7 +47,6 @@ base_unit = 1e+10
 m_halo    = hmfs[0][:,0]/base_unit
 color = 'C2'
 i = 0
-
 
 cm = LinearSegmentedColormap.from_list(
         "Custom", ['C2','C1']

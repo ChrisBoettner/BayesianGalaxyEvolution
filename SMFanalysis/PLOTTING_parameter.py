@@ -31,7 +31,11 @@ prior_model    = 'full'
 
 # create model smfs
 model = model_container(smfs, hmfs, feedback_model, fitting_method,
-                        prior_model, mode).plot_parameter('C0', 'o', '-', '')
+                        prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
+                                                          'o',
+                                                          '-', 
+                                                          ['Stellar + Black Hole Feedback']*4\
+                                                          +['Stellar Feedback']*6)
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
@@ -54,10 +58,10 @@ for z in redshift:
         #t = Planck18.lookback_time(z).value
         if fitting_method == 'mcmc':
             ax[i].errorbar(z, param_at_z[i], yerr = np.array([[lower[i],upper[i]]]).T, capsize=3,
-                          marker = model.marker, label = model.label, color = model.color)
+                          marker = model.marker, label = model.label[z-1], color = model.color[z-1])
         else:
             ax[i].scatter(z, param_at_z[i],
-                          marker = model.marker, label = model.label, color = model.color)
+                          marker = model.marker, label = model.label[z-1], color = model.color[z-1])
         ax[i].set_xscale('log')
         ax[i].set_xticks(range(1,11)); ax[2].set_xticklabels(range(1,11))
         ax[i].minorticks_off()

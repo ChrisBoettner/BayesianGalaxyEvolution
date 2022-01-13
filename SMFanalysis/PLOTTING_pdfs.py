@@ -11,7 +11,6 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 
 from smf_modelling   import model_container
 from data_processing import load_data
@@ -40,7 +39,11 @@ feedback_model = ['both']*4+['sn']*6
 prior_model = 'full'
 # create model smfs
 model   = model_container(smfs, hmfs, feedback_model, fitting_method,
-                          prior_model, mode).plot_parameter('black', 'o', '-',  'No Feedback')
+                          prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
+                                                            'o',
+                                                            '-', 
+                                                            ['Stellar + Black Hole Feedback']*4\
+                                                            +['Stellar Feedback']*6)
 models = [model]
 ################## PLOTTING ###################################################
 #%%
@@ -60,7 +63,7 @@ for model in models:
         bounds    = [[0,0.3], [0,3], [0,1/np.log(10)]]
         for i in range(dist_at_z.shape[1]):
             ax[i,z-1].hist(dist_at_z[:,i], density = True, bins = 100, range = bounds[i],
-                           label = model.label, color = model.color, alpha =0.3)
+                           label = model.label[z-1], color = model.color[z-1], alpha =0.3)
 for a in ax.flatten():
     a.get_yaxis().set_ticks([])
 for i, a in enumerate(ax[0,:]):
@@ -74,6 +77,9 @@ ax[2,0].set_xlim(0,ax[2,0].get_xlim()[1])
 ax[2,0].set_xticks([0,0.15,0.3]); ax[2,0].set_xticklabels(['0','0.15','0.3'])
 
 #ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
+
+# turn off empty axes
+[ax[2,i].axis('off') for i in range(4,10)]
 
 # legend
 handles, labels = [], []
