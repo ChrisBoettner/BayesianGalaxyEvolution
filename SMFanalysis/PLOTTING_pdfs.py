@@ -18,7 +18,7 @@ from data_processing import load_data
 
 # coose option
 fitting_method = 'mcmc' 
-mode           = 'temp'  
+mode           = 'loading'  
 
 # load data
 groups, smfs, hmfs = load_data()
@@ -73,7 +73,7 @@ ax[1,0].set_xticks([0,1,2]); ax[1,0].set_xticklabels(['0','1','2'])
 ax[2,0].set_xlim(0,ax[2,0].get_xlim()[1])
 ax[2,0].set_xticks([0,0.15,0.3]); ax[2,0].set_xticklabels(['0','0.15','0.3'])
 
-ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
+#ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
 
 # legend
 handles, labels = [], []

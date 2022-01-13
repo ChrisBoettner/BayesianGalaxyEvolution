@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov 18 12:13:22 2021
+Created on Thu Jan 13 14:15:05 2022
 
-@author: boettner
+@author: chris
 """
 
 import numpy as np
@@ -21,13 +21,14 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     fitting by maximizing the logprobability function which is the product of the
     loglikelihood and logprior.
     '''
+    print("Warning: Using test mcmc")
     # initalize saving for mcmc runs
     if mode == 'temp':
         savefile = None
     else:
         try: # use correct file path depending on system
             save_path = '/home/chris/Desktop/mcmc_runs/' + smf_model.directory +'/'
-        except:
+        except AttributeError:
             save_path = '/data/p305250/SMF/mcmc_runs/' + smf_model.directory +'/'
         filename = save_path + smf_model.filename +'.h5'
         savefile = emcee.backends.HDFBackend(filename)
@@ -35,7 +36,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     # select initial walker positions near initial guess
     initial_guess = np.array(smf_model.feedback_model.initial_guess)
     ndim       = len(initial_guess)
-    nwalkers   = 50
+    nwalkers   = 10
     walker_pos = initial_guess*(1+0.1*np.random.rand(nwalkers,ndim))
 
     if (mode == 'saving') or (mode=='temp'):
@@ -46,14 +47,14 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
                                             log_probability, args=(smf_model, prior),
                                             backend=savefile, pool = pool)
-            sampler.run_mcmc(walker_pos, 50000, progress=True)
+            sampler.run_mcmc(walker_pos, 10000, progress=True)
     if mode == 'loading':
         # load from savefile 
         sampler = savefile
     
     # get autocorrelationtime and discard burn-in of mcmc walk 
-    tau       = np.array(sampler.get_autocorr_time())
-    posterior = sampler.get_chain(discard=5*np.amax(tau).astype(int), flat=True)
+    #tau       = np.array(sampler.get_autocorr_time())
+    posterior = sampler.get_chain(flat=True)
     
     # calculate median of parameter from MCMC walks and value of cost function
     # at the calculated parameter
