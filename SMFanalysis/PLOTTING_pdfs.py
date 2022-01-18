@@ -22,20 +22,19 @@ mode           = 'loading'
 # load data
 groups, smfs, hmfs = load_data()
 
-# # load model
-# prior_model = 'uniform'
-# # create model smfs
+# load model
+prior_model = 'uniform'
+# create model smfs
 # no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
-#                           prior_model, mode).plot_parameter('black', 'o', '-',  'No Feedback')
+#                           prior_model, mode).plot_parameter(['black']*10, 'o', '-',  ['No Feedback']*10)
 # sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
-#                           prior_model, mode).plot_parameter('C1',    's', '--', 'Stellar Feedback')
+#                           prior_model, mode).plot_parameter(['C1']*10,    's', '--', ['Stellar Feedback']*10)
 # snbh_feedback = model_container(smfs, hmfs, 'both', fitting_method,
-#                           prior_model, mode).plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
+#                           prior_model, mode).plot_parameter(['C2']*10,    'v', '-.', ['Stellar + Black Hole Feedback']*10)
 # models = [no_feedback,sn_feedback,snbh_feedback]
 
 # load model
 feedback_model = ['both']*4+['sn']*6
-#feedback_model = 'both'
 prior_model = 'full'
 # create model smfs
 model   = model_container(smfs, hmfs, feedback_model, fitting_method,
@@ -79,7 +78,8 @@ ax[2,0].set_xticks([0,0.15,0.3]); ax[2,0].set_xticklabels(['0','0.15','0.3'])
 #ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
 
 # turn off empty axes
-[ax[2,i].axis('off') for i in range(4,10)]
+if len(models)==1:
+    [ax[2,i].axis('off') for i in range(4,10)]
 
 # legend
 handles, labels = [], []
