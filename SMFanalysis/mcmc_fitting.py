@@ -39,6 +39,13 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     ndim       = len(initial_guess)
     nwalkers   = 50
     walker_pos = initial_guess*(1+0.1*np.random.rand(nwalkers,ndim))
+    
+    # make prior a global variable so it doesn"t have to be called in 
+    # log_probability explicitly. This helps with parallization and makes it
+    # a lot faster
+    # see https://emcee.readthedocs.io/en/stable/tutorials/parallel/
+    global prior_global
+    prior_global = prior
 
     if (mode == 'saving') or (mode=='temp'):
         if mode == 'saving' and os.path.exists(filename):
@@ -46,7 +53,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
         # create MCMC sampler and run MCMC
         with Pool() as pool:
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
-                                            log_probability, args=(smf_model, prior),
+                                            log_probability, args=(smf_model,),
                                             backend=savefile, pool = pool)
             sampler.run_mcmc(walker_pos, 50000, progress=True)
     if mode == 'loading':
@@ -65,7 +72,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     return(par, posterior)
 
 ## MCMC HELP FUNCTIONS
-def log_probability(params, smf_model, prior):
+def log_probability(params, smf_model):
     '''
     Calculate total probability (which will be maximized by MCMC fitting).
     Total probability is given by likelihood*prior_probability, meaning
@@ -77,7 +84,7 @@ def log_probability(params, smf_model, prior):
     if not within_bounds(params, *smf_model.feedback_model.bounds):
         return(-np.inf)
     # prior prob
-    l_prior    = log_prior(params, prior) 
+    l_prior    = log_prior(params, prior_global) 
     
     # LIKELIHOOD
     log_L   = log_likelihood(params, smf_model)  
@@ -122,9 +129,8 @@ def log_prior(params, prior_hist):
     edges = prior_hist[1]
     #import pdb; pdb.set_trace()
     # find indices for bins in histogram that the params belong to
-    ind = []
-    for i in range(len(params)):
-        ind.append(np.argwhere(params[i]<edges[i])[0][0]-1)
+    bin_widths = [e[1]-e[0] for e in edges]
+    ind = [int(params[i]/bin_widths[i]) for i in range(len(params))]
     
     # if probabilities are assumed independent: get probability for each param
     # from corresponding histogram and then multiply all together to get total
@@ -166,8 +172,13 @@ def dist_from_hist_nd(smf_model, dist, dist_bounds):
     dist_bounds_new = list(zip(*smf_model.feedback_model.bounds))
     if dist_bounds is None: # if bounds are not provided, use the ones from model
         dist_bounds    = dist_bounds_new
-    
-    hist_nd, edges = np.histogramdd(dist, bins=100, range=dist_bounds, density=True)
+
+    # create histogram    
+    hist_nd, edges = np.histogramdd(dist, bins=100, range=dist_bounds)
+    # make empty spots have 0.1% of actual prob, so that these are not completely ignored
+    hist_nd[hist_nd == 0] = 0.001*np.sum(hist_nd)/np.sum(hist_nd == 0)
+    # normalize
+    hist_nd = hist_nd/np.sum(hist_nd)
     
     # marginalise over parameters if new model has fewer parameter than given
     # in dist (assume later columns in model are to be marginalised over)
@@ -209,7 +220,12 @@ def dist_from_hist_1d(smf_model, dist, dist_bounds):
         lower_bound = dist_bounds[i][0]
         upper_bound = dist_bounds[i][1]
         hist, edge   = np.histogram(dist[:,i], range=(lower_bound,upper_bound),
-                                    density=True, bins = 100)
+                                    bins = 100)
+        # make empty spots have 0.1% of actual prob, so that these are not completely ignored
+        hist[hist == 0] = 0.001*np.sum(hist)/np.sum(hist == 0)
+        # normalize
+        hist = hist/np.sum(hist)
+        
         hists.append(hist)
         edges.append(edge)
     return([hists, edges], dist_bounds)

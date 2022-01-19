@@ -11,7 +11,7 @@ from scipy.optimize import root_scalar
 from astropy.cosmology import Planck18
 import leastsq_fitting
 import mcmc_fitting
-#import mcmc_fit_test as mcmc_fitting
+import mcmc_fit_test as mcmc_fitting
 
 ## DATA CONTAINER
 class model_container():
@@ -93,9 +93,9 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         # create new prior from distribution of previous iteration
         if prior_name == 'uniform':
             prior, b = mcmc_fitting.uniform_prior(smf_model, posterior_samp, bounds) 
-        if prior_name == 'marginal':
+        elif prior_name == 'marginal':
             prior, b = mcmc_fitting.dist_from_hist_1d(smf_model, posterior_samp, bounds) 
-        if prior_name == 'full':
+        elif prior_name == 'full':
             prior, b = mcmc_fitting.dist_from_hist_nd(smf_model, posterior_samp, bounds) 
         bounds = b
         
@@ -135,9 +135,8 @@ def fit_model(smf_model, fitting_method, prior, prior_name, mode):
     
     # create data for modelled smf (for plotting)   
     modelled_smf = np.copy(smf_model.hmf)
-    modelled_smf = modelled_smf[modelled_smf[:,0]<1e+13/smf_model.unit]
+    modelled_smf = modelled_smf[modelled_smf[:,0]<(1e+13/smf_model.unit)]
     modelled_smf[:,1] = smf_model.function(modelled_smf[:,0], params)
-    #modelled_smf =np.array([[1,1],[1,1]])
     
     # return to 1 solar mass unit 
     modelled_smf[:,0] = modelled_smf[:,0]*smf_model.unit
