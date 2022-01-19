@@ -67,12 +67,13 @@ for a in ax.flatten():
     a.get_yaxis().set_ticks([])
 for i, a in enumerate(ax[0,:]):
     a.set_title(r'$z=$ ' + str(i+1))
-    
-ax[0,0].set_xlim(0,0.3)
+
+print("CORRECT PLOT LIMITS")    
+ax[0,0].set_xlim(0,0.7)
 ax[0,0].set_xticks([0,0.1,0.2]); ax[0,0].set_xticklabels(['0','0.1','0.2'])
-ax[1,0].set_xlim(0,3)
+ax[1,0].set_xlim(0,7)
 ax[1,0].set_xticks([0,1,2]); ax[1,0].set_xticklabels(['0','1','2'])
-ax[2,0].set_xlim(0,0.3)
+ax[2,0].set_xlim(0,0.7)
 ax[2,0].set_xticks([0,0.1,0.2]); ax[2,0].set_xticklabels(['0','0.1','0.2'])
 
 #ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    

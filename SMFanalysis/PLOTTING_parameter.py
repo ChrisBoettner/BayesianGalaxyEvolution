@@ -52,8 +52,8 @@ for z in redshift:
     param_at_z = model.parameter.at_z(z)
     if fitting_method == 'mcmc':
         dist_at_z = model.distribution.at_z(z)
-        lower     = np.percentile(dist_at_z, 16, axis = 0)
-        upper     = np.percentile(dist_at_z, 100, axis = 0)
+        lower     = param_at_z - np.percentile(dist_at_z, 16, axis = 0)
+        upper     = np.percentile(dist_at_z, 84, axis = 0) - param_at_z
     for i in range(len(param_at_z)):
         #t = Planck18.lookback_time(z).value
         if fitting_method == 'mcmc':
