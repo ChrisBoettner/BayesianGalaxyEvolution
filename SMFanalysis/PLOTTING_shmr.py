@@ -52,21 +52,37 @@ cm = LinearSegmentedColormap.from_list(
         "Custom", ['C2','C1']
         , N=10)
 marker = ['^','X','o','v','^','X','o','v','d','s']
+
 for z in redshift:
+    param_at_z = model.parameter.at_z(z)
+    dist_at_z  = model.distribution.at_z(z)
+    # lower and upper limit on parameter (error bars)
+    lower      = np.percentile(dist_at_z, 16, axis = 0)
+    upper      = np.percentile(dist_at_z, 84, axis = 0)
+    # switch A values since it has the opposite effect to the slopes
+    temp = lower[0]; lower[0] = upper[0]; upper[0] = temp
+    
+    
     m_star = model.model.at_z(z).feedback_model.calculate_m_star(m_halo, *model.parameter.at_z(z))
-    ax.plot(np.log10(m_halo*base_unit), np.log10(m_star/m_halo), alpha = 0.7, color = cm(z),
+    m_star_l = model.model.at_z(z).feedback_model.calculate_m_star(m_halo, *upper)
+    m_star_u = model.model.at_z(z).feedback_model.calculate_m_star(m_halo, *lower)
+    
+    ax.plot(np.log10(m_halo*base_unit), np.log10(m_star/m_halo), color = cm(z),
             markevery=10, marker = 'o', label = '$z$ = ' + str(z))
+    ax.fill_between(np.log10(m_halo*base_unit), np.log10(m_star_u/m_halo), np.log10(m_star_l/m_halo),
+                    alpha = 0.2, color = cm(z))
     ax.set_xlim([8,14])
-    ax.set_ylim([-5.5,-0.8])
+    ax.set_ylim([-5.5,0])
     
     if z==4:
         color = 'C1'
         #i += 1
 ax.minorticks_on()
 ax.legend()
-fig.subplots_adjust(top=0.984,
-bottom=0.098,
-left=0.123,
-right=0.969,
+fig.subplots_adjust(
+top=0.92,
+bottom=0.09,
+left=0.06,
+right=0.99,
 hspace=0.0,
-wspace=0.20)
+wspace=0.0)

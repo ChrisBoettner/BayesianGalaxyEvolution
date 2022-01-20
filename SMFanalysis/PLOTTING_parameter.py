@@ -46,8 +46,7 @@ fig, ax = plt.subplots(3,1, sharex = True)
 ax[0].set_ylabel('A')
 ax[1].set_ylabel(r'$\alpha$')
 ax[2].set_ylabel(r'$\beta$')
-#ax[2].set_xlabel('Lookback time [Gyr]')
-ax[2].set_xlabel('Redshift z')
+ax[2].set_xlabel('Lookback time [Gyr]')
 for z in redshift:
     param_at_z = model.parameter.at_z(z)
     if fitting_method == 'mcmc':
@@ -55,29 +54,40 @@ for z in redshift:
         lower     = param_at_z - np.percentile(dist_at_z, 16, axis = 0)
         upper     = np.percentile(dist_at_z, 84, axis = 0) - param_at_z
     for i in range(len(param_at_z)):
-        #t = Planck18.lookback_time(z).value
+        t = Planck18.lookback_time(z).value
         if fitting_method == 'mcmc':
-            ax[i].errorbar(z, param_at_z[i], yerr = np.array([[lower[i],upper[i]]]).T, capsize=3,
+            ax[i].errorbar(t, param_at_z[i], yerr = np.array([[lower[i],upper[i]]]).T, capsize=3,
                           marker = model.marker, label = model.label[z-1], color = model.color[z-1])
         else:
-            ax[i].scatter(z, param_at_z[i],
+            ax[i].scatter(t, param_at_z[i],
                           marker = model.marker, label = model.label[z-1], color = model.color[z-1])
-        ax[i].set_xscale('log')
-        ax[i].set_xticks(range(1,11)); ax[2].set_xticklabels(range(1,11))
-        ax[i].minorticks_off()
+        #ax[i].set_xscale('log')
+        #ax[i].set_xticks(range(1,11)); ax[2].set_xticklabels(range(1,11))
+        ax[i].minorticks_on()
 
-        
+# second axis for redshift
+def z_to_t(z):
+    z = np.array(z)
+    t = np.array([Planck18.lookback_time(k).value for k in z])
+    return(t)
+def t_to_z(t):
+    t = np.array(t)
+    z = np.array([z_at_value(Planck18.lookback_time, k*u.Gyr) for k in t])
+    return(z)
+ts_at_z = z_to_t(redshift)
+ax_z = ax[0].twiny()
+ax_z.set_xlim(ax[0].get_xlim())
+ax_z.set_xticks(ts_at_z)
+ax_z.set_xticklabels(redshift.astype(str))
+ax_z.set_xlabel(r"Redshift $z$")
+
+
 fig.align_ylabels(ax)
 
-#second axis
-# def z_to_t(z):
-#     z = np.array(z)
-#     t = np.array([Planck18.lookback_time(k).value for k in z])
-#     return(t)
-# def t_to_z(t):
-#     t = np.array(t)
-#     z = np.array([z_at_value(Planck18.lookback_time, k*u.Gyr) for k in t])
-#     return(z)
-# zax = ax[0].secondary_xaxis('top', functions=(z_to_t, t_to_z))
-# zax.set_xlabel('Redshift $z$')
-# _ = zax.set_xticks(range(1,11))
+fig.subplots_adjust(
+top=0.917,
+bottom=0.092,
+left=0.049,
+right=0.991,
+hspace=0.0,
+wspace=0.0)

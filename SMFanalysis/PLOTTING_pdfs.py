@@ -17,7 +17,7 @@ from data_processing import load_data
 
 # coose option
 fitting_method = 'mcmc' 
-mode           = 'temp'  
+mode           = 'loading'  
 
 # load data
 groups, smfs, hmfs = load_data()
@@ -34,21 +34,21 @@ groups, smfs, hmfs = load_data()
 # models = [no_feedback,sn_feedback,snbh_feedback]
 
 # load model
-# feedback_model = ['both']*4+['sn']*6
-# prior_model = 'full'
-# # create model smfs
-# model   = model_container(smfs, hmfs, feedback_model, fitting_method,
-#                           prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
-#                                                             'o',
-#                                                             '-', 
-#                                                             ['Stellar + Black Hole Feedback']*4\
-#                                                             +['Stellar Feedback']*6)
-# models = [model]
+feedback_model = ['both']*4+['sn']*6
+prior_model = 'full'
+# create model smfs
+model   = model_container(smfs, hmfs, feedback_model, fitting_method,
+                          prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
+                                                            'o',
+                                                            '-', 
+                                                            ['Stellar + Black Hole Feedback']*4\
+                                                            +['Stellar Feedback']*6)
+models = [model]
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
 
-redshift = np.arange(1,11)  
+redshift = np.arange(1,11)
 ## PDFs        
 fig, ax = plt.subplots(3, 10, sharex ='row', sharey = 'row')
 ax[0,0].set_ylabel('A')

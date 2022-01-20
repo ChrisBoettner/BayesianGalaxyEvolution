@@ -15,9 +15,6 @@ import matplotlib.pyplot as plt
 from smf_modelling   import model_container
 from data_processing import load_data
 
-import astropy.units as u
-from astropy.cosmology import Planck18, z_at_value
-
 # coose option
 fitting_method = 'least_squares'     # 'least_squares' or 'mcmc'   
 prior_model    = 'marginal' # 'uniform', 'marginal' or 'full'
