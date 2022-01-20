@@ -17,13 +17,13 @@ from data_processing import load_data
 
 # coose option
 fitting_method = 'mcmc' 
-mode           = 'loading'  
+mode           = 'temp'  
 
 # load data
 groups, smfs, hmfs = load_data()
 
 # load model
-prior_model = 'uniform'
+# prior_model = 'uniform'
 # create model smfs
 # no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
 #                           prior_model, mode).plot_parameter(['black']*10, 'o', '-',  ['No Feedback']*10)
@@ -34,16 +34,16 @@ prior_model = 'uniform'
 # models = [no_feedback,sn_feedback,snbh_feedback]
 
 # load model
-feedback_model = ['both']*4+['sn']*6
-prior_model = 'full'
-# create model smfs
-model   = model_container(smfs, hmfs, feedback_model, fitting_method,
-                          prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
-                                                            'o',
-                                                            '-', 
-                                                            ['Stellar + Black Hole Feedback']*4\
-                                                            +['Stellar Feedback']*6)
-models = [model]
+# feedback_model = ['both']*4+['sn']*6
+# prior_model = 'full'
+# # create model smfs
+# model   = model_container(smfs, hmfs, feedback_model, fitting_method,
+#                           prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
+#                                                             'o',
+#                                                             '-', 
+#                                                             ['Stellar + Black Hole Feedback']*4\
+#                                                             +['Stellar Feedback']*6)
+# models = [model]
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
@@ -59,7 +59,7 @@ fig.supylabel('(Marginal) Probability Density', x = 0.01)
 for model in models:
     for z in redshift:
         dist_at_z = model.distribution.at_z(z)
-        bounds    = [[0,0.3], [0,3], [0,1/np.log(10)]]
+        bounds    = np.array(model.model.at_z(z).feedback_model.bounds).T
         for i in range(dist_at_z.shape[1]):
             ax[i,z-1].hist(dist_at_z[:,i], density = True, bins = 100, range = bounds[i],
                            label = model.label[z-1], color = model.color[z-1], alpha =0.3)
@@ -67,14 +67,13 @@ for a in ax.flatten():
     a.get_yaxis().set_ticks([])
 for i, a in enumerate(ax[0,:]):
     a.set_title(r'$z=$ ' + str(i+1))
-
-print("CORRECT PLOT LIMITS")    
-ax[0,0].set_xlim(0,0.7)
-ax[0,0].set_xticks([0,0.1,0.2]); ax[0,0].set_xticklabels(['0','0.1','0.2'])
-ax[1,0].set_xlim(0,7)
-ax[1,0].set_xticks([0,1,2]); ax[1,0].set_xticklabels(['0','1','2'])
-ax[2,0].set_xlim(0,0.7)
-ax[2,0].set_xticks([0,0.1,0.2]); ax[2,0].set_xticklabels(['0','0.1','0.2'])
+ 
+ax[0,0].set_xlim(0,0.4)
+ax[0,0].set_xticks([0,0.1,0.2,0.3]); ax[0,0].set_xticklabels(['0','0.1','0.2','0.3'])
+ax[1,0].set_xlim(0,5)
+ax[1,0].set_xticks([0,1,2,3,4]); ax[1,0].set_xticklabels(['0','1','2','3','4'])
+ax[2,0].set_xlim(0,0.6)
+ax[2,0].set_xticks([0.1,0.3,0.5]); ax[2,0].set_xticklabels(['0.1','0.3','0.5'])
 
 #ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
 

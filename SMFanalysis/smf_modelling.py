@@ -230,7 +230,7 @@ class supernova_feedback():
         self.initial_guess = [0.01, 1]
         self.bounds        = [[0, 0], [2, 10]]
     def calculate_m_star(self, m_h, A, alpha):
-        if np.isnan(m_h).any() or np.any(m_h<0):
+        if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         return(A * m_h/(1 + sn))   
@@ -243,15 +243,17 @@ class supernova_feedback():
                               args    = (A, alpha)) 
         return(m_h)
     def calculate_dlogmstar_dlogmh(self, m_h, A, alpha):
+        if np.isnan(m_h).any() or np.any(m_h<=0):
+            return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         return(1 + alpha*sn/(1 + sn))
     def _calculate_dmstar_dmh(self, m_h, A, alpha): # first derivative, just used to calc inverse
-        if m_h<0:
+        if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         return(A * ( 1 + (1+alpha)*sn)/(1+sn)**2)
     def _calculate_d2mstar_dmh2(self, m_h, A, alpha): # second derivative, just used to calc inverse
-        if m_h<0:
+        if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
         x = m_h/self.m_c; a = alpha
         denom = 1 + x**(-a)
@@ -278,7 +280,7 @@ class supernova_blackhole_feedback():
         self.initial_guess = [0.01, 1, 0.3]       
         self.bounds        = [[0, 0, 0], [2, 10, 0.8]]
     def calculate_m_star(self, m_h, A, alpha, beta):
-        if np.isnan(m_h).any() or np.any(m_h<0):
+        if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
@@ -292,20 +294,21 @@ class supernova_blackhole_feedback():
                               args    = (A, alpha, beta)) 
         return(m_h)
     def calculate_dlogmstar_dlogmh(self, m_h, A, alpha, beta):
-        #print(A, alpha, beta)
+        if np.isnan(m_h).any() or np.any(m_h<=0):
+            return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
         return(1 - (-alpha*sn + beta * bh)/(sn + bh))
     def _calculate_dmstar_dmh(self, m_h, A, alpha, beta): 
         # first derivative, just used to calc inverse
-        if m_h<0:
+        if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
         return(A * ((1+alpha)*sn+(1-beta)*bh)/(sn + bh)**2)
     def _calculate_d2mstar_dmh2(self, m_h, A, alpha, beta): 
         # second derivative, just used to calc inverse
-        if m_h<0:
+        if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
         x = m_h/self.m_c; a = alpha; b = beta
         denom = x**(-a) + x**b
@@ -315,8 +318,6 @@ class supernova_blackhole_feedback():
     def _guess_initial_m_h(self, m_star, A, alpha, beta):
         # guess initial value for inverting function by using high and low mass
         # end approximation
-        #if m_star == 0.0001:
-        #    import pdb; pdb.set_trace()
         m_t          = A/2*self.m_c  # turnover mass where dominating feedback changes
         trans_regime = 20            # rough estimate for transient regime where both are important
         if m_star < m_t/trans_regime:
