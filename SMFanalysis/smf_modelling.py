@@ -228,7 +228,7 @@ class supernova_feedback():
         self.name          = feedback_name
         self.m_c           = m_c      
         self.initial_guess = [0.01, 1]
-        self.bounds        = [[0, 0], [2, 10]]
+        self.bounds        = [[0, 0], [2, 4]]
     def calculate_m_star(self, m_h, A, alpha):
         if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
@@ -278,7 +278,7 @@ class supernova_blackhole_feedback():
         self.name          = feedback_name
         self.m_c           = m_c
         self.initial_guess = [0.01, 1, 0.3]       
-        self.bounds        = [[0, 0, 0], [2, 10, 0.8]]
+        self.bounds        = [[0, 0, 0], [2, 4, 0.8]]
     def calculate_m_star(self, m_h, A, alpha, beta):
         if np.isnan(m_h).any() or np.any(m_h<=0):
             return(np.nan)
