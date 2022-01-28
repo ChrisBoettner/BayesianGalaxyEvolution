@@ -62,6 +62,7 @@ for z in redshift:
             ax[i].scatter(t, param_at_z[i],
                           marker = model.marker, label = model.label[z-1], color = model.color[z-1])
         #ax[i].set_xscale('log')
+        #ax[i].set_yscale('log')
         #ax[i].set_xticks(range(1,11)); ax[2].set_xticklabels(range(1,11))
         ax[i].minorticks_on()
 

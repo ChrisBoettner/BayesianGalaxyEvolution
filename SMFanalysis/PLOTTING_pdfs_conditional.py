@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Dec 25 17:14:12 2021
+Created on Fri Jan 21 13:59:54 2022
 
 @author: chris
 """
@@ -24,7 +24,7 @@ groups, smfs, hmfs = load_data()
 
 # load model
 # prior_model = 'uniform'
-# create model smfs
+# # create model smfs
 # no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
 #                           prior_model, mode).plot_parameter(['black']*10, 'o', '-',  ['No Feedback']*10)
 # sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
@@ -55,13 +55,24 @@ ax[0,0].set_ylabel('A')
 ax[1,0].set_ylabel(r'$\alpha$')
 ax[2,0].set_ylabel(r'$\beta$')
 fig.supxlabel('Parameter Value')
-fig.supylabel('(Marginal) Probability Density', x = 0.01)
+fig.supylabel('(Conditional) Probability Density', x = 0.01)
 for model in models:
     for z in redshift:
-        dist_at_z = model.distribution.at_z(z)
-        bounds    = np.array(model.model.at_z(z).feedback_model.bounds).T
+        if (model.model.at_z(z).feedback_model.name == 'both') and (z>4):
+            continue
+        param_at_z   = model.parameter.at_z(z)
+        dist_at_z    = model.distribution.at_z(z)
+        bounds       = np.array(model.model.at_z(z).feedback_model.bounds).T
+        bin_widths   = (bounds[:,1]-bounds[:,0])/100
+        cond_lims = np.array([param_at_z-5*bin_widths,param_at_z+5*bin_widths]).T
         for i in range(dist_at_z.shape[1]):
-            ax[i,z-1].hist(dist_at_z[:,i], density = True, bins = 100, range = bounds[i],
+            mask = np.copy(dist_at_z).astype(bool)
+            cond_var = list(range(dist_at_z.shape[1])); cond_var.remove(i)
+            for j in cond_var:
+                mask[:,j][dist_at_z[:,j] < cond_lims[j,0]] = False
+                mask[:,j][dist_at_z[:,j] > cond_lims[j,1]] = False
+            mask = np.prod(mask,axis=1).astype(bool)
+            ax[i,z-1].hist(dist_at_z[:,i][mask], density = True, bins = 100, range = bounds[i],
                            label = model.label[z-1], color = model.color[z-1], alpha =0.3)
 for a in ax.flatten():
     a.get_yaxis().set_ticks([])
@@ -70,16 +81,15 @@ for i, a in enumerate(ax[0,:]):
  
 ax[0,0].set_xlim(0,0.4)
 ax[0,0].set_xticks([0,0.1,0.2,0.3]); ax[0,0].set_xticklabels(['0','0.1','0.2','0.3'])
-ax[1,0].set_xlim(0,5)
-ax[1,0].set_xticks([0,1,2,3,4]); ax[1,0].set_xticklabels(['0','1','2','3','4'])
+ax[1,0].set_xlim(0,4)
+ax[1,0].set_xticks([0,1,2,3]); ax[1,0].set_xticklabels(['0','1','2','3'])
 ax[2,0].set_xlim(0,0.6)
 ax[2,0].set_xticks([0.1,0.3,0.5]); ax[2,0].set_xticklabels(['0.1','0.3','0.5'])
 
 #ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
 
 # turn off empty axes
-if len(models)==1:
-    [ax[2,i].axis('off') for i in range(4,10)]
+[ax[2,i].axis('off') for i in range(4,10)]
 
 # legend
 handles, labels = [], []

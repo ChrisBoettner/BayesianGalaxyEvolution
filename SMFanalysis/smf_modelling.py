@@ -43,9 +43,7 @@ class smf_data():
     def __init__(self, data):
         self.data = data
     def at_z(self, redshift):
-        if redshift == 0:
-            raise ValueError('Redshift 0 not in data')
-        return(self.data[redshift-1])
+        return(self.data[redshift])
 
 ## MAIN FUNCTIONS   
 def fit_SMF_model(smfs, hmfs, feedback_name,
@@ -71,19 +69,19 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
     bounds         = None
     for i in range(len(smfs)):
         smf = np.copy(smfs[i])
-        hmf = np.copy(hmfs[i+1]) # list starts at z=0 not 1, like smf
+        hmf = np.copy(hmfs[i]) # list starts at z=0 not 1, like smf
         
         #m_c = 1e+12
         # calc m_crit according to Bower et al.
-        m_c = calculate_m_crit(z=i+1)
+        m_c = calculate_m_crit(z=i)
         
         # create model object
         # (choose feedback model based on feedback_name input)
         if isinstance(feedback_name, str):
-            smf_model           = smf_model_class(smf, hmf, feedback_name, m_c, z=i+1)
+            smf_model           = smf_model_class(smf, hmf, feedback_name, m_c, z=i)
             smf_model.directory =  smf_model.feedback_model.name
         elif len(feedback_name) == len(smfs):
-            smf_model           = smf_model_class(smf, hmf, feedback_name[i], m_c, z=i+1) 
+            smf_model           = smf_model_class(smf, hmf, feedback_name[i], m_c, z=i) 
             smf_model.directory =  'changing'
         else:
             raise ValueError('feedback_name must either be a string or a \
@@ -243,8 +241,6 @@ class supernova_feedback():
                               args    = (A, alpha)) 
         return(m_h)
     def calculate_dlogmstar_dlogmh(self, m_h, A, alpha):
-        if np.isnan(m_h).any() or np.any(m_h<=0):
-            return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         return(1 + alpha*sn/(1 + sn))
     def _calculate_dmstar_dmh(self, m_h, A, alpha): # first derivative, just used to calc inverse
@@ -294,8 +290,6 @@ class supernova_blackhole_feedback():
                               args    = (A, alpha, beta)) 
         return(m_h)
     def calculate_dlogmstar_dlogmh(self, m_h, A, alpha, beta):
-        if np.isnan(m_h).any() or np.any(m_h<=0):
-            return(np.nan)
         sn = (m_h/self.m_c)**(-alpha)
         bh = (m_h/self.m_c)**beta
         return(1 - (-alpha*sn + beta * bh)/(sn + bh))

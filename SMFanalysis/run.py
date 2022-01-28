@@ -23,7 +23,7 @@ groups, smfs, hmfs = load_data()
 feedback_model = {1: 'none',
                   2: 'sn',
                   3: 'both',            
-                  4: ['both']*4+['sn']*6
+                  4: ['both']*5+['sn']*6
                  }
 
 prior_mode = {1: 'uniform',

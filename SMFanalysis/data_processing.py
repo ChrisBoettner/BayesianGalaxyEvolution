@@ -12,9 +12,9 @@ import numpy as np
 def load_data():
     # get z=1,2,3,4 for Davidson, z=1,2,3 for Ilbert
     davidson    = np.load('data/Davidson2017SMF.npz') 
-    davidson = {i:davidson[j] for i,j in [['0','2'],['1','4'],['2','6'],['3','8']]}
+    davidson = {i:davidson[j] for i,j in [['0','1'],['1','2'],['2','4'],['3','6'],['4','8']]}
     ilbert      = np.load('data/Ilbert2013SMF.npz')   
-    ilbert = {i:ilbert[j] for i,j in [['0','2'],['1','4'],['2','6']]}
+    ilbert = {i:ilbert[j] for i,j in [['0','0'],['1','2'],['2','4'],['3','6']]}
     duncan      = np.load('data/Duncan2014SMF.npz')      
     song        = np.load('data/Song2016SMF.npz')       
     bhatawdekar = np.load('data/Bhatawdekar2018SMF.npz')
@@ -22,8 +22,8 @@ def load_data():
     hmfs        = np.load('data/HMF.npz'); hmfs = [hmfs[str(i)] for i in range(20)]   
 
     ## TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
-    davidson    = group(davidson,    [1,2,3,4]   ).plot_parameter('black', 'o', 'Davidson2017')
-    ilbert      = group(ilbert,      [1,2,3]     ).plot_parameter('black', 'H', 'Ilbert2013')
+    davidson    = group(davidson,    [0,1,2,3,4]   ).plot_parameter('black', 'o', 'Davidson2017')
+    ilbert      = group(ilbert,      [0,1,2,3]     ).plot_parameter('black', 'H', 'Ilbert2013')
     duncan      = group(duncan,      [4,5,6,7]   ).plot_parameter('black', 'v', 'Duncan2014')
     song        = group(song,        [6,7,8]     ).plot_parameter('black', 's', 'Song2016')
     bhatawdekar = group(bhatawdekar, [6,7,8,9]   ).plot_parameter('black', '^', 'Bhatawdekar2019')
