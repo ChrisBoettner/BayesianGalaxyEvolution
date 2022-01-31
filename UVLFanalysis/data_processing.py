@@ -33,7 +33,7 @@ def load_data():
     bhatawdekar = group(bhatawdekar, range(6,10)).plot_parameter('black', '<', 'Bhatawdekar2019')
     parsa       = group(parsa,       range(2,5) ).plot_parameter('black', '>', 'Parsa2016')
     livermore   = group(livermore,   range(6,9) ).plot_parameter('black', 'H', 'Livermore2017')
-    groups      = [duncan, bouwens, bouwens2, oesch, atek, bhatawdekar, parsa, livermore]
+    groups      = [madau, duncan, bouwens, bouwens2, oesch, atek, bhatawdekar, parsa, livermore]
     
     ## DATA SORTED BY REDSHIFT
     lfs = z_ordered_data(groups)
@@ -77,13 +77,15 @@ class dataset():
         dataset = dataset[dataset[:,1]>-6] # cut unreliable values
         if dataset.shape[1] == 4:
             self.data          = dataset
-            self.mass          = dataset[:,0]
+            self.mag           = dataset[:,0]
+            self.lum           = mag_to_lum(dataset[:,0])
             self.phi           = dataset[:,1]
             self.lower_error   = dataset[:,2]
             self.upper_error   = dataset[:,3] 
         if dataset.shape[1] == 2:      
             self.data          = dataset
-            self.mass          = dataset[:,0]
+            self.mag           = dataset[:,0]
+            self.lum           = mag_to_lum(dataset[:,0])
             self.phi           = dataset[:,1]
             self.lower_error   = None
             self.upper_error   = None

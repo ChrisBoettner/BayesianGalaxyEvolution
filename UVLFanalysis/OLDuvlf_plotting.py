@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from data_processing import group, z_ordered_data, mag_to_lum
-from uvlf import calculate_LHMR
+from OLDuvlf import calculate_LHMR
 
 ################## LOAD DATA ##################################################
 # get z=1,2,3,4 for Madau

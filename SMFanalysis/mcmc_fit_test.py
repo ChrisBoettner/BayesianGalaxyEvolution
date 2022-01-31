@@ -30,7 +30,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
         if os.path.isdir(save_path): # if path exists use this one (cluster structure)
             pass 
         else: # else use path for home computer
-            save_path = '/home/chris/Desktop/mcmc_runs/' + smf_model.directory +'/'             
+            save_path = '/home/chris/Desktop/mcmc_runs/SMF/' + smf_model.directory +'/'             
         filename = save_path + smf_model.filename +'.h5'
         savefile = emcee.backends.HDFBackend(filename)
     

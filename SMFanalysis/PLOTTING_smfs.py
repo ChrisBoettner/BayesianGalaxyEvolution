@@ -74,7 +74,7 @@ for a in ax:
     handles += handles_
     labels += labels_
 by_label = dict(zip(labels, handles))
-#ax[0].legend( list(by_label.values())[:3], list(by_label.keys())[:3], frameon=False,
-#             prop={'size': 12}, loc = 3)
+ax[0].legend( list(by_label.values())[:3], list(by_label.keys())[:3], frameon=False,
+             prop={'size': 12})
 ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=False,
               prop={'size': 12}, loc = 4)

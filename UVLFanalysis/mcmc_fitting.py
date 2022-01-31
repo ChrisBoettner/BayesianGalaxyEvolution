@@ -15,9 +15,9 @@ import os
 from multiprocessing import Pool
 
 ## MAIN FUNCTION
-def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
+def mcmc_fit(lf_model, prior, prior_name, mode = 'temp'):
     '''
-    Calculate parameter that match observed SMFs to modelled SMFs using MCMC
+    Calculate parameter that match observed LFs to modelled LFs using MCMC
     fitting by maximizing the logprobability function which is the product of the
     loglikelihood and logprior.
     '''
@@ -26,16 +26,16 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
         savefile = None
     else:
         # use correct file path depending on system
-        save_path = '/data/p305250/SMF/mcmc_runs/' + smf_model.directory +'/'
+        save_path = '/data/p305250/LF/mcmc_runs/' + lf_model.directory +'/'
         if os.path.isdir(save_path): # if path exists use this one (cluster structure)
             pass 
         else: # else use path for home computer
-            save_path = '/home/chris/Desktop/mcmc_runs/SMF/' + smf_model.directory +'/'            
-        filename = save_path + smf_model.filename +'.h5'
+            save_path = '/home/chris/Desktop/mcmc_runs/LF/' + lf_model.directory +'/'            
+        filename = save_path + lf_model.filename +'.h5'
         savefile = emcee.backends.HDFBackend(filename)
     
     # select initial walker positions near initial guess
-    initial_guess = np.array(smf_model.feedback_model.initial_guess)
+    initial_guess = np.array(lf_model.feedback_model.initial_guess)
     ndim       = len(initial_guess)
     nwalkers   = 50
     walker_pos = initial_guess*(1+0.1*np.random.rand(nwalkers,ndim))
@@ -53,7 +53,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
         # create MCMC sampler and run MCMC
         with Pool() as pool:
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
-                                            log_probability, args=(smf_model,),
+                                            log_probability, args=(lf_model,),
                                             backend=savefile, pool = pool)
             sampler.run_mcmc(walker_pos, 50000, progress=True)
     if mode == 'loading':
@@ -72,7 +72,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     return(par, posterior)
 
 ## MCMC HELP FUNCTIONS
-def log_probability(params, smf_model):
+def log_probability(params, lf_model):
     '''
     Calculate total probability (which will be maximized by MCMC fitting).
     Total probability is given by likelihood*prior_probability, meaning
@@ -81,16 +81,16 @@ def log_probability(params, smf_model):
     
     # PRIOR
     # check if parameter are within bounds
-    if not within_bounds(params, *smf_model.feedback_model.bounds):
+    if not within_bounds(params, *lf_model.feedback_model.bounds):
         return(-np.inf)
     # prior prob
     l_prior    = log_prior(params, prior_global) 
     
     # LIKELIHOOD
-    log_L   = log_likelihood(params, smf_model)  
+    log_L   = log_likelihood(params, lf_model)  
     return(l_prior + log_L)
 
-def log_likelihood(params, smf_model):
+def log_likelihood(params, lf_model):
     '''
     Loglikelihood function: This is where the modelling/physics comes in.
     Calculate loglikelihood by assuming that  difference between the (log of the)
@@ -101,11 +101,11 @@ def log_likelihood(params, smf_model):
                   constribution due to the larger number density.
     '''
     #observed values
-    m_obs   = smf_model.observations[:,0]
-    phi_obs = smf_model.observations[:,1]
+    l_obs   = lf_model.observations[:,0]
+    phi_obs = lf_model.observations[:,1]
     
     # evaluate model function at observed masses
-    phi_mod = smf_model.function(m_obs, params)
+    phi_mod = lf_model.function(l_obs, params)
     
     # for bad parameter combinations, inversion of m_star will fail so that
     # m_h can't be calculated and phi_mod can't be estimated. If that is the case
@@ -149,7 +149,7 @@ def log_prior(params, prior_hist):
     return(np.log10(total_prob))
 
 ## PRIOR FUNCTIONS
-def dist_from_hist_nd(smf_model, dist, dist_bounds):
+def dist_from_hist_nd(lf_model, dist, dist_bounds):
     '''
     Create n-dimensional histogram from a sample distribution 
     (derived from a previous mcmc run).
@@ -163,13 +163,13 @@ def dist_from_hist_nd(smf_model, dist, dist_bounds):
     IMPORTANT: If sample distribution is None type, assume uniform distribution. 
     '''
     if dist is None:
-        return(uniform_prior(smf_model, dist, dist_bounds))
+        return(uniform_prior(lf_model, dist, dist_bounds))
     if dist.shape[1] == 1:
-        return(dist_from_hist_1d(smf_model, dist, dist_bounds))
+        return(dist_from_hist_1d(lf_model, dist, dist_bounds))
     
-    param_num = len(smf_model.feedback_model.initial_guess)
+    param_num = len(lf_model.feedback_model.initial_guess)
     
-    dist_bounds_new = list(zip(*smf_model.feedback_model.bounds))
+    dist_bounds_new = list(zip(*lf_model.feedback_model.bounds))
     if dist_bounds is None: # if bounds are not provided, use the ones from model
         dist_bounds    = dist_bounds_new
 
@@ -190,7 +190,7 @@ def dist_from_hist_nd(smf_model, dist, dist_bounds):
     return([[hist_nd], edges], dist_bounds_new)
     
 
-def dist_from_hist_1d(smf_model, dist, dist_bounds):
+def dist_from_hist_1d(lf_model, dist, dist_bounds):
     '''
     Create n histograms from a sample distribution (derived from a previous 
     mcmc run). Here we assume that all parameter are independent and their 
@@ -206,12 +206,12 @@ def dist_from_hist_1d(smf_model, dist, dist_bounds):
     
     '''
     if dist is None:
-        return(uniform_prior(smf_model, dist, dist_bounds))
+        return(uniform_prior(lf_model, dist, dist_bounds))
     hists     = []
     edges     = []
     
-    param_num = len(smf_model.feedback_model.initial_guess)
-    dist_bounds_new = list(zip(*smf_model.feedback_model.bounds))
+    param_num = len(lf_model.feedback_model.initial_guess)
+    dist_bounds_new = list(zip(*lf_model.feedback_model.bounds))
     if dist_bounds is None: # if bounds are not provided, use the ones from model
         dist_bounds    = dist_bounds_new
     
@@ -230,7 +230,7 @@ def dist_from_hist_1d(smf_model, dist, dist_bounds):
         edges.append(edge)
     return([hists, edges], dist_bounds)
 
-def uniform_prior(smf_model, dist, dist_bounds):
+def uniform_prior(lf_model, dist, dist_bounds):
     '''
     Create n histograms that match n independent uniform prior.
     Returns normalized histograms (probabilities) and edges of histograms, both
@@ -239,8 +239,8 @@ def uniform_prior(smf_model, dist, dist_bounds):
     '''
     hists     = []
     edges     = []
-    param_num = len(smf_model.feedback_model.initial_guess)
-    dist_bounds_new = list(zip(*smf_model.feedback_model.bounds))
+    param_num = len(lf_model.feedback_model.initial_guess)
+    dist_bounds_new = list(zip(*lf_model.feedback_model.bounds))
     if dist_bounds is None: # if bounds are not provided, use the ones from model
         dist_bounds    = dist_bounds_new
 
