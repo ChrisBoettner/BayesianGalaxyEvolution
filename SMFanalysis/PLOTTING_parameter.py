@@ -26,27 +26,27 @@ mode           = 'loading'
 groups, smfs, hmfs = load_data()
 
 # load model
-feedback_model = ['both']*4+['sn']*6
+feedback_model = ['both']*5+['sn']*6
 prior_model    = 'full'
 
 # create model smfs
 model = model_container(smfs, hmfs, feedback_model, fitting_method,
-                        prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
+                        prior_model, mode).plot_parameter(['C2']*5+['C1']*6,
                                                           'o',
                                                           '-', 
-                                                          ['Stellar + Black Hole Feedback']*4\
+                                                          ['Stellar + Black Hole Feedback']*5\
                                                           +['Stellar Feedback']*6)
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
 
-redshift = np.arange(1,11)  
+redshift = np.arange(0,11)  
 ## OVERVIEW      
 fig, ax = plt.subplots(3,1, sharex = True)
 ax[0].set_ylabel('A')
 ax[1].set_ylabel(r'$\alpha$')
 ax[2].set_ylabel(r'$\beta$')
-ax[2].set_xlabel('Lookback time [Gyr]')
+ax[2].set_xlabel(r'Redshift $z$')
 for z in redshift:
     param_at_z = model.parameter.at_z(z)
     if fitting_method == 'mcmc':
@@ -56,15 +56,15 @@ for z in redshift:
     for i in range(len(param_at_z)):
         t = Planck18.lookback_time(z).value
         if fitting_method == 'mcmc':
-            ax[i].errorbar(t, param_at_z[i], yerr = np.array([[lower[i],upper[i]]]).T, capsize=3,
-                          marker = model.marker, label = model.label[z-1], color = model.color[z-1])
+            ax[i].errorbar(z, param_at_z[i], yerr = np.array([[lower[i],upper[i]]]).T, capsize=3,
+                          marker = model.marker, label = model.label[z], color = model.color[z])
         else:
-            ax[i].scatter(t, param_at_z[i],
-                          marker = model.marker, label = model.label[z-1], color = model.color[z-1])
+            ax[i].scatter(z, param_at_z[i],
+                          marker = model.marker, label = model.label[z], color = model.color[z])
         #ax[i].set_xscale('log')
         #ax[i].set_yscale('log')
-        #ax[i].set_xticks(range(1,11)); ax[2].set_xticklabels(range(1,11))
-        ax[i].minorticks_on()
+        ax[i].set_xticks(range(0,11)); ax[2].set_xticklabels(range(0,11))
+        #ax[i].minorticks_on()
 
 # second axis for redshift
 def z_to_t(z):
@@ -73,14 +73,16 @@ def z_to_t(z):
     return(t)
 def t_to_z(t):
     t = np.array(t)
-    z = np.array([z_at_value(Planck18.lookback_time, k*u.Gyr) for k in t])
+    z = np.array([z_at_value(Planck18.lookback_time, k*u.Gyr).value for k in t])
     return(z)
-ts_at_z = z_to_t(redshift)
-ax_z = ax[0].twiny()
+ts      = np.arange(1,14,1)
+ts     = np.append(ts,13.3)
+z_at_ts = t_to_z(ts)
+ax_z    = ax[0].twiny()
 ax_z.set_xlim(ax[0].get_xlim())
-ax_z.set_xticks(ts_at_z)
-ax_z.set_xticklabels(redshift.astype(str))
-ax_z.set_xlabel(r"Redshift $z$")
+ax_z.set_xticks(z_at_ts)
+ax_z.set_xticklabels(np.append(ts[:-1].astype(int).astype(str),ts[-1].astype(str)))
+ax_z.set_xlabel('Lookback time [Gyr]')
 
 
 fig.align_ylabels(ax)

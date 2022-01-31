@@ -24,7 +24,7 @@ mode           = 'loading'
 groups, smfs, hmfs = load_data()
 
 # load model
-feedback_model = ['both']*4+['sn']*6
+feedback_model = ['both']*5+['sn']*6
 prior_model    = 'full'
 
 # create model smfs
@@ -34,7 +34,7 @@ model = model_container(smfs, hmfs, feedback_model, fitting_method,
 #%%
 plt.close('all')
 
-redshift = [1,3,5,7,9]
+redshift = [0,2,4,6,8,10]
 ## SHMR
 fig, ax = plt.subplots(1,1, sharex = True) #figsize = [8.4, 16.6]
 fig.supxlabel('log $M_\mathrm{h}$ [$M_\odot$]')

@@ -23,34 +23,34 @@ mode           = 'loading'
 groups, smfs, hmfs = load_data()
 
 # load model
-prior_model = 'uniform'
-# create model smfs
-no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
-                          prior_model, mode).plot_parameter(['black']*10, 'o', '-',  ['No Feedback']*10)
-sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
-                          prior_model, mode).plot_parameter(['C1']*10,    's', '--', ['Stellar Feedback']*10)
-snbh_feedback = model_container(smfs, hmfs, 'both', fitting_method,
-                          prior_model, mode).plot_parameter(['C2']*10,    'v', '-.', ['Stellar + Black Hole Feedback']*10)
-models = [no_feedback,sn_feedback,snbh_feedback]
+# prior_model = 'uniform'
+# # create model smfs
+# no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
+#                           prior_model, mode).plot_parameter(['black']*11, 'o', '-',  ['No Feedback']*11)
+# sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
+#                           prior_model, mode).plot_parameter(['C1']*11,    's', '--', ['Stellar Feedback']*11)
+# snbh_feedback = model_container(smfs, hmfs, 'both', fitting_method,
+#                           prior_model, mode).plot_parameter(['C2']*11,    'v', '-.', ['Stellar + Black Hole Feedback']*11)
+# models = [no_feedback,sn_feedback,snbh_feedback]
 
 # load model
-# feedback_model = ['both']*4+['sn']*6
-# prior_model = 'full'
-# # create model smfs
-# model   = model_container(smfs, hmfs, feedback_model, fitting_method,
-#                           prior_model, mode).plot_parameter(['C2']*4+['C1']*6,
-#                                                             'o',
-#                                                             '-', 
-#                                                             ['Stellar + Black Hole Feedback']*4\
-#                                                             +['Stellar Feedback']*6)
-# models = [model]
+feedback_model = ['both']*5+['sn']*6
+prior_model = 'full'
+# create model smfs
+model   = model_container(smfs, hmfs, feedback_model, fitting_method,
+                          prior_model, mode).plot_parameter(['C2']*5+['C1']*6,
+                                                            'o',
+                                                            '-', 
+                                                            ['Stellar + Black Hole Feedback']*5\
+                                                            +['Stellar Feedback']*6)
+models = [model]
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
 
-redshift = np.arange(1,11)
+redshift = np.arange(0,11)
 ## PDFs        
-fig, ax = plt.subplots(3, 10, sharex ='row', sharey = 'row')
+fig, ax = plt.subplots(3, 11, sharex ='row', sharey = 'row')
 ax[0,0].set_ylabel('A')
 ax[1,0].set_ylabel(r'$\alpha$')
 ax[2,0].set_ylabel(r'$\beta$')
@@ -58,11 +58,13 @@ fig.supxlabel('Parameter Value')
 fig.supylabel('(Marginal) Probability Density', x = 0.01)
 for model in models:
     for z in redshift:
+        if (model.model.at_z(z).feedback_model.name == 'both') and (z>4):
+            continue
         dist_at_z = model.distribution.at_z(z)
         bounds    = np.array(model.model.at_z(z).feedback_model.bounds).T
         for i in range(dist_at_z.shape[1]):
-            ax[i,z-1].hist(dist_at_z[:,i], density = True, bins = 100, range = bounds[i],
-                           label = model.label[z-1], color = model.color[z-1], alpha =0.3)
+            ax[i,z].hist(dist_at_z[:,i], density = True, bins = 100, range = bounds[i],
+                           label = model.label[z], color = model.color[z], alpha =0.3)
 for a in ax.flatten():
     a.get_yaxis().set_ticks([])
 for i, a in enumerate(ax[0,:]):
@@ -78,8 +80,7 @@ ax[2,0].set_xticks([0.1,0.3,0.5]); ax[2,0].set_xticklabels(['0.1','0.3','0.5'])
 #ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
 
 # turn off empty axes
-if len(models)==1:
-    [ax[2,i].axis('off') for i in range(4,10)]
+[ax[2,i].axis('off') for i in range(5,11)]
 
 # legend
 handles, labels = [], []

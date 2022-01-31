@@ -71,9 +71,9 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         smf = np.copy(smfs[i])
         hmf = np.copy(hmfs[i]) # list starts at z=0 not 1, like smf
         
-        #m_c = 1e+12
-        # calc m_crit according to Bower et al.
-        m_c = calculate_m_crit(z=i)
+        m_c = 1e+12
+        # calc m_crit according to Bower et al. 2017
+        #m_c = calculate_m_crit(z=i)
         
         # create model object
         # (choose feedback model based on feedback_name input)
