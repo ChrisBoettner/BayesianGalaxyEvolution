@@ -23,27 +23,27 @@ mode           = 'loading'
 groups, smfs, hmfs = load_data()
 
 # load model
-# prior_model = 'uniform'
-# # create model smfs
-# no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
-#                           prior_model, mode).plot_parameter(['black']*11, 'o', '-',  ['No Feedback']*11)
-# sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
-#                           prior_model, mode).plot_parameter(['C1']*11,    's', '--', ['Stellar Feedback']*11)
-# snbh_feedback = model_container(smfs, hmfs, 'both', fitting_method,
-#                           prior_model, mode).plot_parameter(['C2']*11,    'v', '-.', ['Stellar + Black Hole Feedback']*11)
-# models = [no_feedback,sn_feedback,snbh_feedback]
+prior_model = 'uniform'
+# create model smfs
+no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
+                          prior_model, mode).plot_parameter(['black']*11, 'o', '-',  ['No Feedback']*11)
+sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
+                          prior_model, mode).plot_parameter(['C1']*11,    's', '--', ['Stellar Feedback']*11)
+snbh_feedback = model_container(smfs, hmfs, 'both', fitting_method,
+                          prior_model, mode).plot_parameter(['C2']*11,    'v', '-.', ['Stellar + Black Hole Feedback']*11)
+models = [no_feedback,sn_feedback,snbh_feedback]
 
 # load model
-feedback_model = ['both']*5+['sn']*6
-prior_model = 'full'
-# create model smfs
-model   = model_container(smfs, hmfs, feedback_model, fitting_method,
-                          prior_model, mode).plot_parameter(['C2']*5+['C1']*6,
-                                                            'o',
-                                                            '-', 
-                                                            ['Stellar + Black Hole Feedback']*5\
-                                                            +['Stellar Feedback']*6)
-models = [model]
+# feedback_model = ['both']*5+['sn']*6
+# prior_model = 'full'
+# # create model smfs
+# model   = model_container(smfs, hmfs, feedback_model, fitting_method,
+#                           prior_model, mode).plot_parameter(['C2']*5+['C1']*6,
+#                                                             'o',
+#                                                             '-', 
+#                                                             ['Stellar + Black Hole Feedback']*5\
+#                                                             +['Stellar Feedback']*6)
+# models = [model]
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
@@ -58,8 +58,8 @@ fig.supxlabel('Parameter Value')
 fig.supylabel('(Marginal) Probability Density', x = 0.01)
 for model in models:
     for z in redshift:
-        if (model.model.at_z(z).feedback_model.name == 'both') and (z>4):
-            continue
+        #if (model.model.at_z(z).feedback_model.name == 'both') and (z>4):
+        #    continue
         dist_at_z = model.distribution.at_z(z)
         bounds    = np.array(model.model.at_z(z).feedback_model.bounds).T
         for i in range(dist_at_z.shape[1]):
@@ -80,7 +80,7 @@ ax[2,0].set_xticks([0.1,0.3,0.5]); ax[2,0].set_xticklabels(['0.1','0.3','0.5'])
 #ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
 
 # turn off empty axes
-[ax[2,i].axis('off') for i in range(5,11)]
+#[ax[2,i].axis('off') for i in range(5,11)]
 
 # legend
 handles, labels = [], []

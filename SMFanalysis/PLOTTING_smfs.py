@@ -38,14 +38,14 @@ plt.close('all')
 
 redshift = np.arange(0,11)  
 ## STELLAR MASS FUNCTION
-fig, ax = plt.subplots(4,3, sharey = 'row'); ax = ax.flatten()
+fig, ax = plt.subplots(4,3, sharey = 'row', sharex=True); ax = ax.flatten()
 fig.subplots_adjust(top=0.982,bottom=0.113,left=0.075,right=0.991,hspace=0.0,wspace=0.0)
 # plot group data
 for g in groups:
     for z in g.redshift:
         ax[z].errorbar(g.data_at_z(z).mass, g.data_at_z(z).phi, [g.data_at_z(z).lower_error,g.data_at_z(z).upper_error],
                          capsize = 3, fmt = g.marker, color = g.color, label = g.label, alpha = 0.4)
-        ax[z].set_xlim([6.67,12.3])
+        #ax[z].set_xlim([6.67,12.3])
         if z<3:
             ax[z].set_ylim([-5,3])
         else:

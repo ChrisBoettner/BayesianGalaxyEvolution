@@ -62,7 +62,7 @@ for z in redshift:
             ax[i].scatter(z, param_at_z[i],
                           marker = model.marker, label = model.label[z], color = model.color[z])
         #ax[i].set_xscale('log')
-        #ax[i].set_yscale('log')
+        ax[0].set_yscale('log')
         ax[i].set_xticks(range(0,11)); ax[2].set_xticklabels(range(0,11))
         #ax[i].minorticks_on()
 
@@ -88,9 +88,9 @@ ax_z.set_xlabel('Lookback time [Gyr]')
 fig.align_ylabels(ax)
 
 fig.subplots_adjust(
-top=0.917,
-bottom=0.092,
-left=0.049,
-right=0.991,
+top=0.92,
+bottom=0.09,
+left=0.055,
+right=0.99,
 hspace=0.0,
 wspace=0.0)

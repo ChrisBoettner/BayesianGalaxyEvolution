@@ -122,15 +122,12 @@ def fit_model(smf_model, fitting_method, prior, prior_name, mode):
     modelled_smf  : modelled SMF obtained from scaling HMF
     cost          : distribution of parameter (for mcmc fitting)
     '''
-    # choose fitting method
-    if fitting_method == 'least_squares':
-        fit = leastsq_fitting.lsq_fit
-    elif fitting_method == 'mcmc':
-        def fit(smf_model): # choose saving/loading mode and prior
-            return(mcmc_fitting.mcmc_fit(smf_model, prior, prior_name, mode))
-    
+
     # create model and perform fit
-    params, dist = fit(smf_model)
+    if fitting_method == 'least_squares':
+        params, dist   = leastsq_fitting.lsq_fit(smf_model)
+    elif fitting_method == 'mcmc':
+        params, dist   = mcmc_fitting.mcmc_fit(smf_model, prior, prior_name, mode)
     
     # create data for modelled smf (for plotting)   
     modelled_smf = np.copy(smf_model.hmf)
@@ -351,7 +348,7 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
         # if Halley's method doesn't work, try Newton
         if np.isnan(root):
                 root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, args = args,
-                                    method='halley', x0 = x0_in, rtol=1e-6).root
+                                    method='newton', x0 = x0_in, rtol=1e-6).root
         x.append(root)
     x = np.array(x)
     return(x)

@@ -38,32 +38,41 @@ plt.close('all')
 
 redshift = np.arange(0,11)  
 ## LUMINOSTIY FUNCTION
-fig, ax = plt.subplots(4,3); ax = ax.flatten()
+fig, ax = plt.subplots(4,3, sharey='row', sharex=True); ax = ax.flatten()
 fig.subplots_adjust(top=0.982,bottom=0.113,left=0.075,right=0.991,hspace=0.0,wspace=0.0)
 # plot group data
 for g in groups:
     for z in g.redshift:
-        ax[z].errorbar(np.log10(g.data_at_z(z).lum), g.data_at_z(z).phi, 
+        ax[z].errorbar(np.log10(g.data_at_z(z).lum/1e+18), g.data_at_z(z).phi, 
                        [g.data_at_z(z).lower_error,g.data_at_z(z).upper_error],
-                       capsize = 3, fmt = g.marker, color = g.color, label = g.label, alpha = 0.4)
-        #ax[z].set_xlim([2.5,14.9])
-        ax[z].set_ylim([-7,3])        
+                       capsize = 3, fmt = g.marker, color = g.color,
+                       label = g.label, alpha = 0.4)
+        if z<3:
+            ax[z].set_ylim([-5,3])
+        else:
+            ax[z].set_ylim([-6,3])         
 # plot modelled lf
 for model in models:
     for z in redshift:
-        ax[z].plot(np.log10(model.lf.at_z(z)[:,0]), np.log10(model.lf.at_z(z)[:,1]),
-                  linestyle=model.linestyle, label = model.label, color = model.color)      
+        lum = np.log10(model.lf.at_z(z)[:,0])
+        phi = np.log10(model.lf.at_z(z)[:,1])
+        phi[phi == phi[-1]] = np.nan # do not plot phi values that correspond to m_h above m_h_max
+        ax[z].plot(lum, phi, linestyle=model.linestyle, label = model.label,
+                   color = model.color)      
 # fluff
-fig.supxlabel('log[$L_{\\nu}^{UV}$ ergs$^{-1}$ s Hz]')
-fig.supylabel('log[$\phi(L_\\nu^{UV})$ cMpc$^{3}$ dex]', x=0.01)
+#fig.supxlabel('log[$L_{\\nu}^{UV}$ [ergs s$^{-1}$ Hz$^{-1}$]')
+fig.supxlabel('log $L_{\\nu}^{UV}/10^{18}$ [ergs s$^{-1}$ Hz$^{-1}$]')
+fig.supylabel('log $\phi(L_\\nu^{UV})$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()
     if i == 0:
         a.text(0.97, 0.94, 'z$<$' +str(i+0.5), size = 11,
-               horizontalalignment='right', verticalalignment='top', transform=a.transAxes)
+               horizontalalignment='right', verticalalignment='top',
+               transform=a.transAxes)
     elif i<len(redshift):
         a.text(0.97, 0.94, str(i-0.5) + '$<$z$<$' +str(i+0.5), size = 11,
-               horizontalalignment='right', verticalalignment='top', transform=a.transAxes)
+               horizontalalignment='right', verticalalignment='top',
+               transform=a.transAxes)
 ax[-1].axis('off');
 # legend
 handles, labels = [], []
@@ -72,7 +81,7 @@ for a in ax:
     handles += handles_
     labels += labels_
 by_label = dict(zip(labels, handles))
-ax[0].legend( list(by_label.values())[:3], list(by_label.keys())[:3], frameon=False,
-             prop={'size': 12})
-ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:], frameon=False,
-              prop={'size': 12}, loc = 4, ncol = 2)
+ax[0].legend( list(by_label.values())[:3], list(by_label.keys())[:3],
+             frameon=False, prop={'size': 12})
+ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:],
+              frameon=False, prop={'size': 12}, loc = 4, ncol = 2)

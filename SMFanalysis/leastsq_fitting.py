@@ -36,7 +36,7 @@ def cost_function(params, smf_model):
     
     # check if parameter are within bounds
     if not within_bounds(params, *smf_model.feedback_model.bounds):
-        return(np.inf)
+        return(1e+30) # if outside of bound, return huge value to for cost func
     
     phi_mod = smf_model.function(m_obs, params)
     
