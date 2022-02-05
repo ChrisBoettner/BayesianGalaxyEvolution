@@ -67,9 +67,9 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
     parameter = []; modelled_smf = []; distribution = []; smf_models = []
     posterior_samp = None
     bounds         = None
-    for i in range(len(smfs)):
-        smf = np.copy(smfs[i])
-        hmf = np.copy(hmfs[i])
+    for z in range(len(smfs)):
+        smf = np.copy(smfs[z])
+        hmf = np.copy(hmfs[z])
         
         m_c = 1e+12
         # calc m_crit according to Bower et al. 2017
@@ -78,10 +78,10 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         # create model object
         # (choose feedback model based on feedback_name input)
         if isinstance(feedback_name, str):
-            smf_model           = smf_model_class(smf, hmf, feedback_name, m_c, z=i)
+            smf_model           = smf_model_class(smf, hmf, feedback_name, m_c, z=z)
             smf_model.directory =  smf_model.feedback_model.name
         elif len(feedback_name) == len(smfs):
-            smf_model           = smf_model_class(smf, hmf, feedback_name[i], m_c, z=i) 
+            smf_model           = smf_model_class(smf, hmf, feedback_name[z], m_c, z=z) 
             smf_model.directory =  'changing'
         else:
             raise ValueError('feedback_name must either be a string or a \
@@ -91,12 +91,11 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         
         # create new prior from distribution of previous iteration
         if prior_name == 'uniform':
-            prior, b = mcmc_fitting.uniform_prior(smf_model, posterior_samp, bounds) 
+            prior, bounds = mcmc_fitting.uniform_prior(smf_model, posterior_samp, bounds) 
         elif prior_name == 'marginal':
-            prior, b = mcmc_fitting.dist_from_hist_1d(smf_model, posterior_samp, bounds) 
+            prior, bounds = mcmc_fitting.dist_from_hist_1d(smf_model, posterior_samp, bounds) 
         elif prior_name == 'full':
-            prior, b = mcmc_fitting.dist_from_hist_nd(smf_model, posterior_samp, bounds) 
-        bounds = b
+            prior, bounds = mcmc_fitting.dist_from_hist_nd(smf_model, posterior_samp, bounds) 
         
         # fit parameter
         params, mod_smf, posterior_samp = fit_model(smf_model,

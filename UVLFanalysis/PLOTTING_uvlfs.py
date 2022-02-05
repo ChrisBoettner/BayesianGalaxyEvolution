@@ -17,8 +17,8 @@ from data_processing import load_data
 
 # coose option
 fitting_method = 'least_squares'     # 'least_squares' or 'mcmc'   
-prior_model    = 'marginal'          # 'uniform', 'marginal' or 'full'
-mode           = 'loading'           # 'saving', 'loading' or 'temp'
+prior_model    = 'uniform'  # 'uniform', 'marginal' or 'full'
+mode           = 'temp'   # 'saving', 'loading' or 'temp'
 
 # load data
 groups, lfs, hmfs = load_data()

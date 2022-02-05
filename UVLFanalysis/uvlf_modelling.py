@@ -68,21 +68,28 @@ def fit_LF_model(lfs, hmfs, feedback_name,
     parameter = []; modelled_lf = []; distribution = []; lf_models = []
     posterior_samp = None
     bounds         = None
-    for i in range(len(lfs)):
-        lf  = np.copy(lfs[i])
-        hmf = np.copy(hmfs[i])
+    
+    # do fits in different order (for successive prior):
+    # start at z=4 since we have a lot of data there and still use sn + bh model, 
+    # evolve that to redshift 10. then use distribution at 4 again and evolve backwards
+    # to z=1
+    for z in [4,5,6,7,8,9,10,3,2,1]:
+        lf  = np.copy(lfs[z])
+        hmf = np.copy(hmfs[z])
         
         lf[:,0] = lf[:,0]/1e+18 # change units for luminosities for numerical stability
 
         m_c = 1e+12
+        # calc m_crit according to Bower et al. 2017
+        #m_c = calculate_m_crit(z=z)
         
         # create model object
         # (choose feedback model based on feedback_name input)
         if isinstance(feedback_name, str):
-            lf_model           = lf_model_class(lf, hmf, feedback_name, m_c, z=i)
+            lf_model           = lf_model_class(lf, hmf, feedback_name, m_c, z=z)
             lf_model.directory = lf_model.feedback_model.name
         elif len(feedback_name) == len(lfs):
-            lf_model           = lf_model_class(lf, hmf, feedback_name[i], m_c, z=i) 
+            lf_model           = lf_model_class(lf, hmf, feedback_name[z], m_c, z=z) 
             lf_model.directory =  'changing'
         else:
             raise ValueError('feedback_name must either be a string or a \
@@ -91,22 +98,32 @@ def fit_LF_model(lfs, hmfs, feedback_name,
         lf_model.filename  = lf_model.directory + str(lf_model.z) + prior_name
         
         # create new prior from distribution of previous iteration
+        if z==3: # which is posterior at z=4           
+            posterior_samp  = distribution[0] # which is posterior at z=4
+            bounds          = list(zip(*lf_models[0].feedback_model.bounds)) # get bounds from z=4
+        
         if prior_name == 'uniform':
-            prior, b = mcmc_fitting.uniform_prior(lf_model, posterior_samp, bounds) 
+            prior, bounds = mcmc_fitting.uniform_prior(lf_model, posterior_samp, bounds)
         elif prior_name == 'marginal':
-            prior, b = mcmc_fitting.dist_from_hist_1d(lf_model, posterior_samp, bounds) 
+            prior, bounds = mcmc_fitting.dist_from_hist_1d(lf_model, posterior_samp, bounds) 
         elif prior_name == 'full':
-            prior, b = mcmc_fitting.dist_from_hist_nd(lf_model, posterior_samp, bounds) 
-        bounds = b
+            prior, bounds = mcmc_fitting.dist_from_hist_nd(lf_model, posterior_samp, bounds)
         
         # fit parameter
         params, mod_lf, posterior_samp = fit_model(lf_model,
                                                    fitting_method, prior, 
                                                    prior_name, mode)
-        parameter.append(params)  
-        modelled_lf.append(mod_lf)
-        distribution.append(posterior_samp)     
-        lf_models.append(lf_model)
+        
+        if z<=3: # add at beginning
+            parameter.insert(0,params)  
+            modelled_lf.insert(0,mod_lf)
+            distribution.insert(0,posterior_samp)     
+            lf_models.insert(0,lf_model)   
+        else:
+            parameter.append(params)  
+            modelled_lf.append(mod_lf)
+            distribution.append(posterior_samp)     
+            lf_models.append(lf_model)
         
     print('Remember you change units for L and have to adjust A parameter accordingly')
         
@@ -323,6 +340,17 @@ class supernova_blackhole_feedback():
         return(x0)
         
 ## HELP FUNCTIONS
+def calculate_m_crit(z):
+    '''
+    Calculate critical mass at a given redshift in solar masses, following the
+    model by Bower et al. 2017.
+    https://doi.org/10.1093/mnras/stw2735
+    '''
+    omega_m = Planck18.Om(z=z)
+    omega_l = Planck18.Ode(z=z)
+    delta_z = np.power(omega_m*(1+z)**3+omega_l, 1/3)
+    return(np.power(delta_z,-3/8)*1e+12)
+
 def invert_function(func, fprime, fprime2, x0_func, y, args):
     '''
     For a function y=f(x), calculate x values for an input set of y values.
