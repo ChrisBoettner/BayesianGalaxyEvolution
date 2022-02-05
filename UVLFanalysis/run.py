@@ -9,7 +9,7 @@ Created on Mon Dec 20 12:49:53 2021
 import sys
 import timeit
 
-from lf_modelling   import model_container
+from uvlf_modelling  import model_container
 from data_processing import load_data
 
 # coose option
