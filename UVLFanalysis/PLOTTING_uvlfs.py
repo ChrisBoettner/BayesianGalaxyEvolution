@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from uvlf_modelling  import model_container
-from data_processing import load_data
+from data_processing import load_data, lum_to_mag
 
 # coose option
 fitting_method = 'least_squares'     # 'least_squares' or 'mcmc'   
@@ -43,7 +43,7 @@ fig.subplots_adjust(top=0.982,bottom=0.113,left=0.075,right=0.991,hspace=0.0,wsp
 # plot group data
 for g in groups:
     for z in g.redshift:
-        ax[z].errorbar(np.log10(g.data_at_z(z).lum/1e+18), g.data_at_z(z).phi, 
+        ax[z].errorbar(g.data_at_z(z).mag, g.data_at_z(z).phi, 
                        [g.data_at_z(z).lower_error,g.data_at_z(z).upper_error],
                        capsize = 3, fmt = g.marker, color = g.color,
                        label = g.label, alpha = 0.4)
@@ -54,14 +54,14 @@ for g in groups:
 # plot modelled lf
 for model in models:
     for z in redshift:
-        lum = np.log10(model.lf.at_z(z)[:,0])
+        mag = lum_to_mag(model.lf.at_z(z)[:,0]*1e+18) # return units back, before converting to moag
         phi = np.log10(model.lf.at_z(z)[:,1])
         phi[phi == phi[-1]] = np.nan # do not plot phi values that correspond to m_h above m_h_max
-        ax[z].plot(lum, phi, linestyle=model.linestyle, label = model.label,
+        ax[z].plot(mag, phi, linestyle=model.linestyle, label = model.label,
                    color = model.color)      
 # fluff
-#fig.supxlabel('log[$L_{\\nu}^{UV}$ [ergs s$^{-1}$ Hz$^{-1}$]')
-fig.supxlabel('log $L_{\\nu}^{UV}/10^{18}$ [ergs s$^{-1}$ Hz$^{-1}$]')
+#fig.supxlabel('log $L_{\\nu}^{UV}/10^{18}$ [ergs s$^{-1}$ Hz$^{-1}$]')
+fig.supxlabel(r'$M_{UV}$')
 fig.supylabel('log $\phi(L_\\nu^{UV})$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()

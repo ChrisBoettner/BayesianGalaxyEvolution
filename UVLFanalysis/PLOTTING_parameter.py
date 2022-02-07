@@ -43,7 +43,8 @@ plt.close('all')
 redshift = np.arange(0,11)  
 ## OVERVIEW      
 fig, ax = plt.subplots(3,1, sharex = True)
-ax[0].set_ylabel(r'$A$')
+ax[0].set_ylabel('$A/10^{18}$\n[ergs s$^{-1}$ Hz$^{-1}$ $M_\odot^{-1}$]',
+                 multialignment='center')
 ax[1].set_ylabel(r'$\alpha$')
 ax[2].set_ylabel(r'$\beta$')
 ax[2].set_xlabel(r'Redshift $z$')
@@ -90,7 +91,7 @@ fig.align_ylabels(ax)
 fig.subplots_adjust(
 top=0.92,
 bottom=0.09,
-left=0.055,
+left=0.08,
 right=0.99,
 hspace=0.0,
 wspace=0.0)

@@ -22,28 +22,26 @@ mode           = 'loading'
 # load data
 groups, smfs, hmfs = load_data()
 
-# load model
-# prior_model = 'uniform'
-# # create model smfs
-# no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
-#                           prior_model, mode).plot_parameter(['black']*11, 'o', '-',  ['No Feedback']*11)
-# sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
-#                           prior_model, mode).plot_parameter(['C1']*11,    's', '--', ['Stellar Feedback']*11)
-# snbh_feedback = model_container(smfs, hmfs, 'both', fitting_method,
-#                           prior_model, mode).plot_parameter(['C2']*11,    'v', '-.', ['Stellar + Black Hole Feedback']*11) 
-# models = [no_feedback,sn_feedback,snbh_feedback]
+prior_model = 'uniform'
 
 # load model
-feedback_model = ['both']*5+['sn']*6
-prior_model = 'full'
-# create model smfs
-model   = model_container(smfs, hmfs, feedback_model, fitting_method,
-                          prior_model, mode).plot_parameter(['C2']*5+['C1']*6,
-                                                            'o',
-                                                            '-', 
-                                                            ['Stellar + Black Hole Feedback']*5\
-                                                            +['Stellar Feedback']*6)
-models = [model]
+if prior_model == 'uniform':
+    no_feedback   = model_container(smfs, hmfs, 'none', fitting_method,
+                              prior_model, mode).plot_parameter(['black']*11, 'o', '-',  ['No Feedback']*11)
+    sn_feedback   = model_container(smfs, hmfs, 'sn',   fitting_method,
+                              prior_model, mode).plot_parameter(['C1']*11,    's', '--', ['Stellar Feedback']*11)
+    snbh_feedback = model_container(smfs, hmfs, 'both', fitting_method,
+                              prior_model, mode).plot_parameter(['C2']*11,    'v', '-.', ['Stellar + Black Hole Feedback']*11)
+    models = [no_feedback,sn_feedback,snbh_feedback]
+if prior_model == 'full':
+    feedback_model = ['both']*5+['sn']*6
+    model   = model_container(smfs, hmfs, feedback_model, fitting_method,
+                              prior_model, mode).plot_parameter(['C2']*5+['C1']*6,
+                                                                'o',
+                                                                '-', 
+                                                                ['Stellar + Black Hole Feedback']*5\
+                                                                +['Stellar Feedback']*6)
+    models = [model]
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
@@ -51,7 +49,7 @@ plt.close('all')
 redshift = np.arange(0,11)
 ## PDFs        
 fig, ax = plt.subplots(3, 11, sharex ='row', sharey = 'row')
-ax[0,0].set_ylabel('A')
+ax[0,0].set_ylabel(r'$A$')
 ax[1,0].set_ylabel(r'$\alpha$')
 ax[2,0].set_ylabel(r'$\beta$')
 fig.supxlabel('Parameter Value')
@@ -86,11 +84,6 @@ ax[1,0].set_xticks([0,1,2,3]); ax[1,0].set_xticklabels(['0','1','2','3'])
 ax[2,0].set_xlim(0,0.6)
 ax[2,0].set_xticks([0.1,0.3,0.5]); ax[2,0].set_xticklabels(['0.1','0.3','0.5'])
 
-#ax[0,0].set_ylim(0,ax[0,0].get_ylim()[1]/2)    
-
-# turn off empty axes
-#[ax[2,i].axis('off') for i in range(5,11)]
-
 # legend
 handles, labels = [], []
 for a in ax.flatten():
@@ -98,18 +91,23 @@ for a in ax.flatten():
     handles += handles_
     labels += labels_
 by_label = dict(zip(labels, handles))
-if len(models) > 1:
+
+# setting based on prior model
+if prior_model == 'uniform':
     ax[0,-1].legend(list(by_label.values())[:3][::-1], list(by_label.keys())[:3][::-1], frameon=False,
                  prop={'size': 12}, loc='upper right', bbox_to_anchor=(1.0, 1.3),
                  ncol=3, fancybox=True)
-else:
+if prior_model == 'full':
+    # turn off empty axes
+    [ax[2,i].axis('off') for i in range(5,11)]
     ax[0,-1].legend(list(by_label.values())[:3], list(by_label.keys())[:3], frameon=False,
                  prop={'size': 12}, loc='upper right', bbox_to_anchor=(1.0, 1.3),
                  ncol=3, fancybox=True)
 
 fig.align_ylabels(ax[:, 0])
 
-fig.subplots_adjust(top=0.9,
+fig.subplots_adjust(
+top=0.9,
 bottom=0.11,
 left=0.055,
 right=0.99,
