@@ -12,7 +12,7 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 import numpy as np
 import matplotlib.pyplot as plt
 
-from smf_modelling   import model_container
+from uvlf_modelling  import model_container
 from data_processing import load_data
 
 import astropy.units as u

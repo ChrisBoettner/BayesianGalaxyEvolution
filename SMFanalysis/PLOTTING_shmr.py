@@ -51,23 +51,40 @@ cm = LinearSegmentedColormap.from_list(
 marker = ['^','X','o','v','^','X','o','v','d','s']
 
 for z in redshift:
-    param_at_z = model.parameter.at_z(z)
     dist_at_z  = model.distribution.at_z(z)
-    # lower and upper limit on parameter (error bars)
-    lower      = np.percentile(dist_at_z, 16, axis = 0)
-    upper      = np.percentile(dist_at_z, 84, axis = 0)
-    # switch A values since it has the opposite effect to the slopes
-    temp = lower[0]; lower[0] = upper[0]; upper[0] = temp
     
+    # draw random sample of parameter from mcmc dists
+    random_draw = np.random.choice(range(dist_at_z.shape[0]),
+                                   size = int(1e+6), replace = False)     
+    parameter_draw = dist_at_z[random_draw]
     
-    m_star = model.model.at_z(z).feedback_model.calculate_m_star(m_halo, *model.parameter.at_z(z))
-    m_star_l = model.model.at_z(z).feedback_model.calculate_m_star(m_halo, *upper)
-    m_star_u = model.model.at_z(z).feedback_model.calculate_m_star(m_halo, *lower)
+    # split parameter up, to easily put into calculate_m_star function
+    if model.feedback_name[z] == 'both':
+        A       = parameter_draw[:,0]
+        alpha   = parameter_draw[:,1]
+        beta    = parameter_draw[:,2]
+    if model.feedback_name[z] == 'sn':
+        A       = parameter_draw[:,0]
+        alpha   = parameter_draw[:,1]
     
-    ax.plot(np.log10(m_halo*base_unit), np.log10(m_star/m_halo), color = cm(z),
+    median = []; lower = []; upper = []
+    # calculate m_star for every m_halo value and set of parameters and save
+    # percentiles
+    for m_h in m_halo:
+         #import pdb; pdb.set_trace()
+         if model.feedback_name[z] == 'both':
+             m_star = model.model.at_z(z).feedback_model.calculate_m_star(m_h, A, alpha, beta)
+         if model.feedback_name[z] == 'sn':
+             m_star = model.model.at_z(z).feedback_model.calculate_m_star(m_h, A, alpha)
+        
+         median.append(np.percentile(m_star, 50))
+         lower.append( np.percentile(m_star, 16))
+         upper.append( np.percentile(m_star, 84))        
+    
+    ax.plot(np.log10(m_halo*base_unit), np.log10(np.array(median)/m_halo), color = cm(z),
             markevery=10, marker = 'o', label = '$z$ = ' + str(z))
-    ax.fill_between(np.log10(m_halo*base_unit), np.log10(m_star_u/m_halo), np.log10(m_star_l/m_halo),
-                    alpha = 0.2, color = cm(z))
+    ax.fill_between(np.log10(m_halo*base_unit), np.log10(np.array(lower)/m_halo),
+                    np.log10(np.array(upper)/m_halo), alpha = 0.2, color = cm(z))
     ax.set_xlim([8,14])
     ax.set_ylim([-5.5,0])
     
