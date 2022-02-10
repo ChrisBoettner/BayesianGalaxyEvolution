@@ -9,8 +9,6 @@ Created on Thu Jan 13 14:15:05 2022
 import numpy as np
 import emcee
 
-from help_functions import geometric_median
-
 import os
 from multiprocessing import Pool
 

@@ -68,6 +68,7 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
     posterior_samp = None
     bounds         = None
     for z in range(len(smfs)):
+        print(z)
         smf = np.copy(smfs[z])
         hmf = np.copy(hmfs[z])
         

@@ -12,6 +12,8 @@ rc_file('plots/settings.rc')  # <-- the file containing your settings
 import numpy as np
 import matplotlib.pyplot as plt
 
+from scipy.stats import gaussian_kde
+
 from uvlf_modelling  import model_container
 from data_processing import load_data
 
@@ -48,20 +50,45 @@ ax[0].set_ylabel('$A/10^{18}$\n[ergs s$^{-1}$ Hz$^{-1}$ $M_\odot^{-1}$]',
 ax[1].set_ylabel(r'$\alpha$')
 ax[2].set_ylabel(r'$\beta$')
 ax[2].set_xlabel(r'Redshift $z$')
+# for z in redshift:
+#     param_at_z = model.parameter.at_z(z)
+#     if fitting_method == 'mcmc':
+#         dist_at_z = model.distribution.at_z(z)
+#         lower     = param_at_z - np.percentile(dist_at_z, 16, axis = 0)
+#         upper     = np.percentile(dist_at_z, 84, axis = 0) - param_at_z
+#     for i in range(len(param_at_z)):
+#         t = Planck18.lookback_time(z).value
+#         if fitting_method == 'mcmc':
+#             ax[i].errorbar(z, param_at_z[i], yerr = np.array([[lower[i],upper[i]]]).T, capsize=3,
+#                           marker = model.marker, label = model.label[z], color = model.color[z])
+#         else:
+#             ax[i].scatter(z, param_at_z[i],
+#                           marker = model.marker, label = model.label[z], color = model.color[z])
+#         #ax[i].set_xscale('log')
+#         ax[0].set_yscale('log')
+#         ax[i].set_xticks(range(0,11)); ax[2].set_xticklabels(range(0,11))
+#         #ax[i].minorticks_on()
+        
+# plot parameter samples
 for z in redshift:
-    param_at_z = model.parameter.at_z(z)
-    if fitting_method == 'mcmc':
-        dist_at_z = model.distribution.at_z(z)
-        lower     = param_at_z - np.percentile(dist_at_z, 16, axis = 0)
-        upper     = np.percentile(dist_at_z, 84, axis = 0) - param_at_z
-    for i in range(len(param_at_z)):
-        t = Planck18.lookback_time(z).value
-        if fitting_method == 'mcmc':
-            ax[i].errorbar(z, param_at_z[i], yerr = np.array([[lower[i],upper[i]]]).T, capsize=3,
-                          marker = model.marker, label = model.label[z], color = model.color[z])
-        else:
-            ax[i].scatter(z, param_at_z[i],
-                          marker = model.marker, label = model.label[z], color = model.color[z])
+    print(z)
+    dist_at_z  = model.distribution.at_z(z)
+    # draw random sample of parameter from mcmc dists
+    draw_num = int(1e+4)
+    random_draw = np.random.choice(range(dist_at_z.shape[0]),
+                                   size = draw_num, replace = False)     
+    parameter_draw = dist_at_z[random_draw]
+    
+    # calculate Gaussian kde on data and evaluate from that
+    color = gaussian_kde(parameter_draw.T).evaluate(parameter_draw.T)
+    idx = color.argsort()
+    parameter_draw, color = parameter_draw[idx], color[idx]
+
+    for i in range(parameter_draw.shape[1]):
+        x = np.repeat(z,draw_num)+np.random.normal(loc = 0, scale = 0.03, size=draw_num)
+        
+        ax[i].scatter(x, parameter_draw[:,i], c=color, s = 0.1)
+        
         #ax[i].set_xscale('log')
         ax[0].set_yscale('log')
         ax[i].set_xticks(range(0,11)); ax[2].set_xticklabels(range(0,11))

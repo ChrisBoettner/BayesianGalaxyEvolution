@@ -10,6 +10,7 @@ import numpy as np
 import emcee
 
 from help_functions import geometric_median
+from scipy.optimize import dual_annealing, minimize
 
 import os
 from multiprocessing import Pool
@@ -61,15 +62,42 @@ def mcmc_fit(lf_model, prior, prior_name, mode = 'temp'):
         sampler = savefile
     
     # get autocorrelationtime and discard burn-in of mcmc walk 
-    tau       = np.array(sampler.get_autocorr_time())
-    posterior = sampler.get_chain(discard=5*np.amax(tau).astype(int), flat=True)
+    tau            = np.array(sampler.get_autocorr_time())
+    posterior_samp = sampler.get_chain(discard=5*np.amax(tau).astype(int), flat=True)
     
-    # calculate median of parameter from MCMC walks and value of cost function
-    # at the calculated parameter
-    #par  = np.median(posterior,axis=0)
-    par  = geometric_median(posterior)  
+    # calculate best fit parameter
+    par  = np.median(posterior_samp,axis=0) # using medians of marginalized distribution
+    #par  = geometric_median(posterior_samp) # using geometric median of full distribution
+    #par  = calculate_MAP_estimator(posterior_samp, smf_model)
     
-    return(par, posterior)
+    return(par, posterior_samp)
+
+def calculate_MAP_estimator(posterior_samp, smf_model, method = 'annealing'):
+    '''
+    Calculate 'best-fit' value of parameter by searching for the global minimum
+    of the posterior distribution (Maximum A Posteriori estimator).
+    '''
+    
+    bounds = list(zip(*smf_model.feedback_model.bounds))
+    posterior = dist_from_hist_nd(smf_model, posterior_samp, bounds)[0]
+    #import pdb; pdb.set_trace()
+    
+    neg_log_prob = lambda params: (log_prior(params, posterior)+\
+                                  log_likelihood(params, smf_model))*(-1) 
+    
+    if method == 'minimize':
+        x0 = np.median(posterior_samp,axis=0) 
+        optimization_res = minimize(neg_log_prob, x0,bounds = bounds)
+    
+    elif method == 'annealing':
+        optimization_res = dual_annealing(neg_log_prob, 
+                                          bounds = bounds,
+                                          maxiter = 5000)
+        
+    par              = optimization_res.x
+    if not optimization_res.success:
+        print('Warning: MAP optimization did not succeed')
+    return(par)
 
 ## MCMC HELP FUNCTIONS
 def log_probability(params, lf_model):

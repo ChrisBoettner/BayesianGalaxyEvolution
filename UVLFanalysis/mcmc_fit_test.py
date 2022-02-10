@@ -9,8 +9,6 @@ Created on Thu Jan 13 14:15:05 2022
 import numpy as np
 import emcee
 
-from help_functions import geometric_median
-
 import os
 from multiprocessing import Pool
 
@@ -69,7 +67,6 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     # calculate median of parameter from MCMC walks and value of cost function
     # at the calculated parameter
     par  = np.median(posterior,axis=0)
-    #par  = geometric_median(posterior)  
     
     return(par, posterior)
 
