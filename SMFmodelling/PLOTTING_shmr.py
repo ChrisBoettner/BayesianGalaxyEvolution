@@ -42,13 +42,10 @@ fig.supylabel('log($M_*/M_\mathrm{h}$)', x=0.01)
 
 base_unit = 1e+10
 m_halo    = hmfs[0][:,0]/base_unit
-color = 'C2'
-i = 0
 
 cm = LinearSegmentedColormap.from_list(
         "Custom", ['C2','C1']
-        , N=10)
-marker = ['^','X','o','v','^','X','o','v','d','s']
+        , N=11)
 
 for z in redshift:
     dist_at_z  = model.distribution.at_z(z)

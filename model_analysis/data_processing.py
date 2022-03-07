@@ -7,9 +7,21 @@ Created on Tue Feb  8 11:39:07 2022
 """
 
 import numpy as np
+from scipy.interpolate import interp1d
+
 import emcee
 
 import os
+
+def load_hmf_functions():
+    '''
+    Load HMF data and transform it to callable function by interpolating
+    the data.
+    '''
+    hmfs = np.load('data/HMF.npz')
+    hmfs = [interp1d(*np.power(10,hmfs[str(i)].T),
+                     bounds_error = False) for i in range(20)] 
+    return(hmfs)
 
 def load_mcmc_data(quantity_name):
     '''
