@@ -62,11 +62,10 @@ sfr_upper  = [lum_to_sfr(np.nanpercentile(l, 84, axis = 1)) for l in lum_dist]
 ################## PLOTTING ###################################################
 #%%    
 plt.close('all')
-## SHMR
+## M* vs SFR
 fig, ax = plt.subplots(1,1)
 fig.supxlabel('log $M_\mathrm{*}$ [$M_\odot$]')
 fig.supylabel('log SFR [$M_\odot$ yr$^{-1}$])', x=0.01)
-
 cm = LinearSegmentedColormap.from_list(
         "Custom", ['C2','C1']
         , N=11)
@@ -76,6 +75,32 @@ for i, z in enumerate(redshift):
             markevery=10, marker = 'o', label = '$z$ = ' + str(z))
     ax.fill_between(np.log10(m_star), np.log10(sfr_lower[i]),
                     np.log10(sfr_upper[i]), alpha = 0.2, color = cm(z))
+    #ax.set_xlim([8,14])
+    #ax.set_ylim([-5.5,0])
+    
+ax.minorticks_on()
+ax.legend()
+fig.subplots_adjust(
+top=0.92,
+bottom=0.09,
+left=0.06,
+right=0.99,
+hspace=0.0,
+wspace=0.0)
+
+## M* vs sSFR
+fig, ax = plt.subplots(1,1)
+fig.supxlabel('log $M_\mathrm{*}$ [$M_\odot$]')
+fig.supylabel('log sSFR [yr$^{-1}$])', x=0.01)
+cm = LinearSegmentedColormap.from_list(
+        "Custom", ['C2','C1']
+        , N=11)
+
+for i, z in enumerate(redshift):
+    ax.plot(np.log10(m_star), np.log10(sfr_median[i]/m_star), color = cm(z),
+            markevery=10, marker = 'o', label = '$z$ = ' + str(z))
+    ax.fill_between(np.log10(m_star), np.log10(sfr_lower[i]/m_star),
+                    np.log10(sfr_upper[i]/m_star), alpha = 0.2, color = cm(z))
     #ax.set_xlim([8,14])
     #ax.set_ylim([-5.5,0])
     
