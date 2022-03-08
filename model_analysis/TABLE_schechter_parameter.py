@@ -96,8 +96,8 @@ def format_to_string(parameter, lower_err, upper_err, redshift, columns,
             exponent = int(exponent)
             
             if c == 1:  # should be the log_obs_*, looks nicer like this
-                exponent       += -1
-                param_sig_fig =  np.around(parameter[r,c]/10**exponent, pres)
+                exponent     += -1
+                param_sig_fig = np.around(parameter[r,c]/10**exponent, pres)
             
             l_err = np.around(lower_err[r,c]/10**exponent, pres)
             u_err = np.around(upper_err[r,c]/10**exponent, pres)
@@ -123,7 +123,58 @@ def format_to_string(parameter, lower_err, upper_err, redshift, columns,
             formatted_DataFrame.iloc[r,c] = string
     formatted_DataFrame.insert(0, 'z', redshift)
     formatted_DataFrame.columns = columns
-    return(formatted_DataFrame)            
+    return(formatted_DataFrame)      
+
+def format_to_string_v2(parameter, lower_err, upper_err, redshift, columns,
+                     magnitude = False):
+    '''
+    Alternative version: Just gives ranges instead of values    
+    '''
+    rows = range(parameter.shape[0])
+    cols = range(parameter.shape[1]) 
+    
+    formatted_DataFrame = pd.DataFrame(index   = rows, columns = cols)
+    
+    for c in cols:
+        for r in rows:
+            pres = 1
+            range_lower = parameter[r,c]-lower_err[r,c]
+            range_upper = parameter[r,c]+upper_err[r,c]            
+            
+            exponent    = np.format_float_scientific(range_upper, precision = pres)
+            _, exponent = exponent.split('e')
+            exponent = int(exponent)
+            
+            if c == 1:  # should be the log_obs_*, looks nicer like this
+                exponent     += -1
+            
+            range_u = np.around(range_upper/10**exponent, pres)
+            range_l = np.around(range_lower/10**exponent, pres)
+            if range_l == 0:
+                range_l = np.around(range_lower/exponent, pres+1)  
+
+            l_str = str(range_l)
+            u_str = str(range_u)
+            #import pdb; pdb.set_trace()
+            
+            if len(l_str.split('.')[1]) < pres:
+                l_str = l_str + '0'
+            if len(u_str.split('.')[1]) < pres:
+                u_str = u_str + '0'
+            
+            if (range_u<0) and (range_l<0):
+                string = r'$-\left[' + l_str[1:] + ' \text{-} ' + u_str[1:] + '\right]$'  
+            elif (range_u>0) and (range_l>0):
+                string = r'$\left[' + l_str + ' \text{-} ' + u_str + '\right]$' 
+            else:
+                raise ValueError('Whoops, I was to lazy to implement that case')
+            if exponent != 0:
+                string = string[:-1] + r' \cdot 10^{' + str(exponent) + r'}$'
+                     
+            formatted_DataFrame.iloc[r,c] = string
+    formatted_DataFrame.insert(0, 'z', redshift)
+    formatted_DataFrame.columns = columns
+    return(formatted_DataFrame)           
 
 
 header_m = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]', r'$\log M_*$ [$M_\odot$]',
@@ -133,8 +184,8 @@ header_l = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
 #header_l = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
 #            r'$\log L_*$ [ergs s${^-1}$ Hz$^{-1}$]', r'$\alpha$']
 
-mstar_table    = format_to_string(params_m, lower_err_m, upper_err_m, redshift, header_m)
-lum_table      = format_to_string(params_mag, lower_err_mag, upper_err_mag, redshift, header_l)
+mstar_table    = format_to_string_v2(params_m, lower_err_m, upper_err_m, redshift, header_m)
+lum_table      = format_to_string_v2(params_mag, lower_err_mag, upper_err_mag, redshift, header_l)
 
 # turn into text that can be used as latex code
 mstar_latex = mstar_table.to_latex(index = False, escape=False, column_format = 'rrrr',
