@@ -12,7 +12,7 @@ from astropy.cosmology import Planck18
 
 import leastsq_fitting
 import mcmc_fitting
-#import mcmc_fit_test as mcmc_fitting
+import mcmc_fit_test as mcmc_fitting
 
 ## DATA CONTAINER
 class model_container():
@@ -75,6 +75,7 @@ def fit_LF_model(lfs, hmfs, feedback_name,
     # to z=0
     for z in [4,5,6,7,8,9,10,3,2,1,0]:
         print(z)
+
         lf  = np.copy(lfs[z])
         hmf = np.copy(hmfs[z])
         
@@ -151,9 +152,13 @@ def fit_model(lf_model, fitting_method, prior, prior_name, mode):
         params, dist   = mcmc_fitting.mcmc_fit(lf_model, prior, prior_name, mode)
     
     # create data for modelled lf (for plotting)   
+    # import pdb; pdb.set_trace()
     lum_range   = np.logspace(7,12,1000)/lf_model.unit
     modelled_lf = lf_model.function(lum_range, params)
     modelled_lf = np.array([lum_range, modelled_lf]).T
+    
+    #if np.isnan(modelled_lf).any():
+     #   import pdb; pdb.set_trace()
  
     # return to 1 solar mass unit 
     modelled_lf[:,0] = modelled_lf[:,0]*lf_model.unit
@@ -250,7 +255,7 @@ class supernova_feedback():
         self.initial_guess = [0.1, 1]
         self.bounds        = [[0, 0], [10, 4]]
     def calculate_log_observable(self, log_m_h, A, alpha):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
@@ -265,13 +270,13 @@ class supernova_feedback():
                                   args    = (A, alpha))
         return(log_m_h)
     def calculate_dlogobservable_dlogmh(self, log_m_h, A, alpha):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
         return(1 - (-alpha*sn)/(1 + sn))
     def calculate_d2logobservable_dlogmh2(self, log_m_h, A, alpha): 
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
@@ -299,7 +304,7 @@ class supernova_blackhole_feedback():
         self.initial_guess = [0.1, 1, 0.1]       
         self.bounds        = [[0, 0, 0], [10, 4, 0.8]]
     def calculate_log_observable(self, log_m_h, A, alpha, beta):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
@@ -315,14 +320,14 @@ class supernova_blackhole_feedback():
                                   args    = (A, alpha, beta))
         return(log_m_h)
     def calculate_dlogobservable_dlogmh(self, log_m_h, A, alpha, beta):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
         bh = ratio**beta
         return(1 - (-alpha*sn + beta * bh)/(sn + bh))
     def calculate_d2logobservable_dlogmh2(self, log_m_h, A, alpha, beta): 
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)

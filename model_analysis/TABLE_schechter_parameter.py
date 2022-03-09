@@ -25,7 +25,7 @@ print('Loading done')
 redshift = range(11)
 
 # SMF Schechter parameters
-num = 100
+num = 1000
 m_star   = np.logspace(6,12,100)
 params_m, lower_m, upper_m, dist_m = calculate_schechter_parameter(mstar_model, m_star,
                                                                    redshift, num = num)
@@ -189,8 +189,8 @@ lum_table      = format_to_string_v2(params_mag, lower_err_mag, upper_err_mag, r
 
 # turn into text that can be used as latex code
 mstar_latex = mstar_table.to_latex(index = False, escape=False, column_format = 'rrrr',
-                                caption = r'Schechter parameters for SMF (median of distribution). Errors are 16th and 84th percentile.')
+                                   caption = r'Schechter parameters for SMF (median of distribution). Errors are 16th and 84th percentile.')
 lum_latex   = lum_table.to_latex(  index = False, escape=False, column_format = 'rrrr',
-                                 caption = r'Schechter parameters for UVLF (median of distribution). Errors are 16th and 84th percentile.')
+                                   caption = r'Schechter parameters for UVLF (median of distribution). Errors are 16th and 84th percentile.')
 
 all_tables_latex  = mstar_latex + lum_latex

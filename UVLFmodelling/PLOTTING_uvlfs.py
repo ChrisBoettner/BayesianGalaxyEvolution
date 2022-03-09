@@ -54,7 +54,7 @@ for g in groups:
 # plot modelled lf
 for model in models:
     for z in redshift:
-        mag = lum_to_mag(model.lf.at_z(z)[:,0]*1e+18) # return units back, before converting to moag
+        mag = lum_to_mag(model.lf.at_z(z)[:,0]*1e+18) # switch units back, before converting to mag
         phi = np.log10(model.lf.at_z(z)[:,1])
         phi[phi == phi[-1]] = np.nan # do not plot phi values that correspond to m_h above m_h_max
         ax[z].plot(mag, phi, linestyle=model.linestyle, label = model.label,
@@ -62,7 +62,7 @@ for model in models:
 # fluff
 #fig.supxlabel('log $L_{\\nu}^{UV}/10^{18}$ [ergs s$^{-1}$ Hz$^{-1}$]')
 fig.supxlabel(r'$M_{UV}$')
-fig.supylabel('log $\phi(L_\\nu^{UV})$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)
+fig.supylabel('log $\phi(M_\\nu^{UV})$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()
     if i == 0:

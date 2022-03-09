@@ -32,11 +32,7 @@ def cost_function(params, lf_model):
     IMPORTANT :   We minimize the log of the phi_obs and phi_mod, instead of the
                   values themselves. Otherwise the low-mass end would have much higher
                   constribution due to the larger number density.
-    '''      
-    
-    #if params[0]>2:
-    #    import pdb; pdb.set_trace()
-    
+    '''          
     l_obs   = lf_model.observations[:,0]
     phi_obs = lf_model.observations[:,1]  
     
@@ -45,6 +41,9 @@ def cost_function(params, lf_model):
         return(1e+30) # if outside of bound, return huge value to for cost func
     
     phi_mod = lf_model.function(l_obs, params)
+    
+    if not np.all(np.isfinite(phi_mod)):
+        return(1e+30)
     
     res = np.log10(phi_obs) - np.log10(phi_mod)
     return(res) # otherwise return cost

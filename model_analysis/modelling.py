@@ -383,7 +383,6 @@ def geometric_median(X, eps=1e-8):
 
         if euclidean(y, y1) < eps:
             return y1
-
         y = y1
 
     

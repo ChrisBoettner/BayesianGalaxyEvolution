@@ -53,15 +53,15 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
                                             log_probability, args=(smf_model,),
                                             backend=savefile, pool = pool)
-            sampler.run_mcmc(walker_pos, 30000, progress=True)
+            sampler.run_mcmc(walker_pos, 1000, progress=True)
     if mode == 'loading':
         # load from savefile 
         sampler = savefile
     
     # get autocorrelationtime and discard burn-in of mcmc walk 
-    tau       = np.array(sampler.get_autocorr_time())
-    posterior = sampler.get_chain(discard=5*np.amax(tau).astype(int), flat=True) 
-    #posterior = sampler.get_chain(flat=True)
+    #tau       = np.array(sampler.get_autocorr_time())
+    #posterior = sampler.get_chain(discard=5*np.amax(tau).astype(int), flat=True) 
+    posterior = sampler.get_chain(flat=True)
 
     
     # calculate median of parameter from MCMC walks and value of cost function

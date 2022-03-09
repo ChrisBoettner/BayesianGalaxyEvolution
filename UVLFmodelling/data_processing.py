@@ -16,24 +16,33 @@ def load_data():
     duncan      = np.load('data/Duncan2014UVLF.npz')      
     bouwens     = np.load('data/Bouwens2015UVLF.npz')       
     bouwens2    = np.load('data/Bouwens2021UVLF.npz')
-    oesch       = np.load('data/Oesch2018UVLF.npz')
+    oesch       = np.load('data/Oesch2010UVLF.npz')
     parsa       = np.load('data/Parsa2016UVLF.npz')
     bhatawdekar = np.load('data/Bhatawdekar2019UVLF.npz')
     atek        = np.load('data/Atek2018UVLF.npz')
     livermore   = np.load('data/Livermore2017UVLF.npz')
+    wyder       = np.load('data/Wyder2005UVLF.npz')
+    arnouts     = np.load('data/Arnouts2005UVLF.npz')
+    reddy       = np.load('data/Reddy2009UVLF.npz')
+    oesch2      = np.load('data/Oesch2018UVLF.npz')
     hmfs        = np.load('data/HMF.npz'); hmfs = [hmfs[str(i)] for i in range(20)] 
 
     ## TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
-    madau       = group(madau,       range(0,5) ).plot_parameter('black', 'o', 'Cucciati2012')
-    duncan      = group(duncan,      range(4,8) ).plot_parameter('black', 'v', 'Duncan2014')
-    bouwens     = group(bouwens,     range(4,9) ).plot_parameter('black', 's', 'Bouwens2015')
-    bouwens2    = group(bouwens2,    range(2,11)).plot_parameter('black', '^', 'Bouwens2021')
-    oesch       = group(oesch,       range(1,3) ).plot_parameter('black', 'X', 'Oesch2018')
-    atek        = group(atek,        range(6,7) ).plot_parameter('black', 'o', 'Atek2018')
-    bhatawdekar = group(bhatawdekar, range(6,10)).plot_parameter('black', '<', 'Bhatawdekar2019')
-    parsa       = group(parsa,       range(2,5) ).plot_parameter('black', '>', 'Parsa2016')
-    livermore   = group(livermore,   range(6,9) ).plot_parameter('black', 'H', 'Livermore2017')
-    groups      = [madau, duncan, bouwens, bouwens2, oesch, atek, bhatawdekar, parsa, livermore]
+    madau       = group(madau,       range(0,5)  ).plot_parameter('black', 'o', 'Cucciati2012')
+    duncan      = group(duncan,      range(4,8)  ).plot_parameter('black', 'v', 'Duncan2014')
+    bouwens     = group(bouwens,     range(4,9)  ).plot_parameter('black', 's', 'Bouwens2015')
+    bouwens2    = group(bouwens2,    range(2,11) ).plot_parameter('black', '^', 'Bouwens2021')
+    oesch       = group(oesch,       range(1,3)  ).plot_parameter('black', 'X', 'Oesch2010')
+    atek        = group(atek,        range(6,7)  ).plot_parameter('black', 'o', 'Atek2018')
+    bhatawdekar = group(bhatawdekar, range(6,10) ).plot_parameter('black', '<', 'Bhatawdekar2019')
+    parsa       = group(parsa,       range(2,5)  ).plot_parameter('black', '>', 'Parsa2016')
+    livermore   = group(livermore,   range(6,9)  ).plot_parameter('black', 'H', 'Livermore2017')
+    wyder       = group(wyder,       range(0,1)  ).plot_parameter('black', '+', 'Wyder2005')
+    arnouts     = group(arnouts,     range(0,1)  ).plot_parameter('black', 'd', 'Arnouts2005')
+    reddy       = group(reddy,       range(2,4)  ).plot_parameter('black', 'D', 'Reddy2009')
+    oesch2      = group(oesch2,      range(10,11)).plot_parameter('black', 'x', 'Oesch2018')
+    groups      = [madau, duncan, bouwens, bouwens2, oesch, atek, bhatawdekar, parsa, livermore,
+                   wyder, arnouts, reddy, oesch2]
     
     ## DATA SORTED BY REDSHIFT
     lfs = z_ordered_data(groups)

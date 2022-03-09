@@ -17,7 +17,7 @@ from data_processing import load_data
 
 # coose option
 fitting_method = 'mcmc' 
-mode           = 'temp'  
+mode           = 'loading'  
 
 # load data
 groups, smfs, hmfs = load_data()

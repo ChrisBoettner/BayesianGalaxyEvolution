@@ -147,7 +147,7 @@ class smf_model_class():
         # Change units from 1 solar mass to 10^10 solar masses for numerical stability
         smf[:,0]    = smf[:,0]/base_unit
         hmf[:,0]    = hmf[:,0]/base_unit 
-        m_c = m_c/base_unit
+        m_c         = m_c/base_unit
     
         self.observations   = smf
         self.hmf            = hmf
@@ -228,7 +228,7 @@ class supernova_feedback():
         self.initial_guess = [0.01, 1]
         self.bounds        = [[0, 0], [2, 4]]
     def calculate_log_observable(self, log_m_h, A, alpha):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
@@ -243,13 +243,13 @@ class supernova_feedback():
                                   args    = (A, alpha))
         return(log_m_h)
     def calculate_dlogobservable_dlogmh(self, log_m_h, A, alpha):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
         return(1 - (-alpha*sn)/(1 + sn))
     def calculate_d2logobservable_dlogmh2(self, log_m_h, A, alpha): 
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
@@ -277,7 +277,7 @@ class supernova_blackhole_feedback():
         self.initial_guess = [0.01, 1, 0.3]       
         self.bounds        = [[0, 0, 0], [2, 4, 0.8]]
     def calculate_log_observable(self, log_m_h, A, alpha, beta):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
@@ -293,14 +293,14 @@ class supernova_blackhole_feedback():
                                   args    = (A, alpha, beta))
         return(log_m_h)
     def calculate_dlogobservable_dlogmh(self, log_m_h, A, alpha, beta):
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
         bh = ratio**beta
         return(1 - (-alpha*sn + beta * bh)/(sn + bh))
     def calculate_d2logobservable_dlogmh2(self, log_m_h, A, alpha, beta): 
-        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+        if np.isnan(log_m_h).any() or np.any((log_m_h-np.log10(self.m_c))>18):
             return(np.nan)
         ratio = np.power(10, log_m_h - np.log10(self.m_c))
         sn = ratio**(-alpha)
@@ -337,7 +337,6 @@ def calculate_m_crit(z):
 def invert_function(func, fprime, fprime2, x0_func, y, args):
     '''
     For a function y=f(x), calculate x values for an input set of y values.
-
     '''
     x = []      
     for val in y:

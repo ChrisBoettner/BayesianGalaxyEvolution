@@ -72,33 +72,6 @@ def mcmc_fit(lf_model, prior, prior_name, mode = 'temp'):
     
     return(par, posterior_samp)
 
-def calculate_MAP_estimator(posterior_samp, smf_model, method = 'annealing'):
-    '''
-    Calculate 'best-fit' value of parameter by searching for the global minimum
-    of the posterior distribution (Maximum A Posteriori estimator).
-    '''
-    
-    bounds = list(zip(*smf_model.feedback_model.bounds))
-    posterior = dist_from_hist_nd(smf_model, posterior_samp, bounds)[0]
-    #import pdb; pdb.set_trace()
-    
-    neg_log_prob = lambda params: (log_prior(params, posterior)+\
-                                  log_likelihood(params, smf_model))*(-1) 
-    
-    if method == 'minimize':
-        x0 = np.median(posterior_samp,axis=0) 
-        optimization_res = minimize(neg_log_prob, x0,bounds = bounds)
-    
-    elif method == 'annealing':
-        optimization_res = dual_annealing(neg_log_prob, 
-                                          bounds = bounds,
-                                          maxiter = 5000)
-        
-    par              = optimization_res.x
-    if not optimization_res.success:
-        print('Warning: MAP optimization did not succeed')
-    return(par)
-
 ## MCMC HELP FUNCTIONS
 def log_probability(params, lf_model):
     '''
@@ -296,3 +269,30 @@ def within_bounds(values, lower_bounds, upper_bounds):
     if all(is_within)==True:
         return(True)
     return(False)
+
+def calculate_MAP_estimator(posterior_samp, smf_model, method = 'annealing'):
+    '''
+    Calculate 'best-fit' value of parameter by searching for the global minimum
+    of the posterior distribution (Maximum A Posteriori estimator).
+    '''
+    
+    bounds = list(zip(*smf_model.feedback_model.bounds))
+    posterior = dist_from_hist_nd(smf_model, posterior_samp, bounds)[0]
+    #import pdb; pdb.set_trace()
+    
+    neg_log_prob = lambda params: (log_prior(params, posterior)+\
+                                  log_likelihood(params, smf_model))*(-1) 
+    
+    if method == 'minimize':
+        x0 = np.median(posterior_samp,axis=0) 
+        optimization_res = minimize(neg_log_prob, x0,bounds = bounds)
+    
+    elif method == 'annealing':
+        optimization_res = dual_annealing(neg_log_prob, 
+                                          bounds = bounds,
+                                          maxiter = 5000)
+        
+    par              = optimization_res.x
+    if not optimization_res.success:
+        print('Warning: MAP optimization did not succeed')
+    return(par)
