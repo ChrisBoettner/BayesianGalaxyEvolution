@@ -40,9 +40,9 @@ def calculate_schechter_parameter(model, observable, redshifts, num = int(1e+6),
             if np.any(np.isnan(number_dens_function)):
                 continue
             schechter_params,_   = curve_fit(log_schechter_function, np.log10(observable),
-                                             np.log10(number_dens_function), p0 = [3,11,-2],
+                                             np.log10(number_dens_function), p0 = [0.00003,11,-2],
                                              bounds = [[0,-np.inf,-np.inf],[np.inf,np.inf,np.inf]],
-                                             maxfev = 1000)
+                                             maxfev = 10000)
             schechter_params_at_z.append(schechter_params)
         schechter_params_at_z = np.array(schechter_params_at_z)
         dist.append(schechter_params_at_z)

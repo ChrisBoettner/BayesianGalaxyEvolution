@@ -12,7 +12,7 @@ from astropy.cosmology import Planck18
 
 import leastsq_fitting
 import mcmc_fitting
-import mcmc_fit_test as mcmc_fitting
+#import mcmc_fit_test as mcmc_fitting
 
 ## DATA CONTAINER
 class model_container():
