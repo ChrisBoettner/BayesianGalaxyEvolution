@@ -32,7 +32,6 @@ def calculate_schechter_parameter(model, observable, redshifts, num = int(1e+6),
         redshifts = np.array([redshifts])
     if np.isscalar(observable):
         redshifts = np.array([observable])
-        
     for z in redshifts:
         schechter_params_at_z = []
         for n in range(num):
@@ -139,11 +138,17 @@ class model():
         Calculate the number density function (SMF/LF) for a given observed
         value , redshift and feedback model parameter.
         '''
+        
+        log_observable = np.log10(observable)
+        
         # calculate halo mass from observed value
-        m_h = self.feedback_model.calculate_halo_mass(observable, A, alpha, beta)
+        log_m_h = self.feedback_model.calculate_log_halo_mass(log_observable, A, alpha, beta)
+        m_h     = np.power(10, log_m_h)
+        
+        #import pdb; pdb.set_trace()
         
         hmf_value   = self.hmf.at_z(z)(m_h)
-        model_value = self.feedback_model.calculate_dlogobservable_dlogmh(m_h, A, alpha, beta)
+        model_value = self.feedback_model.calculate_dlogobservable_dlogmh(log_m_h, A, alpha, beta)
         return(hmf_value/model_value)
     
     def get_parameter_sample(self, z, num = 1, beta_assumption = 'zero'):
@@ -206,80 +211,81 @@ class model():
         
         if not np.isfinite(inp):
             return(np.array([np.nan]*num))
-
+        
+        inp = np.log10(inp)
+    
         # randomly draw from parameter distribution at z 
         A, alpha, beta = self.get_parameter_sample(z, num, beta_assumption)
 
         # calculate quantity distribution using model function
         if input_mode == 'halo_mass':
-            quantity_dist  = self.feedback_model.calculate_observable(inp, A, alpha, beta)
+            log_quantity_dist  = self.feedback_model.calculate_log_observable(inp, A, alpha, beta)
         if input_mode == 'observable':
-            quantity_dist  = self.feedback_model.calculate_halo_mass(inp, A, alpha, beta)
+            log_quantity_dist  = self.feedback_model.calculate_log_halo_mass(inp, A, alpha, beta)
+        quantity_dist = np.power(10, log_quantity_dist)
         return(quantity_dist) 
 
 ## PHYSICAL MODELS 
 class feedback_model():
     def __init__(self, m_c = 1e+12):
         self.m_c           = m_c
-    def calculate_observable(self, m_h, A, alpha, beta):
-        if np.isnan(m_h).any() or np.any(m_h<=0):
+    def calculate_log_observable(self, log_m_h, A, alpha, beta):
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
             return(np.nan)
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(A * m_h/(sn + bh))    
-    def calculate_halo_mass(self, observable, A, alpha, beta):
-        if (not np.isscalar(A)) and (not np.isscalar(observable)) and \
-            (len(observable)>1) and (len(A)>1):
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        bh = ratio**beta
+        obs = A * np.power(10, log_m_h)/(sn + bh)
+        return(np.log10(obs))    
+    def calculate_log_halo_mass(self, log_observable, A, alpha, beta):
+        if (not np.isscalar(A)) and (not np.isscalar(log_observable)) and \
+            (len(log_observable)>1) and (len(A)>1):
             raise ValueError('Either observable or parameter must be scalar values and not arrays.')
         if np.isscalar(A):
             A, alpha, beta = np.array([A]), np.array([alpha]), np.array([beta])
         
-        m_halo = []
+        log_m_halo = []
         for i in range(len(A)):
-            m_h = invert_function(func    = self.calculate_observable,
-                                  fprime  = self._first_derivative,
-                                  fprime2 = self._second_derivative,
-                                  x0_func = self._initial_guess, 
-                                  y       = observable,
-                                  args    = (A[i], alpha[i], beta[i]))
-            m_halo.append(m_h)           
-        m_halo = np.array(m_halo)
-        length = np.prod(m_halo.shape)
-        m_halo = m_halo.reshape(length)
-        return(m_halo)
-    def calculate_dlogobservable_dlogmh(self, m_h, A, alpha, beta):
-        # as function of m_h since we actually use inverse of this function
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
+            log_m_h = invert_function(func    = self.calculate_log_observable,
+                                      fprime  = self.calculate_dlogobservable_dlogmh,
+                                      fprime2 = self.calculate_d2logobservable_dlogmh2,
+                                      x0_func = self._initial_guess, 
+                                      y       = log_observable,
+                                      args    = (A[i], alpha[i], beta[i]))
+            log_m_halo.append(log_m_h)           
+        log_m_halo = np.array(log_m_halo)
+        length = np.prod(log_m_halo.shape)
+        log_m_halo = log_m_halo.reshape(length)
+        return(log_m_halo)
+    def calculate_dlogobservable_dlogmh(self, log_m_h, A, alpha, beta):
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+            return(np.nan)
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        bh = ratio**beta
         return(1 - (-alpha*sn + beta * bh)/(sn + bh))
-    def _first_derivative(self, m_h, A, alpha, beta): 
-        # first derivative, just used to calc inverse
-        if np.isnan(m_h).any() or np.any(m_h<=0):
+    def calculate_d2logobservable_dlogmh2(self, log_m_h, A, alpha, beta): 
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
             return(np.nan)
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(A * ((1+alpha)*sn+(1-beta)*bh)/(sn + bh)**2)
-    def _second_derivative(self, m_h, A, alpha, beta): 
-        # second derivative, just used to calc inverse
-        if np.isnan(m_h).any() or np.any(m_h<=0):
-            return(np.nan)
-        x = m_h/self.m_c; a = alpha; b = beta
-        denom = x**(-a) + x**b
-        first_num  = (1+a)*(-a)*x**(-a-1)+(1-b)*b*x**(b-1)
-        second_num = -2*((1+a)* x**(-a)+(1+b)*x**b)*(-a*x**(-a-1)+b*x**(b-1))
-        return(A/self.m_c * (first_num/denom**2 + second_num/denom**3))
-    def _initial_guess(self, observable, A, alpha, beta):
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        bh = ratio**beta
+        denom = (sn + bh)
+        num_one = (alpha**2*sn + beta**2 * bh)
+        num_two =(-alpha*sn + beta * bh)**2
+        return(-np.log(10)*(num_one/denom+num_two/denom**2))
+    def _initial_guess(self, log_observable, A, alpha, beta):
         # guess initial value for inverting function by using high and low mass
         # end approximation
         m_t          = A/2*self.m_c  # turnover mass where dominating feedback changes
         trans_regime = 20            # rough estimate for transient regime where both are important
-        if observable < m_t/trans_regime:
-            x0 = np.power((self.m_c)**alpha/A*observable,1/(1+alpha))
-        elif observable > m_t*trans_regime:
-            x0 = np.power((self.m_c)**(-beta)/A*observable,1/(1-beta))   
+        if np.power(10, log_observable) < m_t/trans_regime:
+            x0 = np.power((self.m_c)**alpha/A*np.power(10, log_observable),1/(1+alpha))
+        elif np.power(10, log_observable) > m_t*trans_regime:
+            x0 = np.power((self.m_c)**(-beta)/A*np.power(10, log_observable),1/(1-beta))   
         else:
-            x0 = observable*2/A
-        return(x0)
+            x0 = np.power(10, log_observable)*2/A
+        return(np.log10(x0))
     
 def log_schechter_function(log_observable, phi_star, log_obs_star, alpha):
     '''
@@ -329,20 +335,19 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
     '''
     if np.isscalar(y):
         y = np.array([y])
-    
     x = []     
     for val in y:
-        def root_func(m,*args):
-            return(func(m,*args)-val)
+        def root_func(x,*args):
+            return(func(x,*args)-val)
         
-        x0_in = x0_func(val, *args) # guess initial value
+        x0 = x0_func(val, *args) # guess initial value
         
         root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, args = args,
-                            method='halley', x0 = x0_in, rtol=1e-6).root
+                            method='halley', x0 = x0, rtol=1e-6).root
         # if Halley's method doesn't work, try Newton
         if np.isnan(root):
                 root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, args = args,
-                                    method='newton', x0 = x0_in, rtol=1e-6).root
+                                    method='newton', x0 = x0, rtol=1e-6).root
         x.append(root)
     x = np.array(x)
     return(x)

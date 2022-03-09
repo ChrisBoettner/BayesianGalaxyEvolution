@@ -194,15 +194,18 @@ class lf_model_class():
         if not leastsq_fitting.within_bounds(params, *self.feedback_model.bounds):
                 return(np.inf) # return inf (or huge value) if outside of bounds
         
-        # calculate halo masses from luminosities using model
-        m_h = self.feedback_model.calculate_m_h(l, *params)
+        log_l = np.log10(l)
+        
+        # calculate halo masses from stellar masses using model
+        log_m_h = self.feedback_model.calculate_log_halo_mass(log_l, *params)
+        m_h     = np.power(10, log_m_h)
         
         # if halo masses in HMFs is exceeded, set to this value
         m_h_max = np.amax(self.hmf[:,0])
         m_h[m_h>m_h_max] = m_h_max
         m_h_min = np.amin(self.hmf[:,0])
         m_h[m_h<m_h_min] = m_h_min
-        return(self.hmf_function(m_h) / self.feedback_model.calculate_dlogl_dlogmh(m_h,*params))
+        return(self.hmf_function(m_h)/self.feedback_model.calculate_dlogobservable_dlogmh(log_m_h,*params))
 
 ## DEFINE THE FEEDBACK MODELS
 def feedback_model(feedback_name, m_c):
@@ -232,13 +235,13 @@ class no_feedback():
         self.m_c           = m_c
         self.initial_guess = [1]
         self.bounds        = [[0], [10]]
-    def calculate_l(self, m_h, A):
-        return(A/2*m_h)
-    def calculate_m_h(self, l, A):
-        return(2*l/A)
-    def calculate_dlogl_dlogmh(self, m_h, A):
-        # as function of m_h since we actually use inverse of this function
+    def calculate_log_observable(self, log_m_h, A):
+        return(np.log10(A/2*np.power(10, log_m_h)))
+    def calculate_log_halo_mass(self, log_observable, A):
+        return(np.log10(2*np.power(10, log_observable)/A))
+    def calculate_dlogobservable_dlogmh(self, log_m_h, A):
         return(1)        
+
 
 class supernova_feedback():
     def __init__(self, feedback_name, m_c):
@@ -246,48 +249,48 @@ class supernova_feedback():
         self.m_c           = m_c      
         self.initial_guess = [0.1, 1]
         self.bounds        = [[0, 0], [10, 4]]
-    def calculate_l(self, m_h, A, alpha):
-        if np.isnan(m_h).any() or np.any(m_h<=0):
+    def calculate_log_observable(self, log_m_h, A, alpha):
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
             return(np.nan)
-        sn = (m_h/self.m_c)**(-alpha)
-        return(A * m_h/(1 + sn))   
-    def calculate_m_h(self, l, A, alpha):        
-        m_h = invert_function(func    = self.calculate_l,
-                              fprime  = self._calculate_dl_dmh,
-                              fprime2 = self._calculate_d2l_dmh2,
-                              x0_func = self._guess_initial_m_h, 
-                              y       = l,
-                              args    = (A, alpha)) 
-        return(m_h)
-    def calculate_dlogl_dlogmh(self, m_h, A, alpha):
-        # as function of m_h since we actually use inverse of this function
-        sn = (m_h/self.m_c)**(-alpha)
-        return(1 + alpha*sn/(1 + sn))
-    def _calculate_dl_dmh(self, m_h, A, alpha): # first derivative, just used to calc inverse
-        if np.isnan(m_h).any() or np.any(m_h<=0):
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        obs = A * np.power(10, log_m_h)/(1 + sn)
+        return(np.log10(obs))    
+    def calculate_log_halo_mass(self, log_observable, A, alpha):
+        log_m_h = invert_function(func    = self.calculate_log_observable,
+                                  fprime  = self.calculate_dlogobservable_dlogmh,
+                                  fprime2 = self.calculate_d2logobservable_dlogmh2,
+                                  x0_func = self._initial_guess, 
+                                  y       = log_observable,
+                                  args    = (A, alpha))
+        return(log_m_h)
+    def calculate_dlogobservable_dlogmh(self, log_m_h, A, alpha):
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
             return(np.nan)
-        sn = (m_h/self.m_c)**(-alpha)
-        return(A * ( 1 + (1+alpha)*sn)/(1+sn)**2)
-    def _calculate_d2l_dmh2(self, m_h, A, alpha): # second derivative, just used to calc inverse
-        if np.isnan(m_h).any() or np.any(m_h<=0):
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        return(1 - (-alpha*sn)/(1 + sn))
+    def calculate_d2logobservable_dlogmh2(self, log_m_h, A, alpha): 
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
             return(np.nan)
-        x = m_h/self.m_c; a = alpha
-        denom = 1 + x**(-a)
-        first_num  = (1+a)
-        second_num = -2*(1+(1+a)*x**(-a))
-        return(A/self.m_c*(-a*x**(-a-1)) * (first_num/denom**2 + second_num/denom**3))
-    def _guess_initial_m_h(self, l, A, alpha):
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        denom = (1 + sn)
+        num_one = alpha**2*sn
+        num_two =(-alpha*sn)**2
+        return(-np.log(10)*(num_one/denom+num_two/denom**2))
+    def _initial_guess(self, log_observable, A, alpha):
         # guess initial value for inverting function by using high and low mass
         # end approximation
-        m_t          = A/2*self.m_c # turnover mass where dominating feedback changes
-        trans_regime = 20           # rough estimate for transient regime where both are important
-        if l < m_t/trans_regime:
-            x0 = np.power((self.m_c)**alpha/A*l,1/(1+alpha))
-        elif l > m_t*trans_regime:
-            x0 = A*self.m_c
+        m_t          = A/2*self.m_c  # turnover mass where dominating feedback changes
+        trans_regime = 20            # rough estimate for transient regime where both are important
+        if np.power(10, log_observable) < m_t/trans_regime:
+            x0 = np.power((self.m_c)**alpha/A*np.power(10, log_observable),1/(1+alpha))
+        elif np.power(10, log_observable) > m_t*trans_regime:
+            x0 = A*self.m_c  
         else:
-            x0 =  l*2/A
-        return(x0)
+            x0 = np.power(10, log_observable)*2/A
+        return(np.log10(x0))
 
 class supernova_blackhole_feedback():
     def __init__(self, feedback_name, m_c):
@@ -295,53 +298,51 @@ class supernova_blackhole_feedback():
         self.m_c           = m_c
         self.initial_guess = [0.1, 1, 0.1]       
         self.bounds        = [[0, 0, 0], [10, 4, 0.8]]
-    def calculate_l(self, m_h, A, alpha, beta):
-        if np.isnan(m_h).any() or np.any(m_h<=0):
+    def calculate_log_observable(self, log_m_h, A, alpha, beta):
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
             return(np.nan)
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(A * m_h/(sn + bh))    
-    def calculate_m_h(self, l, A, alpha, beta):
-        m_h = invert_function(func    = self.calculate_l,
-                              fprime  = self._calculate_dl_dmh,
-                              fprime2 = self._calculate_d2l_dmh2,
-                              x0_func = self._guess_initial_m_h, 
-                              y       = l,
-                              args    = (A, alpha, beta)) 
-        return(m_h)
-    def calculate_dlogl_dlogmh(self, m_h, A, alpha, beta):
-        # as function of m_h since we actually use inverse of this function
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        bh = ratio**beta
+        obs = A * np.power(10, log_m_h)/(sn + bh)
+        return(np.log10(obs))    
+    def calculate_log_halo_mass(self, log_observable, A, alpha, beta):
+        log_m_h = invert_function(func    = self.calculate_log_observable,
+                                  fprime  = self.calculate_dlogobservable_dlogmh,
+                                  fprime2 = self.calculate_d2logobservable_dlogmh2,
+                                  x0_func = self._initial_guess, 
+                                  y       = log_observable,
+                                  args    = (A, alpha, beta))
+        return(log_m_h)
+    def calculate_dlogobservable_dlogmh(self, log_m_h, A, alpha, beta):
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
+            return(np.nan)
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        bh = ratio**beta
         return(1 - (-alpha*sn + beta * bh)/(sn + bh))
-    def _calculate_dl_dmh(self, m_h, A, alpha, beta): 
-        # first derivative, just used to calc inverse
-        if np.isnan(m_h).any() or np.any(m_h<=0):
+    def calculate_d2logobservable_dlogmh2(self, log_m_h, A, alpha, beta): 
+        if np.isnan(log_m_h).any() or np.any(log_m_h<0) or np.any(log_m_h>20):
             return(np.nan)
-        sn = (m_h/self.m_c)**(-alpha)
-        bh = (m_h/self.m_c)**beta
-        return(A * ((1+alpha)*sn+(1-beta)*bh)/(sn + bh)**2)
-    def _calculate_d2l_dmh2(self, m_h, A, alpha, beta): 
-        # second derivative, just used to calc inverse
-        if np.isnan(m_h).any() or np.any(m_h<=0):
-            return(np.nan)
-        x = m_h/self.m_c; a = alpha; b = beta
-        denom = x**(-a) + x**b
-        first_num  = (1+a)*(-a)*x**(-a-1)+(1-b)*b*x**(b-1)
-        second_num = -2*((1+a)* x**(-a)+(1+b)*x**b)*(-a*x**(-a-1)+b*x**(b-1))
-        return(A/self.m_c * (first_num/denom**2 + second_num/denom**3))
-    def _guess_initial_m_h(self, l, A, alpha, beta):
+        ratio = np.power(10, log_m_h - np.log10(self.m_c))
+        sn = ratio**(-alpha)
+        bh = ratio**beta
+        denom = (sn + bh)
+        num_one = (alpha**2*sn + beta**2 * bh)
+        num_two =(-alpha*sn + beta * bh)**2
+        return(-np.log(10)*(num_one/denom+num_two/denom**2))
+    def _initial_guess(self, log_observable, A, alpha, beta):
         # guess initial value for inverting function by using high and low mass
         # end approximation
-        l_t          = A/2*self.m_c  # turnover luminosity where dominating feedback changes
+        m_t          = A/2*self.m_c  # turnover mass where dominating feedback changes
         trans_regime = 20            # rough estimate for transient regime where both are important
-        if l < l_t/trans_regime:
-            x0 = np.power((self.m_c)**alpha/A*l,1/(1+alpha))
-        elif l > l_t*trans_regime:
-            x0 = np.power((self.m_c)**(-beta)/A*l,1/(1-beta))   
+        if np.power(10, log_observable) < m_t/trans_regime:
+            x0 = np.power((self.m_c)**alpha/A*np.power(10, log_observable),1/(1+alpha))
+        elif np.power(10, log_observable) > m_t*trans_regime:
+            x0 = np.power((self.m_c)**(-beta)/A*np.power(10, log_observable),1/(1-beta))   
         else:
-            x0 = l*2/A
-        return(x0)
+            x0 = np.power(10, log_observable)*2/A
+        return(np.log10(x0))
         
 ## HELP FUNCTIONS
 def calculate_m_crit(z):

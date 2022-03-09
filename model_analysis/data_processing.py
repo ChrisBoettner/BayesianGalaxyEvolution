@@ -19,9 +19,14 @@ def load_hmf_functions():
     the data.
     '''
     hmfs = np.load('data/HMF.npz')
-    hmfs = [interp1d(*np.power(10,hmfs[str(i)].T),
-                     bounds_error = False) for i in range(20)] 
-    return(hmfs)
+    hmf_functions = []
+    #import pdb; pdb.set_trace()
+    for i in range(20):
+        h          = np.power(10,hmfs[str(i)])
+        lower_fill = h[0,1]; upper_fill = h[-1,1]
+        hmf_functions.append(interp1d(*h.T, bounds_error = False, 
+                                      fill_value = (lower_fill, upper_fill)))
+    return(hmf_functions)
 
 def load_mcmc_data(quantity_name):
     '''
