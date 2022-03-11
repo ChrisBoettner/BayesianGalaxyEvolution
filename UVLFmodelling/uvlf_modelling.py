@@ -74,7 +74,10 @@ def fit_LF_model(lfs, hmfs, feedback_name,
     # evolve that to redshift 10. then use distribution at 4 again and evolve backwards
     # to z=0
     redshift = [4,5,6,7,8,9,10,3,2,1,0]
-    redshift = range(11) # or maybe don't do that
+    redshift = range(11)
+    print('Switched back to normal redshift order again for testing, if\
+           you want to undo that, remember to also uncomment correspoding parts in\
+            the loop')
     for z in redshift:
         print(z)
 
@@ -101,10 +104,11 @@ def fit_LF_model(lfs, hmfs, feedback_name,
                               
         lf_model.filename  = lf_model.directory + str(lf_model.z) + prior_name
         
-        # create new prior from distribution of previous iteration
-        if z==3: # which is posterior at z=4           
-            posterior_samp  = distribution[0] # which is posterior at z=4
-            bounds          = list(zip(*lf_models[0].feedback_model.bounds)) # get bounds from z=4
+        print('here')
+        # # create new prior from distribution of previous iteration
+        # if z==3: # which is posterior at z=4           
+        #     posterior_samp  = distribution[0] # which is posterior at z=4
+        #     bounds          = list(zip(*lf_models[0].feedback_model.bounds)) # get bounds from z=4
         
         if prior_name == 'uniform':
             prior, bounds = mcmc_fitting.uniform_prior(lf_model, posterior_samp, bounds)
@@ -117,17 +121,17 @@ def fit_LF_model(lfs, hmfs, feedback_name,
         params, mod_lf, posterior_samp = fit_model(lf_model,
                                                    fitting_method, prior, 
                                                    prior_name, mode)
-        
-        if z<=3: # add at beginning
-            parameter.insert(0,params)  
-            modelled_lf.insert(0,mod_lf)
-            distribution.insert(0,posterior_samp)     
-            lf_models.insert(0,lf_model)   
-        else:
-            parameter.append(params)  
-            modelled_lf.append(mod_lf)
-            distribution.append(posterior_samp)     
-            lf_models.append(lf_model)
+        print('and here')
+        # if z<=3: # add at beginning
+        #     parameter.insert(0,params)  
+        #     modelled_lf.insert(0,mod_lf)
+        #     distribution.insert(0,posterior_samp)     
+        #     lf_models.insert(0,lf_model)   
+        # else:
+        parameter.append(params)  
+        modelled_lf.append(mod_lf)
+        distribution.append(posterior_samp)     
+        lf_models.append(lf_model)
         
     print('Remember you change units for L and have to adjust A parameter accordingly')
         
