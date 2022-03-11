@@ -75,8 +75,6 @@ upper_err_mag  = upper_mag  - params_mag
 
 ################## SAVE FOR LATEX TABLE #######################################
 #%%
-print('Also maybe Modes instead of Medians? same for main sequence?')
-
 def format_to_string(parameter, lower_err, upper_err, redshift, columns,
                      magnitude = False):
     '''

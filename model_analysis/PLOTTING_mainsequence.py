@@ -34,7 +34,7 @@ beta = 'zero'
 # define stellar mass space and redshift range
 num_m_star = 100
 m_star     = np.logspace(8,11,num_m_star)
-redshift = [0,2,4,6,8,10]
+redshift = [0,1,2,4,6,8,10]
 # choose sample size that is drawn from distributions
 num_m_h = 200
 num_lum = 1000
