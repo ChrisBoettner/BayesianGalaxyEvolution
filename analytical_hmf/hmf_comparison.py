@@ -14,7 +14,7 @@ from hmf_analytical import hmf_approx
 hmf_log  = np.load('data/HMF.npz'); 
 hmfs = {str(i):np.power(10,hmf_log[str(i)]) for i in range(20)}
 
-z = 19
+z = 12
 mass_range = np.array([1e+1,1e+14])
 
 hmf = hmfs[str(z)]

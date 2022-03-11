@@ -73,7 +73,9 @@ def fit_LF_model(lfs, hmfs, feedback_name,
     # start at z=4 since we have a lot of data there and still use sn + bh model, 
     # evolve that to redshift 10. then use distribution at 4 again and evolve backwards
     # to z=0
-    for z in [4,5,6,7,8,9,10,3,2,1,0]:
+    redshift = [4,5,6,7,8,9,10,3,2,1,0]
+    redshift = range(11) # or maybe don't do that
+    for z in redshift:
         print(z)
 
         lf  = np.copy(lfs[z])

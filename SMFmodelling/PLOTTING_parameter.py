@@ -87,11 +87,11 @@ for z in redshift:
     for i in range(parameter_draw.shape[1]):
         x = np.repeat(z,draw_num)+np.random.normal(loc = 0, scale = 0.03, size=draw_num)
         
-        ax[i].scatter(x, parameter_draw[:,i], c=color, s = 0.1)
+        ax[i].scatter(x, parameter_draw[:,i], c=color, s = 0.1, cmap = 'Oranges')
         
         #ax[i].set_xscale('log')
         ax[0].set_yscale('log')
-        ax[i].set_xticks(range(0,11)); ax[2].set_xticklabels(range(0,11))
+        ax[i].set_xticks(redshift); ax[2].set_xticklabels(redshift)
         #ax[i].minorticks_on()
 
 # second axis for redshift

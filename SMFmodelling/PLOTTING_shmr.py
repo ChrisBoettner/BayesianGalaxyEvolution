@@ -70,10 +70,10 @@ for z in redshift:
     for m_h in m_halo:
          #import pdb; pdb.set_trace()
          if model.feedback_name[z] == 'both':
-             m_star = model.model.at_z(z).feedback_model.calculate_m_star(m_h, A, alpha, beta)
+             m_star = model.model.at_z(z).feedback_model.calculate_log_observable(np.log10(m_h), A, alpha, beta)
          if model.feedback_name[z] == 'sn':
-             m_star = model.model.at_z(z).feedback_model.calculate_m_star(m_h, A, alpha)
-        
+             m_star = model.model.at_z(z).feedback_model.calculate_log_observable(np.log10(m_h), A, alpha)
+         m_star = np.power(10,m_star)
          median.append(np.percentile(m_star, 50))
          lower.append( np.percentile(m_star, 16))
          upper.append( np.percentile(m_star, 84))        

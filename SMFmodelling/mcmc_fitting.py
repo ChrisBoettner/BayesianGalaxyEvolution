@@ -56,7 +56,7 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
                                             log_probability, args=(smf_model,),
                                             backend=savefile, pool = pool)
-            sampler.run_mcmc(walker_pos, 50000, progress=True)
+            sampler.run_mcmc(walker_pos, 100000, progress=False)
     if mode == 'loading':
         # load from savefile 
         sampler = savefile
