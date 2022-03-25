@@ -51,10 +51,10 @@ redshift = np.arange(0,11)
 fig, ax = plt.subplots(3, 11, sharex ='row', sharey = 'row')
 ax[0,0].set_ylabel('$A/10^{18}$\n[ergs s$^{-1}$ Hz$^{-1}$ $M_\odot^{-1}$]',
                    multialignment='center')
-ax[1,0].set_ylabel(r'$\alpha$')
-ax[2,0].set_ylabel(r'$\beta$')
+ax[1,0].set_ylabel(r'$\gamma$')
+ax[2,0].set_ylabel(r'$\delta$')
 fig.supxlabel('Parameter Value')
-fig.supylabel('(Conditional) Probability Density', x = 0.01)
+fig.supylabel('(Marginal) Probability Density', x = 0.01)
 for model in models:
     for z in redshift:
         #if (model.model.at_z(z).feedback_model.name == 'both') and (z>4):

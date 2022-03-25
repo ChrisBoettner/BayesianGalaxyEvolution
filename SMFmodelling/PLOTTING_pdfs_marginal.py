@@ -50,8 +50,8 @@ redshift = np.arange(0,11)
 ## PDFs        
 fig, ax = plt.subplots(3, 11, sharex ='row', sharey = 'row')
 ax[0,0].set_ylabel('$A$')
-ax[1,0].set_ylabel(r'$\alpha$')
-ax[2,0].set_ylabel(r'$\beta$')
+ax[1,0].set_ylabel(r'$\gamma$')
+ax[2,0].set_ylabel(r'$\delta$')
 fig.supxlabel('Parameter Value')
 fig.supylabel('(Marginal) Probability Density', x = 0.01)
 for model in models:
@@ -66,7 +66,7 @@ for model in models:
 for a in ax.flatten():
     a.get_yaxis().set_ticks([])
 for i, a in enumerate(ax[0,:]):
-    a.set_title(r'$z=$ ' + str(i+1))
+    a.set_title(r'$z=$ ' + str(i))
  
 ax[0,0].set_xlim(0,0.4)
 ax[0,0].set_xticks([0,0.1,0.2,0.3]); ax[0,0].set_xticklabels(['0','0.1','0.2','0.3'])

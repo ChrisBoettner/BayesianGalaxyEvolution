@@ -46,8 +46,8 @@ redshift = np.arange(0,11)
 ## OVERVIEW      
 fig, ax = plt.subplots(3,1, sharex = True)
 ax[0].set_ylabel(r'$A$')
-ax[1].set_ylabel(r'$\alpha$')
-ax[2].set_ylabel(r'$\beta$')
+ax[1].set_ylabel(r'$\gamma$')
+ax[2].set_ylabel(r'$\delta$')
 ax[2].set_xlabel(r'Redshift $z$')
     
 # plot 'best-fit' parameter
