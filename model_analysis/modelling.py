@@ -7,8 +7,9 @@ Created on Tue Feb  8 11:49:01 2022
 """
 
 import numpy as np
-from scipy.optimize import root_scalar, curve_fit
+from scipy.optimize import root_scalar, curve_fit, dual_annealing
 from scipy.spatial.distance import cdist, euclidean
+from scipy.stats import gaussian_kde
 
 from data_processing import load_mcmc_data, load_hmf_functions
 
@@ -32,22 +33,32 @@ def calculate_schechter_parameter(model, observable, redshifts, num = int(1e+6),
         redshifts = np.array([redshifts])
     if np.isscalar(observable):
         redshifts = np.array([observable])
+        
     for z in redshifts:
         schechter_params_at_z = []
         for n in range(num):
+            # create model function
             A, alpha, beta       = model.get_parameter_sample(z)
             number_dens_function = model.number_density_function(observable, z, A, alpha, beta)
             if np.any(np.isnan(number_dens_function)):
                 continue
-            schechter_params,_   = curve_fit(log_schechter_function, np.log10(observable),
-                                             np.log10(number_dens_function), p0 = [0.00003,11,-2],
+            # remove tail end of model function where values are repeated bc HMF ends
+            ndf = np.copy(number_dens_function[0])
+            idx = np.argwhere(np.around(ndf/ndf[-1],4) == 1)[0][0] # index of first occurence of repeated value
+            ndf = ndf[:idx]
+            q   = observable[:idx] # cut input variable to same length for fitting
+            
+            # fit schechter function
+            schechter_params,_   = curve_fit(log_schechter_function, np.log10(q),
+                                             np.log10(ndf), p0 = [0.00003,11,-2],
                                              bounds = [[0,-np.inf,-np.inf],[np.inf,np.inf,np.inf]],
                                              maxfev = 10000)
             schechter_params_at_z.append(schechter_params)
+            
         schechter_params_at_z = np.array(schechter_params_at_z)
         dist.append(schechter_params_at_z)
         parameter.append(  np.percentile(schechter_params_at_z, 50, axis=0))  
-        #parameter.append(  geometric_median(schechter_params_at_z))
+        #parameter.append( geometric_median(schechter_params_at_z))
         lower_error.append(np.percentile(schechter_params_at_z, 16, axis=0))
         upper_error.append(np.percentile(schechter_params_at_z, 84, axis=0))
     return(np.array(parameter), np.array(lower_error), np.array(upper_error), dist)        
@@ -136,20 +147,26 @@ class model():
     def number_density_function(self, observable, z, A, alpha, beta):
         '''
         Calculate the number density function (SMF/LF) for a given observed
-        value , redshift and feedback model parameter.
+        value, redshift and feedback model parameter. Can take array of feedback
+        parameter samples (but not redshift).
         '''
+        
+        if np.isscalar(A):
+            A = np.array([A]); alpha = np.array([alpha]); beta = np.array([beta])
         
         log_observable = np.log10(observable)
         
-        # calculate halo mass from observed value
-        log_m_h = self.feedback_model.calculate_log_halo_mass(log_observable, A, alpha, beta)
-        m_h     = np.power(10, log_m_h)
-        
-        #import pdb; pdb.set_trace()
-        
-        hmf_value   = self.hmf.at_z(z)(m_h)
-        model_value = self.feedback_model.calculate_dlogobservable_dlogmh(log_m_h, A, alpha, beta)
-        return(hmf_value/model_value)
+        number_density_func = []
+        for i in range(len(A)):
+            # calculate halo mass from observed value
+            log_m_h = self.feedback_model.calculate_log_halo_mass(log_observable, A[i], alpha[i], beta[i])
+            m_h     = np.power(10, log_m_h)
+            
+            hmf_value   = self.hmf.at_z(z)(m_h)
+            model_value = self.feedback_model.calculate_dlogobservable_dlogmh(log_m_h, A[i], alpha[i], beta[i])
+            
+            number_density_func.append(hmf_value/model_value)
+        return(number_density_func)
     
     def get_parameter_sample(self, z, num = 1, beta_assumption = 'zero'):
         '''
@@ -386,3 +403,15 @@ def geometric_median(X, eps=1e-8):
         y = y1
 
     
+def find_mode(dist, lower_bound, upper_bound):
+    '''
+    Find Mode of distribution by approximating function using a Gaussian kernal
+    denisity estimate and then minimizing that function using dual annealing.
+    '''
+    median = np.median(dist,axis=0)
+    mode = []
+    dist_func     = gaussian_kde(dist.T)
+    dist_func_neg = lambda x: (-1)*dist_func(x) # negative, since we search for minimum
+    bounds = list(zip(lower_bound,upper_bound))
+    mode = dual_annealing(dist_func_neg, bounds, x0 = median).x
+    return(mode)

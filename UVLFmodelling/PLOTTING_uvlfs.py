@@ -61,8 +61,8 @@ for model in models:
                    color = model.color)      
 # fluff
 #fig.supxlabel('log $L_{\\nu}^{UV}/10^{18}$ [ergs s$^{-1}$ Hz$^{-1}$]')
-fig.supxlabel(r'$M_{UV}$')
-fig.supylabel('log $\phi(M_\\nu^{UV})$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)
+fig.supxlabel(r'$\mathcal{M}_{UV}$')
+fig.supylabel('log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)
 for i, a in enumerate(ax):
     a.minorticks_on()
     if i == 0:

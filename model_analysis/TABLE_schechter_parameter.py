@@ -7,10 +7,8 @@ Created on Fri Mar  4 15:27:02 2022
 """
 import numpy as np
 import pandas as pd
-from scipy.stats import gaussian_kde
-from scipy.optimize import minimize_scalar,dual_annealing
 
-from modelling import model, calculate_schechter_parameter, lum_to_mag
+from modelling import model, calculate_schechter_parameter, lum_to_mag, find_mode
 
 ################## LOAD MODELS ################################################
 #%%
@@ -25,7 +23,7 @@ print('Loading done')
 redshift = range(11)
 
 # SMF Schechter parameters
-num = 100
+num = 500
 m_star   = np.logspace(6,12,100)
 params_m, lower_m, upper_m, dist_m = calculate_schechter_parameter(mstar_model, m_star,
                                                                    redshift, num = num)
@@ -34,30 +32,14 @@ lum   = np.logspace(24,30,100)
 params_l, lower_l, upper_l, dist_l = calculate_schechter_parameter(lum_model, lum,
                                                                    redshift, num = num)
 
-# # calculate mode instead of median since that is a better 'best fit' value
-# def find_mode(dist, lower_bound, upper_bound, median):
-#     '''
-#     Find Mode of distribution by approximating function using a Gaussian kernal
-#     denisity estimate and then minimizing that function using dual annealing.
-#     Use 16th and 84th percentile as proper bounds for minimization
-#     '''
-#     mode = []
-#     for i in range(len(dist)):
-#         d_func     = gaussian_kde(dist[i].T)
-#         d_func_neg = lambda x: (-1)*d_func(x) # negative, since we search for minimum
-#         bounds = list(zip(lower_bound[i],upper_bound[i]))
-#        # if i ==10:
-#        #     import pdb; pdb.set_trace()
-#         mode.append(dual_annealing(d_func_neg,bounds, x0 = median[i]).x)
-#     return(np.array(mode))
-
-# # change params from median to mode, use 95 percentile as bounds
+# calculate mode instead of median since that is a better 'best fit' value
+# change params from median to mode, use 95 percentile as bounds
 # bounds_lower_m = [np.percentile(d,  2.5, axis = 0) for d in dist_m]
 # bounds_upper_m = [np.percentile(d, 97.5, axis = 0) for d in dist_m]
-# params_m = find_mode(dist_m, bounds_lower_m, bounds_upper_m, params_m) 
+# params_m       = np.array([find_mode(dist_m[i], bounds_lower_m[i], bounds_upper_m[i]) for i in range(len(dist_m))]) 
 # bounds_lower_l = [np.percentile(d,  2.5, axis = 0) for d in dist_l]
 # bounds_upper_l = [np.percentile(d, 97.5, axis = 0) for d in dist_l]
-# params_l = find_mode(dist_l, bounds_lower_l, bounds_upper_l, params_l)
+# params_l       = np.array([find_mode(dist_l[i], bounds_lower_l[i], bounds_upper_l[i]) for i in range(len(dist_l))])
 
 # for UVLF, turn L* to M^UV_* since this is the more commonly cited value
 params_mag = np.copy(params_l)
@@ -75,8 +57,7 @@ upper_err_mag  = upper_mag  - params_mag
 
 ################## SAVE FOR LATEX TABLE #######################################
 #%%
-def format_to_string(parameter, lower_err, upper_err, redshift, columns,
-                     magnitude = False):
+def format_to_string(parameter, lower_err, upper_err, redshift, columns):
     '''
     Creates an array of strings with all the parameters, that's already formatted
     to correctly display parameter values and errors.
@@ -123,8 +104,7 @@ def format_to_string(parameter, lower_err, upper_err, redshift, columns,
     formatted_DataFrame.columns = columns
     return(formatted_DataFrame)      
 
-def format_to_string_v2(parameter, lower_err, upper_err, redshift, columns,
-                     magnitude = False):
+def format_to_string_v2(parameter, lower_err, upper_err, redshift, columns):
     '''
     Alternative version: Just gives ranges instead of values    
     '''
@@ -178,7 +158,7 @@ def format_to_string_v2(parameter, lower_err, upper_err, redshift, columns,
 header_m = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]', r'$\log M_*$ [$M_\odot$]',
             r'$\alpha$']
 header_l = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
-            r'$M^\mathrm{UV}_{*}$ (mag)', r'$\alpha$']
+            r'$\mathcal{M}^\mathrm{UV}_{*}$ (mag)', r'$\alpha$']
 #header_l = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
 #            r'$\log L_*$ [ergs s${^-1}$ Hz$^{-1}$]', r'$\alpha$']
 

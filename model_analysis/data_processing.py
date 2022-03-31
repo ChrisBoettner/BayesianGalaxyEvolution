@@ -41,7 +41,8 @@ def load_mcmc_data(quantity_name):
     if os.path.isdir(save_path): # if path exists use this one (cluster structure)
         pass 
     else: # else use path for home computer
-        save_path = '/home/chris/Desktop/mcmc_runs/' + load_dict[quantity_name] + '/changing/'  
+        print('NEED TO correct data path!! (changed for BOUWENS STUFF)')
+        save_path = '/home/chris/Desktop/mcmc_runs_real/' + load_dict[quantity_name] + '/changing/'  
 
     # pre-calculated geometric medians of distributions
     parameter = np.load('data/' + load_dict[quantity_name] + '_changing_medians.npy', allow_pickle=True) 
