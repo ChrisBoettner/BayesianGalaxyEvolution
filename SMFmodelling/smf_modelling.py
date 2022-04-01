@@ -10,6 +10,8 @@ from scipy.interpolate import interp1d
 from scipy.optimize import root_scalar
 from astropy.cosmology import Planck18
 
+import os
+
 import leastsq_fitting
 import mcmc_fitting
 #import mcmc_fit_test as mcmc_fitting
@@ -107,7 +109,7 @@ def fit_SMF_model(smfs, hmfs, feedback_name,
         modelled_smf.append(mod_smf)
         distribution.append(posterior_samp)     
         smf_models.append(smf_model)
-        
+            
     return(parameter, modelled_smf, distribution, smf_models)
 
 def fit_model(smf_model, fitting_method, prior, prior_name, mode):
@@ -355,3 +357,15 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
         x.append(root)
     x = np.array(x)
     return(x)
+
+def save_parameter(model, redshift, feedback_name, prior_name):
+        parameter = np.array(model.parameter.data, dtype = 'object')
+        # use correct file path depending on system
+        save_path = '/data/p305250/SMF/mcmc_runs/' + feedback_name +'/'
+        if os.path.isdir(save_path): # if path exists use this one (cluster structure)
+            pass 
+        else: # else use path for home computer
+            save_path = '/home/chris/Desktop/mcmc_runs/SMF/' + feedback_name +'/'            
+        filename = save_path + feedback_name + '_parameter_' + prior_name + '.npy'
+        np.save(filename, parameter)
+        return

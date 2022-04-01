@@ -22,7 +22,7 @@ mode           = 'loading'
 # load data
 groups, smfs, hmfs = load_data()
 
-prior_model = 'uniform'
+prior_model = 'full'
 
 # load model
 if prior_model == 'uniform':

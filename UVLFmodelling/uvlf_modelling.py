@@ -10,6 +10,8 @@ from scipy.interpolate import interp1d
 from scipy.optimize import root_scalar
 from astropy.cosmology import Planck18
 
+import os
+
 import leastsq_fitting
 import mcmc_fitting
 #import mcmc_fit_test as mcmc_fitting
@@ -383,3 +385,15 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
         x.append(root)
     x = np.array(x)
     return(x)
+
+def save_parameter(model, redshift, feedback_name, prior_name):
+        parameter = np.array(model.parameter.data, dtype = 'object')
+        # use correct file path depending on system
+        save_path = '/data/p305250/UVLF/mcmc_runs/' + feedback_name +'/'
+        if os.path.isdir(save_path): # if path exists use this one (cluster structure)
+            pass 
+        else: # else use path for home computer
+            save_path = '/home/chris/Desktop/mcmc_runs/UVLF/' + feedback_name +'/'            
+        filename = save_path + feedback_name + '_parameter_' + prior_name + '.npy'
+        np.save(filename, parameter)
+        return

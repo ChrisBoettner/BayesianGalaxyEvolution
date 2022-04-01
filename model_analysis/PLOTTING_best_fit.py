@@ -21,7 +21,7 @@ from data.data_processing_uvlf import load_data as load_data_uvlf
 
 ################## LOAD DATA AND MODEL ########################################
 #%%
-quantity_name = 'mstar'
+quantity_name = 'lum'
 
 mod = model(quantity_name)
 
@@ -31,6 +31,7 @@ if quantity_name == 'lum':
     groups, data, _ = load_data_uvlf() 
 
 log_data = [np.log10(d) for d in data]
+log_data = [l[l[:,1]>-6] for l in log_data] #remove datapoints that have number density of <10^-6
 
 redshift = range(11)
 if quantity_name == 'mstar':
@@ -39,11 +40,10 @@ if quantity_name == 'lum':
     quantity   = np.logspace(24,30,100)
 ################## CALCULATE BEST FITS ########################################
 #%%
-# Calculate best fit model function
+# Calculate best fit model function (with successive prior)
 best_fit_model = []
 for z in redshift:
-    dist               = mod.distribution.at_z(z)
-    best_model_params  = find_mode(dist[::1000], np.percentile(dist,  5, axis = 0), np.percentile(dist,  95, axis = 0)) 
+    best_model_params = mod.parameter.at_z(z)
     if len(best_model_params) == 2: # beta = 0, if beta not in model
        best_model_params =  np.append(best_model_params,0)
     best_fit_model.append(mod.number_density_function(quantity, z, *best_model_params)[0])
@@ -51,8 +51,7 @@ for z in redshift:
 # Calculate best fit Schechter parameter from data directly
 best_fit_schechter_data = []
 for z in redshift:
-    inp = log_data[z][log_data[z][:,1]>-6] #remove datapoints that have number density of <10^-6
-    schechter_params,_ = curve_fit(log_schechter_function, inp[:,0], inp[:,1],
+    schechter_params,_ = curve_fit(log_schechter_function, log_data[z][:,0], log_data[z][:,1],
                                    maxfev = int(1e+5)) 
     best_fit_schechter_data.append(log_schechter_function(np.log10(quantity), *schechter_params))
 
@@ -67,27 +66,17 @@ for z in redshift:
     schechter_params,_ = curve_fit(log_schechter_function, np.log10(q), np.log10(ndf),
                                    maxfev = int(1e+5)) 
     best_fit_schechter_model.append(log_schechter_function(np.log10(quantity), *schechter_params))
-    
 
-################## CALCULATE SAMPLES ##########################################
-#%%
-# num = 100
-# if quantity_name == 'mstar':
-#     quantity   = np.logspace(6,12,100)
-# if quantity_name == 'lum':
-#     quantity   = np.logspace(24,30,100)
- 
-# # calculate number density functions obtained from model directly
-# number_dens_func = []
-# for z in redshift:
-#     A, alpha, beta       = mod.get_parameter_sample(z, num = num)
-#     number_dens_func.append(mod.number_density_function(quantity, z, A, alpha, beta))
+
+### make residuals to data Schechter fit
+
+
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
 
-linewidth = 0.2
-alpha     = 0.4
+linewidth = 3
+alpha     = 0.9
 color     = 'grey'
 
 fig, ax = plt.subplots(4,3, sharey = 'row', sharex=True); ax = ax.flatten()
@@ -98,19 +87,16 @@ if quantity_name == 'mstar':
     fig.supylabel('log $\phi(M_*)$ [cMpc$^{-3}$ dex$^{-1}$]', x=0.01)                 
     # plot Schechter or model functions
     for z in redshift:
-            ax[z].plot(np.log10(quantity), np.log10(best_fit_model[z]), 
-                       linewidth = 20*linewidth, alpha = 1, color = color,
-                       label = 'Best Fit Model Function') 
-            ax[z].plot(np.log10(quantity), best_fit_schechter_model[z],
-                        linewidth = 20*linewidth, alpha = 1, color = 'tomato',
-                        label = 'Best Fit Schechter Function To Model')
             ax[z].plot(np.log10(quantity), best_fit_schechter_data[z],
-                        linewidth = 20*linewidth, alpha = 1, color = 'tomato', 
+                        alpha = alpha, color = color, 
                         linestyle = '--',
-                        label = 'Best Fit Schechter Function To Data')           
-            # for i in range(len(number_dens_func[z])):
-            #     ax[z].plot(np.log10(quantity), np.log10(number_dens_func[z][i]),
-            #                 linewidth = linewidth, alpha = alpha, color = color)
+                        label = 'Best Fit Schechter Function To Data')  
+            ax[z].plot(np.log10(quantity), best_fit_schechter_model[z],
+                       alpha = alpha, color = color,
+                        label = 'Best Fit Schechter Function To Model') 
+            ax[z].plot(np.log10(quantity), np.log10(best_fit_model[z]), 
+                       alpha = alpha, color = 'C2',
+                       label = 'Best Fit Model Function') 
     # plot group data
     for g in groups:
         for z in g.redshift:
@@ -128,19 +114,16 @@ if quantity_name == 'lum':
     # plot Schechter functions
     mag = lum_to_mag(quantity)
     for z in redshift:
-            ax[z].plot(mag, np.log10(best_fit_model[z]), 
-                       linewidth = 20*linewidth, alpha = 1, color = color,
-                       label = 'Best Fit Model Function') 
-            ax[z].plot(mag, best_fit_schechter_model[z],
-                        linewidth = 20*linewidth, alpha = 1, color = 'tomato',
-                        label = 'Best Fit Schechter Function To Model')
             ax[z].plot(mag, best_fit_schechter_data[z],
-                        linewidth = 20*linewidth, alpha = 1, color = 'tomato', 
+                       alpha = alpha, color = color, 
                         linestyle = '--',
-                        label = 'Best Fit Schechter Function To Data')           
-            # for i in range(len(number_dens_func[z])):
-            #     ax[z].plot(np.log10(quantity), np.log10(number_dens_func[z][i]),
-            #                 linewidth = linewidth, alpha = alpha, color = color)
+                        label = 'Best Fit Schechter Function To Data') 
+            ax[z].plot(mag, best_fit_schechter_model[z],
+                        alpha = alpha, color = color,
+                        label = 'Best Fit Schechter Function To Model')
+            ax[z].plot(mag, np.log10(best_fit_model[z]), 
+                       alpha = alpha, color = 'C2',
+                       label = 'Best Fit Model Function') 
     # plot group data
     for g in groups:
         for z in g.redshift:
@@ -172,14 +155,10 @@ for a in ax:
     handles += handles_
     labels += labels_
 by_label = dict(zip(labels, handles))
-ax[-1].legend(list(by_label.values()), list(by_label.keys()), frameon=False,
-              prop={'size': 12}, loc = 4, ncol = 2)
-
-
-print('Add model sample in background')
-print('Add cost function values and see which one is best')
-print('Check if fit to model leads to systematic overestimation of Schechter parameter')
-
+ax[0].legend( list(by_label.values())[:3][::-1], list(by_label.keys())[:3][::-1],
+             frameon=False, prop={'size': 12})
+ax[-1].legend(list(by_label.values())[3:], list(by_label.keys())[3:],
+              frameon=False, prop={'size': 12}, loc = 4, ncol = 2)
 
 # TEST INDIVIDUALLY
 # num = 1

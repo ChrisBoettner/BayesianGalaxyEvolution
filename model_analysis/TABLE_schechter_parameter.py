@@ -49,6 +49,11 @@ params_mag[:,1] = lum_to_mag(10**params_l[:,1])
 lower_mag[:,1]  = lum_to_mag(10**upper_l[:,1]) # upper and lower bound switch in magnitude system
 upper_mag[:,1]  = lum_to_mag(10**lower_l[:,1]) # upper and lower bound switch in magnitude system
 
+# undo log for normalisation
+params_m[:,0] = 10**params_m[:,0]; lower_m[:,0] = 10**lower_m[:,0]; upper_m[:,0] = 10**upper_m[:,0]
+params_l[:,0] = 10**params_l[:,0]; lower_l[:,0] = 10**lower_l[:,0]; upper_l[:,0] = 10**upper_l[:,0]
+params_mag[:,0] = 10**params_mag[:,0]; lower_mag[:,0] = 10**lower_mag[:,0]; upper_mag[:,0] = 10**upper_mag[:,0]
+
 # calculate errors
 lower_err_m    = params_m   - lower_m
 upper_err_m    = upper_m    - params_m

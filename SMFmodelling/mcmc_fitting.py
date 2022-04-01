@@ -47,7 +47,6 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     # see https://emcee.readthedocs.io/en/stable/tutorials/parallel/
     global prior_global
     prior_global = prior
-
     if (mode == 'saving') or (mode=='temp'):
         if mode == 'saving' and os.path.exists(filename):
             os.remove(filename) # clear file before start writing to it
@@ -66,9 +65,10 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     posterior_samp = sampler.get_chain(discard=5*np.amax(tau).astype(int), flat=True)
     
     # calculate best fit parameter
-    par  = np.median(posterior_samp,axis=0) # using medians of marginalized distribution
+    #par  = np.median(posterior_samp,axis=0) # using medians of marginalized distribution
     #par  = geometric_median(posterior_samp) # using geometric median of full distribution
-    #par  = calculate_MAP_estimator(posterior_samp, smf_model, method = 'brute')
+    par  = calculate_MAP_estimator(prior_global, smf_model, method = 'annealing',
+                                   x0 = np.median(posterior_samp,axis = 0))
     
     return(par, posterior_samp)
     
@@ -128,15 +128,18 @@ def log_prior(params, prior_hist):
     '''
     hists = prior_hist[0]
     edges = prior_hist[1]
-    #import pdb; pdb.set_trace()
+    
     # find indices for bins in histogram that the params belong to
     bin_widths = [e[1]-e[0] for e in edges]
     ind = np.array([int(params[i]/bin_widths[i]) for i in range(len(params))])
-    ind[ind < 0] = 0; ind[ind > 99] = 99;
+    ind[ind < 0]     = 0 
+    ind_upper_lim    = (len(edges[0])-2) # highest ind in hist
+    ind[ind > ind_upper_lim] = ind_upper_lim
     
     # if probabilities are assumed independent: get probability for each param
     # from corresponding histogram and then multiply all together to get total
     # probability
+    #import pdb; pdb.set_trace()
     if len(hists)>1:
         indiv_prob = [hists[i][ind[i]] for i in range(len(params))]
         total_prob = np.prod(indiv_prob)
@@ -271,27 +274,30 @@ def within_bounds(values, lower_bounds, upper_bounds):
         return(True)
     return(False)
 
-def calculate_MAP_estimator(posterior_samp, smf_model, method = 'annealing'):
+def calculate_MAP_estimator(prior, smf_model, method = 'annealing', x0 = None):
     '''
     Calculate 'best-fit' value of parameter by searching for the global minimum
     of the posterior distribution (Maximum A Posteriori estimator).
     '''
     
     bounds = list(zip(*smf_model.feedback_model.bounds))
-    posterior = dist_from_hist_nd(smf_model, posterior_samp, bounds)[0]
-    #import pdb; pdb.set_trace()
     
-    neg_log_prob = lambda params: (log_prior(params, posterior)+\
-                                  log_likelihood(params, smf_model))*(-1) 
+    def neg_log_prob(params):
+        val = (log_prior(params, prior) + log_likelihood(params, smf_model))*(-1) 
+        if not np.isfinite(val): # huge val, but not infite so that optimization works
+            val = 1e+30 
+        return(val)
+
     
     if method == 'minimize':
-        x0 = np.median(posterior_samp,axis=0) 
-        optimization_res = minimize(neg_log_prob, x0,bounds = bounds)
+        if x0 is None:
+            raise ValueError('x0 must be specificed for \'minimize\' method.')
+        optimization_res = minimize(neg_log_prob, x0 = x0, bounds = bounds)
     
     elif method == 'annealing':
         optimization_res = dual_annealing(neg_log_prob, 
                                           bounds = bounds,
-                                          maxiter = 5000)
+                                          maxiter = 100)
     elif method == 'brute':
         optimization_res = brute(neg_log_prob, 
                                  ranges = bounds,

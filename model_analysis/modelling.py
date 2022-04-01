@@ -50,8 +50,8 @@ def calculate_schechter_parameter(model, observable, redshifts, num = int(1e+6),
             
             # fit schechter function
             schechter_params,_   = curve_fit(log_schechter_function, np.log10(q),
-                                             np.log10(ndf), p0 = [0.00003,11,-2],
-                                             bounds = [[0,-np.inf,-np.inf],[np.inf,np.inf,np.inf]],
+                                             np.log10(ndf), p0 = [-3,11,-2],
+                                             bounds = [[-np.inf,-np.inf,-np.inf],[0,np.inf,np.inf]],
                                              maxfev = 10000)
             schechter_params_at_z.append(schechter_params)
             
@@ -134,9 +134,9 @@ class model():
         self.hmf             = dataset(load_hmf_functions())
         
         parameter, distribution = load_mcmc_data(observable_name)
-        #self.parameter     = dataset(parameter)
-        self.parameter      = DeprecationWarning('Use of parameter estimate not advised,\
-                                                  use distributions instead')
+        self.parameter     = dataset(parameter)
+        #self.parameter      = DeprecationWarning('Use of parameter estimate not advised,\
+        #                                          use distributions instead')
         self.distribution   = dataset(distribution)   
         
         self.feedback_model = feedback_model(m_c) 
@@ -304,12 +304,12 @@ class feedback_model():
             x0 = np.power(10, log_observable)*2/A
         return(np.log10(x0))
     
-def log_schechter_function(log_observable, phi_star, log_obs_star, alpha):
+def log_schechter_function(log_observable, log_phi_star, log_obs_star, alpha):
     '''
     Calculate the value of Schechter function log10(d(n)/dlog10(obs)) for an
     observable (in base10 log), using Schechter parameters.
     '''
-    norm        = np.log10(np.log(10)*phi_star)
+    norm        = np.log10(np.log(10)) + log_phi_star
     power_law   = (alpha+1)*(log_observable-log_obs_star)
     exponential = - np.power(10,log_observable-log_obs_star)/np.log(10)
     return(norm + power_law + exponential)
