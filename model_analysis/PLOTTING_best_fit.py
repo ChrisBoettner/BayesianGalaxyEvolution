@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 
-from modelling import model, log_schechter_function, lum_to_mag, find_mode
+from modelling import model, log_schechter_function, lum_to_mag
 
 from data.data_processing_smf  import load_data as load_data_smf
 from data.data_processing_uvlf import load_data as load_data_uvlf
@@ -53,8 +53,10 @@ best_fit_schechter_data = []
 for z in redshift:
     schechter_params,_ = curve_fit(log_schechter_function, log_data[z][:,0], log_data[z][:,1],
                                    maxfev = int(1e+5)) 
+    print(schechter_params)
     best_fit_schechter_data.append(log_schechter_function(np.log10(quantity), *schechter_params))
 
+print()
 # Calculate best fit Schechter parameter to model function 
 best_fit_schechter_model = []
 for z in redshift:
@@ -65,10 +67,8 @@ for z in redshift:
     q   = quantity[:idx] # cut input variable to same length for fitting
     schechter_params,_ = curve_fit(log_schechter_function, np.log10(q), np.log10(ndf),
                                    maxfev = int(1e+5)) 
+    print(schechter_params)
     best_fit_schechter_model.append(log_schechter_function(np.log10(quantity), *schechter_params))
-
-
-### make residuals to data Schechter fit
 
 
 ################## PLOTTING ###################################################

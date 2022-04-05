@@ -67,8 +67,11 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     # calculate best fit parameter
     #par  = np.median(posterior_samp,axis=0) # using medians of marginalized distribution
     #par  = geometric_median(posterior_samp) # using geometric median of full distribution
-    par  = calculate_MAP_estimator(prior_global, smf_model, method = 'annealing',
-                                   x0 = np.median(posterior_samp,axis = 0))
+    bounds = list(zip(np.percentile(posterior_samp, 16, axis = 0),
+                       np.percentile(posterior_samp, 84, axis = 0)))
+    par    = calculate_MAP_estimator(prior_global, smf_model, method = 'annealing',
+                                     bounds = bounds,
+                                     x0 = np.median(posterior_samp,axis = 0))
     
     return(par, posterior_samp)
     
@@ -274,20 +277,21 @@ def within_bounds(values, lower_bounds, upper_bounds):
         return(True)
     return(False)
 
-def calculate_MAP_estimator(prior, smf_model, method = 'annealing', x0 = None):
+def calculate_MAP_estimator(prior, smf_model, method = 'annealing', bounds = None,
+                            x0 = None):
     '''
     Calculate 'best-fit' value of parameter by searching for the global minimum
     of the posterior distribution (Maximum A Posteriori estimator).
     '''
     
-    bounds = list(zip(*smf_model.feedback_model.bounds))
+    if bounds is None:
+        bounds = list(zip(*smf_model.feedback_model.bounds))
     
     def neg_log_prob(params):
         val = (log_prior(params, prior) + log_likelihood(params, smf_model))*(-1) 
         if not np.isfinite(val): # huge val, but not infite so that optimization works
             val = 1e+30 
         return(val)
-
     
     if method == 'minimize':
         if x0 is None:

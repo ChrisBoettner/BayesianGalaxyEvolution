@@ -126,23 +126,28 @@ def calculate_observable(model, m_halo, redshifts, num = int(1e+6), beta = 'zero
 class model():
     '''
     Determined model that related halo mass to stellar mass and UV luminosity. 
-    To select model, call function with either 'mstar' or 'lum'.
+    To select model, call function with either 'mstar' or 'lum'. It's also
+    possible to call function with 'None', then dummy object is created that 
+    does not contain data and can be used to just call methods.
     '''
     def __init__(self, observable_name, m_c = 1e+12):
         self.observable_name = observable_name
         
-        self.hmf             = dataset(load_hmf_functions())
-        
-        parameter, distribution = load_mcmc_data(observable_name)
-        self.parameter     = dataset(parameter)
-        #self.parameter      = DeprecationWarning('Use of parameter estimate not advised,\
-        #                                          use distributions instead')
-        self.distribution   = dataset(distribution)   
-        
+        self.hmf             = dataset(load_hmf_functions())   
         self.feedback_model = feedback_model(m_c) 
-        
-        parameter_num       = np.array([d.shape[1] for d in distribution])
-        self.parameter_num  = dataset(parameter_num)
+            
+        if observable_name is not None: # useful to create dummy object without actual data
+            parameter, distribution = load_mcmc_data(observable_name)
+            # correct for the change in variables done in the fit originally 
+            if self.observable_name == 'lum':
+                for p in parameter:
+                    p[0] = p[0]*1e+18
+            
+            self.parameter     = dataset(parameter)
+            self.distribution   = dataset(distribution)   
+            
+            parameter_num       = np.array([d.shape[1] for d in distribution])
+            self.parameter_num  = dataset(parameter_num)
         
     def number_density_function(self, observable, z, A, alpha, beta):
         '''
@@ -310,8 +315,15 @@ def log_schechter_function(log_observable, log_phi_star, log_obs_star, alpha):
     observable (in base10 log), using Schechter parameters.
     '''
     norm        = np.log10(np.log(10)) + log_phi_star
-    power_law   = (alpha+1)*(log_observable-log_obs_star)
-    exponential = - np.power(10,log_observable-log_obs_star)/np.log(10)
+    
+    x           = log_observable-log_obs_star
+    
+    power_law   = (alpha+1)*x
+
+    if np.any(np.abs(x)>80): # deal with overflow
+        exponential = np.sign(x)*np.inf
+    else:
+        exponential = -np.power(10,log_observable-log_obs_star)/np.log(10)
     return(norm + power_law + exponential)
         
     

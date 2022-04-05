@@ -358,14 +358,18 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
     x = np.array(x)
     return(x)
 
-def save_parameter(model, redshift, feedback_name, prior_name):
-        parameter = np.array(model.parameter.data, dtype = 'object')
-        # use correct file path depending on system
-        save_path = '/data/p305250/SMF/mcmc_runs/' + feedback_name +'/'
-        if os.path.isdir(save_path): # if path exists use this one (cluster structure)
-            pass 
-        else: # else use path for home computer
-            save_path = '/home/chris/Desktop/mcmc_runs/SMF/' + feedback_name +'/'            
-        filename = save_path + feedback_name + '_parameter_' + prior_name + '.npy'
-        np.save(filename, parameter)
-        return
+def save_parameter(model, feedback_name, prior_name):
+    '''
+    Manually save best fit parameter as numpy array to folder that usually contains
+    distribution data.
+    '''
+    parameter = np.array(model.parameter.data, dtype = 'object')
+    # use correct file path depending on system
+    save_path = '/data/p305250/SMF/mcmc_runs/' + feedback_name +'/'
+    if os.path.isdir(save_path): # if path exists use this one (cluster structure)
+        pass 
+    else: # else use path for home computer
+        save_path = '/home/chris/Desktop/mcmc_runs/SMF/' + feedback_name +'/'            
+    filename = save_path + feedback_name + '_parameter_' + prior_name + '.npy'
+    np.save(filename, parameter)
+    return

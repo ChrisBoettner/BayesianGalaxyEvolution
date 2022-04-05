@@ -16,9 +16,9 @@ from help_functions import geometric_median
 from scipy.optimize import dual_annealing, minimize, brute
 
 ## MAIN FUNCTION
-def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
+def mcmc_fit(lf_model, prior, prior_name, mode = 'temp'):
     '''
-    Calculate parameter that match observed SMFs to modelled SMFs using MCMC
+    Calculate parameter that match observed LFs to modelled LFs using MCMC
     fitting by maximizing the logprobability function which is the product of the
     loglikelihood and logprior.
     '''
@@ -27,18 +27,18 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     if mode == 'temp':
         savefile = None
     else:
-        save_path = '/data/p305250/UVLF/mcmc_runs/' + smf_model.directory +'/'
+        save_path = '/data/p305250/UVLF/mcmc_runs/' + lf_model.directory +'/'
         if os.path.isdir(save_path): # if path exists use this one (cluster structure)
             pass 
         else: # else use path for home computer
-            save_path = '/home/chris/Desktop/mcmc_runs/UVLF/' + smf_model.directory +'/'             
-        filename = save_path + smf_model.filename +'.h5'
+            save_path = '/home/chris/Desktop/mcmc_runs/UVLF/' + lf_model.directory +'/'             
+        filename = save_path + lf_model.filename +'.h5'
         savefile = emcee.backends.HDFBackend(filename)
     
     # select initial walker positions near initial guess
-    initial_guess = np.array(smf_model.feedback_model.initial_guess)
+    initial_guess = np.array(lf_model.feedback_model.initial_guess)
     ndim       = len(initial_guess)
-    nwalkers   = 10
+    nwalkers   = 6
     walker_pos = initial_guess*(1+0.1*np.random.rand(nwalkers,ndim))
     
     # make prior a global variable so it doesn"t have to be called in 
@@ -54,9 +54,9 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
         # create MCMC sampler and run MCMC
         with Pool() as pool:
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
-                                            log_probability, args=(smf_model,),
+                                            log_probability, args=(lf_model,),
                                             backend=savefile, pool = pool)
-            sampler.run_mcmc(walker_pos, 30000, progress=True)
+            sampler.run_mcmc(walker_pos, 100000, progress=True)
     if mode == 'loading':
         # load from savefile 
         sampler = savefile
@@ -71,8 +71,11 @@ def mcmc_fit(smf_model, prior, prior_name, mode = 'temp'):
     # at the calculated parameter
     par  = np.median(posterior,axis=0) # using medians of marginalized distribution
     #par  = geometric_median(posterior) # using geometric median of full distribution
-    #par  = calculate_MAP_estimator(prior_global, lf_model, method = 'annealing',
-    #                               x0 = np.median(posterior,axis = 0))
+    #bounds = list(zip(np.percentile(posterior_samp, 16, axis = 0),
+    #                   np.percentile(posterior_samp, 84, axis = 0)))
+    #par    = calculate_MAP_estimator(prior_global, lf_model, method = 'annealing',
+    #                                 bounds = bounds,
+    #                                 x0 = np.median(posterior_samp,axis = 0))
     
     return(par, posterior)
 
@@ -277,20 +280,21 @@ def within_bounds(values, lower_bounds, upper_bounds):
         return(True)
     return(False)
 
-def calculate_MAP_estimator(prior, smf_model, method = 'annealing', x0 = None):
+def calculate_MAP_estimator(prior, lf_model, method = 'annealing', bounds = None,
+                            x0 = None):
     '''
     Calculate 'best-fit' value of parameter by searching for the global minimum
     of the posterior distribution (Maximum A Posteriori estimator).
     '''
     
-    bounds = list(zip(*smf_model.feedback_model.bounds))
+    if bounds is None:
+        bounds = list(zip(*lf_model.feedback_model.bounds))
     
     def neg_log_prob(params):
-        val = (log_prior(params, prior) + log_likelihood(params, smf_model))*(-1) 
+        val = (log_prior(params, prior) + log_likelihood(params, lf_model))*(-1) 
         if not np.isfinite(val): # huge val, but not infite so that optimization works
             val = 1e+30 
         return(val)
-
     
     if method == 'minimize':
         if x0 is None:
@@ -300,7 +304,7 @@ def calculate_MAP_estimator(prior, smf_model, method = 'annealing', x0 = None):
     elif method == 'annealing':
         optimization_res = dual_annealing(neg_log_prob, 
                                           bounds = bounds,
-                                          maxiter = 1000)
+                                          maxiter = 100)
     elif method == 'brute':
         optimization_res = brute(neg_log_prob, 
                                  ranges = bounds,

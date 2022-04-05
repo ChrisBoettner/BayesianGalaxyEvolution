@@ -30,7 +30,7 @@ def load_hmf_functions():
 
 def load_mcmc_data(quantity_name):
     '''
-    Load mcmc data for SMF and UVLF fit.
+    Load mcmc data for SMF and UVLF fit (changing feedback).
     '''
     # relate physical quantites to save locations of files
     load_dict = {'lum'   : 'UVLF',
@@ -43,7 +43,7 @@ def load_mcmc_data(quantity_name):
     else: # else use path for home computer
         save_path = '/home/chris/Desktop/mcmc_runs/' + load_dict[quantity_name] + '/changing/'  
 
-    # pre-calculated geometric medians of distributions
+    # pre-calculated best fit parameter
     parameter = np.load(save_path + 'changing' + '_parameter_' + 'full' + '.npy', allow_pickle=True)
     
     distribution = []
@@ -60,3 +60,30 @@ def load_mcmc_data(quantity_name):
         distribution.append(posterior)
     
     return(parameter, distribution)
+
+def load_best_fit_parameter(quantity_name, prior_model = 'full'):
+    '''
+    Load pre-calculated best fit parameter for model (changing feedback).
+    '''
+    # relate physical quantites to save locations of files
+    load_dict = {'lum'   : 'UVLF',
+                 'mstar' : 'SMF'}
+    
+    # use correct file path depending on system
+    save_path = '/data/p305250/' + load_dict[quantity_name] + '/mcmc_runs/changing/'
+    if os.path.isdir(save_path): # if path exists use this one (cluster structure)
+        pass 
+    else: # else use path for home computer
+        save_path = '/home/chris/Desktop/mcmc_runs/' + load_dict[quantity_name] + '/changing/'  
+
+    # pre-calculated best fit parameter
+    parameter = np.load(save_path + 'changing' + '_parameter_' + prior_model + '.npy', 
+                        allow_pickle=True)
+
+    # correct for the change in variables done in the fit originally
+    if quantity_name == 'lum':
+        for p in parameter:
+            p[0] = p[0]*1e+18
+    
+    return(parameter)
+    

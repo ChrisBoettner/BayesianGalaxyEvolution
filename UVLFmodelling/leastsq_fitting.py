@@ -6,27 +6,47 @@ Created on Wed Nov  3 15:55:20 2021
 @author: boettner
 """
 import numpy as np
-from scipy.optimize import least_squares
+from scipy.optimize import least_squares, dual_annealing, brute, minimize
 
 ## MAIN FUNCTION
-def lsq_fit(lf_model):
+def lsq_fit(lf_model, method = 'least_squares'):
     '''
     Calculate parameter that match observed LFs to modelled LFs using least
     squares regression and a pre-defined cost function (which is not the usual
     one! See cost_function for details). 
     '''  
-                  
+    bounds = list(zip(*lf_model.feedback_model.bounds))
+               
     # fit lf model to data based on pre-defined cost function
-    fitting       = least_squares(cost_function, lf_model.feedback_model.initial_guess,
-                                  args = (lf_model,))
-    par           = fitting.x
+    if method == 'least_squares':
+        optimization_res = least_squares(cost_function, lf_model.feedback_model.initial_guess,
+                                  args = (lf_model,'res'))
     
+    if method == 'minimize':
+        optimization_res = minimize(cost_function, x0 = lf_model.feedback_model.initial_guess,
+                                    bounds = bounds,
+                                    args = (lf_model,))
+    
+    elif method == 'annealing':
+        optimization_res = dual_annealing(cost_function, 
+                                          bounds = bounds,
+                                          maxiter = 100,
+                                          args = (lf_model,))
+    elif method == 'brute':
+        optimization_res = brute(cost_function, 
+                                  ranges = bounds,
+                                  Ns = 100,
+                                  args = (lf_model,))      
+    
+    par = optimization_res.x
+    if not optimization_res.success:
+        print('Warning: MAP optimization did not succeed')
     
     par_distribution = None # for compatibility with mcmc fit
     return(par, par_distribution)
 
 ## LEAST SQUARE HELP FUNCTIONS
-def cost_function(params, lf_model):
+def cost_function(params, lf_model, out = 'cost'):
     '''
     Cost function for fitting. Includes physically sensible bounds for parameter.
     IMPORTANT :   We minimize the log of the phi_obs and phi_mod, instead of the
@@ -45,9 +65,12 @@ def cost_function(params, lf_model):
     if not np.all(np.isfinite(phi_mod)):
         return(1e+30)
     
-    res = np.log10(phi_obs) - np.log10(phi_mod)
-    return(res) # otherwise return cost
-    
+    res  = np.log10(phi_obs) - np.log10(phi_mod)
+    if out == 'res':
+        return(res) # return residuals
+    cost = 0.5*np.sum(res**2)
+    if out == 'cost':
+        return(cost) # otherwise return cost
 
 ## HELP FUNCTIONS
 def within_bounds(values, lower_bounds, upper_bounds):
