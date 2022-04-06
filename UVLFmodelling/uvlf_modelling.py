@@ -130,8 +130,7 @@ def fit_LF_model(lfs, hmfs, feedback_name,
         distribution.append(posterior_samp)     
         lf_models.append(lf_model)
         
-    print('Remember you change units for L and have to adjust A parameter accordingly')
-        
+    print('Remember you change units for L and have to adjust A parameter accordingly')     
     return(parameter, modelled_lf, distribution, lf_models)
 
 def fit_model(lf_model, fitting_method, prior, prior_name, mode):

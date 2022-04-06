@@ -22,7 +22,7 @@ from data.data_processing_uvlf import load_data as load_data_uvlf
 
 ################## LOAD DATA AND MODEL ########################################
 #%%
-quantity_name = 'mstar'
+quantity_name = 'lum'
 
 redshift = range(11)
 if quantity_name == 'mstar':
@@ -42,9 +42,12 @@ mod = model(None) # dummy model just to call number density function
 schechter_data = []; schechter_p_data = []
 for z in redshift:
     schechter_params,_ = curve_fit(log_schechter_function, log_data[z][:,0], log_data[z][:,1],
-                                   maxfev = int(1e+5)) 
+                                   maxfev = int(1e+5), p0 = [-3,np.log10(np.median(quantity)), -1]) 
     schechter_p_data.append(schechter_params)
     schechter_data.append(log_schechter_function(np.log10(quantity), *schechter_params))
+schechter_p_data = np.array(schechter_p_data)
+if quantity_name == 'lum': # convert to magnitudes
+    schechter_p_data[:,1] = lum_to_mag(10**schechter_p_data[:,1])
 
 ## Best Fit Schechter parameter fit using successive prior
 # Calculate Model
@@ -82,9 +85,12 @@ def calculate_schechter(quantity_name, prior_model, p0 = None):
         #import pdb; pdb.set_trace()
         # fit schechter function
         schechter_p,_ = curve_fit(log_schechter_function, np.log10(q), np.log10(ndf),
-                                  maxfev = int(1e+5), p0 = p0[z])
+                                  maxfev = int(1e+5), p0 = [-3,np.log10(np.median(quantity)), -1])
         schechter_params.append(schechter_p)
         schechter_func.append(log_schechter_function(np.log10(quantity), *schechter_p))
+    schechter_params = np.array(schechter_params)
+    if quantity_name == 'lum': # convert to magnitudes
+        schechter_params[:,1] = lum_to_mag(10**schechter_params[:,1])
     return(model_func, schechter_func, schechter_params)
 
 model_full, schechter_full, schechter_p_full = calculate_schechter(quantity_name, 'full', p0 = schechter_p_data)
@@ -93,13 +99,13 @@ model_uni, schechter_uni, schechter_p_uni    = calculate_schechter(quantity_name
 ################## PLOTTING ###################################################
 #%%
 plt.close('all')
-
+print('use different colors, this is too confusing')
 plot_model     = [2.75, 0.5, 'grey'] # [linewidth, alpha, color]
 plot_schechter = [1.75, 1, 'C2']
 
+## SCHECHTER FUNCTION PLOT
 fig, ax = plt.subplots(4,3, sharey = 'row', sharex=True); ax = ax.flatten()
 fig.subplots_adjust(top=0.982,bottom=0.113,left=0.075,right=0.991,hspace=0.0,wspace=0.0)
-
 if quantity_name == 'mstar':
     x = np.log10(quantity)
 elif quantity_name == 'lum':
@@ -174,17 +180,24 @@ ax[1].legend( list(by_label.values())[2:5][::-1], list(by_label.keys())[2:5][::-
 ax[-1].legend(list(by_label.values())[5:], list(by_label.keys())[5:],
               frameon=False, prop={'size': 12}, loc = 4, ncol = 2)
 
-# TEST INDIVIDUALLY
-# num = 1
-# z = 7
-# A, alpha, beta       = mod.get_parameter_sample(z, num = num)
-# ndf     = np.log10(mod.number_density_function(quantity, z, A, alpha, beta)[0])
-# idx = np.argwhere(np.around(ndf,2) == np.around(ndf[-1],2))[0][0]
-# ndf = ndf[:idx]
-# q   = np.log10(quantity)[:idx]
-# data_fit_params,_    = curve_fit(log_schechter_function, q, ndf, maxfev = int(1e+5),
-#                                   bounds = [[0, np.amin(np.log10(quantity)), -5], [1, np.amax(np.log10(quantity)), 0]]) 
-# ls = log_schechter_function(q, *data_fit_params)
-# plt.close('all')
-# plt.plot(q, ndf, color = 'grey')
-# plt.plot(q, ls, color = 'red')
+## SCHECHTER PARAMETER PLOT
+fig, ax = plt.subplots(3,1, sharex=True)
+fig.subplots_adjust(hspace=0.0,wspace=0.0)
+fig.supxlabel(r'$z$')
+ax[0].set_ylabel(r'$\log \phi_*$')
+if quantity_name == 'mstar':
+    ax[1].set_ylabel(r'$\log M_*^\mathrm{c}$')
+elif quantity_name == 'lum':
+    ax[1].set_ylabel(r'$\mathcal{M}_\mathrm{UV}^\mathrm{c}$ [mag]')
+ax[2].set_ylabel(r'$\alpha$')
+for i in range(len(schechter_p_data[0])):
+    ax[i].scatter(redshift[:-1], np.array(schechter_p_data)[:-1,i],
+                color = 'grey', label = 'Schechter Parameter (Data)') 
+    ax[i].scatter(redshift[:-1], np.array(schechter_p_uni)[:-1,i],
+                  color = 'C1', label = 'Schechter Parameter (Model - Uniform Prior)') 
+    ax[i].scatter(redshift[:-1], np.array(schechter_p_full)[:-1,i], color = 'C2', 
+                label = 'Schechter Parameter (Model - Successive Prior)') 
+
+ax[0].set_xticks(redshift[:-1])
+ax[0].legend(frameon=False, prop={'size': 12})
+

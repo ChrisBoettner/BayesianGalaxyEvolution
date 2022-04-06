@@ -33,6 +33,7 @@ params_l, lower_l, upper_l, dist_l = calculate_schechter_parameter(lum_model, lu
                                                                    redshift, num = num)
 
 # calculate mode instead of median since that is a better 'best fit' value
+# IF YOU DO THIS, USE PRECALCULATED PARAMETER BEST FITS
 # change params from median to mode, use 95 percentile as bounds
 # bounds_lower_m = [np.percentile(d,  2.5, axis = 0) for d in dist_m]
 # bounds_upper_m = [np.percentile(d, 97.5, axis = 0) for d in dist_m]
@@ -50,9 +51,9 @@ lower_mag[:,1]  = lum_to_mag(10**upper_l[:,1]) # upper and lower bound switch in
 upper_mag[:,1]  = lum_to_mag(10**lower_l[:,1]) # upper and lower bound switch in magnitude system
 
 # undo log for normalisation
-params_m[:,0] = 10**params_m[:,0]; lower_m[:,0] = 10**lower_m[:,0]; upper_m[:,0] = 10**upper_m[:,0]
-params_l[:,0] = 10**params_l[:,0]; lower_l[:,0] = 10**lower_l[:,0]; upper_l[:,0] = 10**upper_l[:,0]
-params_mag[:,0] = 10**params_mag[:,0]; lower_mag[:,0] = 10**lower_mag[:,0]; upper_mag[:,0] = 10**upper_mag[:,0]
+#params_m[:,0] = 10**params_m[:,0]; lower_m[:,0] = 10**lower_m[:,0]; upper_m[:,0] = 10**upper_m[:,0]
+#params_l[:,0] = 10**params_l[:,0]; lower_l[:,0] = 10**lower_l[:,0]; upper_l[:,0] = 10**upper_l[:,0]
+#params_mag[:,0] = 10**params_mag[:,0]; lower_mag[:,0] = 10**lower_mag[:,0]; upper_mag[:,0] = 10**upper_mag[:,0]
 
 # calculate errors
 lower_err_m    = params_m   - lower_m
@@ -134,7 +135,9 @@ def format_to_string_v2(parameter, lower_err, upper_err, redshift, columns):
             range_u = np.around(range_upper/10**exponent, pres)
             range_l = np.around(range_lower/10**exponent, pres)
             if range_l == 0:
-                range_l = np.around(range_lower/exponent, pres+1)  
+                range_l = np.around(range_lower/exponent, pres+1) 
+            if range_l == 0:
+                range_l = np.abs(range_l) # bc otherwise there is sometime a -0.0 problem
 
             l_str = str(range_l)
             u_str = str(range_u)
@@ -145,9 +148,9 @@ def format_to_string_v2(parameter, lower_err, upper_err, redshift, columns):
             if len(u_str.split('.')[1]) < pres:
                 u_str = u_str + '0'
             
-            if (range_u<0) and (range_l<0):
+            if (range_u<0) and (range_l<=0):
                 string = r'$-\left[' + l_str[1:] + ' \text{-} ' + u_str[1:] + '\right]$'  
-            elif (range_u>0) and (range_l>0):
+            elif (range_u>0) and (range_l>=0):
                 string = r'$\left[' + l_str + ' \text{-} ' + u_str + '\right]$' 
             else:
                 raise ValueError('Whoops, I was to lazy to implement that case')
@@ -159,11 +162,10 @@ def format_to_string_v2(parameter, lower_err, upper_err, redshift, columns):
     formatted_DataFrame.columns = columns
     return(formatted_DataFrame)           
 
-
-header_m = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]', r'$\log M_*$ [$M_\odot$]',
+header_m = [r'$z$', r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]', r'$\log M_*^\mathrm{c}$ [$M_\odot$]',
             r'$\alpha$']
-header_l = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
-            r'$\mathcal{M}^\mathrm{UV}_{*}$ (mag)', r'$\alpha$']
+header_l = [r'$z$', r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
+            r'$\mathcal{M}_\mathrm{UV}^\mathrm{c}$', r'$\alpha$']
 #header_l = [r'$z$', r'$\phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
 #            r'$\log L_*$ [ergs s${^-1}$ Hz$^{-1}$]', r'$\alpha$']
 
