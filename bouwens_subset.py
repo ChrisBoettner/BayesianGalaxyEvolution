@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Apr  7 13:48:39 2022.
+Spyder Editor
 
-@author: chris
+This is a temporary script file.
 """
 
-import sys
 import timeit
 
 from model.data.load import load_data, load_hmf_functions
@@ -16,24 +14,25 @@ fitting_method = 'mcmc'
 saving_mode    = 'saving'
 
 # choose option
-quantity_name  = sys.argv[1]
-prior_name     = sys.argv[2]
-feedback_name  = sys.argv[3]
+quantity_name  = 'Muv'
+prior_name     = 'successive'
+feedback_name  = 'changing'
 
 # load data
-groups, log_ndfs = load_data(quantity_name)
+data_subset = 'Bouwens2021'
+
+groups, log_ndfs = load_data(quantity_name, data_subset)
 log_hmfs         = load_hmf_functions()
 redshifts        = list(log_ndfs.keys())
 
-# run
-print(quantity_name, prior_name, feedback_name)
 start = timeit.default_timer()
 
 CalibrationResult(redshifts, log_ndfs, log_hmfs, 
                   quantity_name, feedback_name, prior_name,
                   fitting_method, saving_mode,
-                  chain_length = 30000, num_walkers = 250,
-                  autocorr_discard = True, progress=False,
+                  chain_length = 10000, num_walkers = 200,
+                  autocorr_discard = True, progress=True,
+                  name_addon = data_subset,
                   parameter_calc=False)
                 
 end  = timeit.default_timer()
