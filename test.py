@@ -11,11 +11,11 @@ from model.api import run_model
 quantity_name = 'Muv'
 #feedback_name = 'none'
 
-m = run_model(quantity_name, 'none')
+m = run_model(quantity_name, 'changing', data_subset='Bouwens2021')
 
-m = [run_model(quantity_name, 'none'),
-     run_model(quantity_name, 'stellar'),
-     run_model(quantity_name, 'stellar_blackhole')]
+#m = [run_model(quantity_name, 'none'),
+#     run_model(quantity_name, 'stellar'),
+#     run_model(quantity_name, 'stellar_blackhole'),]
 
 from model.plotting.plotting import plot_ndfs
 

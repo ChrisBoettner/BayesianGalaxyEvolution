@@ -27,11 +27,17 @@ def plot_best_fit_ndf(axes, CalibrationResult):
     for z in CalibrationResult.redshift:
         quantity, ndf = CalibrationResult.calculate_ndf_curve(z, 
                                                               CalibrationResult.parameter.at_z(z))
+        
+        if isinstance(CalibrationResult.color,str):
+            color = CalibrationResult.color
+        else:
+            color = CalibrationResult.color[z]
+            
         axes[z].plot(quantity,
                      ndf,
                      linestyle = CalibrationResult.linestyle,
                      label     = CalibrationResult.label,
-                     color     = CalibrationResult.color)
+                     color     = color)
     return
 
 

@@ -29,7 +29,7 @@ class CalibrationResult():
         self.feedback_name = feedback_name
         self.prior_name    = prior_name
         
-        self.redshift      = redshifts
+        self.redshift      = np.array(redshifts)
         self.distribution  = data(distribution, redshifts = self.redshift)
         self.model         = data(model,        redshifts = self.redshift)
         self.parameter     = data(parameter,    redshifts = self.redshift)
@@ -46,13 +46,10 @@ class CalibrationResult():
         if self.feedback_name == 'stellar_blackhole':
                 self.plot_parameter('C2',    'v', '-.', 'Stellar + Black Hole Feedback')
         if self.feedback_name == 'changing':
-            s_num    = len(self.redshifts<=4) # number of stellar + bh feedback plots
-            s_bh_num = len(self.redshifts>4)  # number of stellar feedback plots
-            self.plot_parameter(['C2']*s_num+['C1']*s_bh_num,
+            self.plot_parameter(['C2']*5+['C1']*6,
                                 'o',
                                 '-', 
-                                ['Stellar + Black Hole Feedback']*s_num\
-                                +['Stellar Feedback']*s_bh_num)
+                                'Changing Feedback')
         
     def plot_parameter(self, color, marker, linestyle, label):
         '''Style parameter for fit. '''
