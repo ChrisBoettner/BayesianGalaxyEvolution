@@ -10,9 +10,9 @@ import click
 from model.api import save_model
 
 @click.command()
-@click.option('--quantity_name', prompt='Physical quantity',
+@click.option('--quantity', prompt='Physical quantity',
               help='Physical quantity: \'Muv\' or \'mstar\'')
-@click.option('--feedback_name', prompt='Feedback model',
+@click.option('--feedback', prompt='Feedback model',
               help='Feedback model: \'none\', \'stellar\' \'stellar_blackhole\' or custom')
 def run(quantity_name, feedback_name):
     ''''Runs save_model with choosen options'''
