@@ -93,10 +93,11 @@ def symmetrize_uncertainty(log_phi_obs, log_uncertainties):
     If any uncertainties are not finite (inf or nan), assign 10* largest errors 
     of the remaining set to them, to be save.
     '''   
-    lower_err = 10**log_phi_obs - 10**(log_phi_obs - log_uncertainties[:,0])
-    upper_err = 10**(log_phi_obs + log_uncertainties[:,1]) - 10**log_phi_obs
+    lower_bound = (log_phi_obs - log_uncertainties[:,0])
+    upper_bound = (log_phi_obs + log_uncertainties[:,1])
+    log_unc     = (upper_bound-lower_bound)/2
     
-    log_unc = np.log10(np.abs(np.mean([lower_err,upper_err],axis=0)))
+    # replace nan values with large error estimate
     log_unc[np.logical_not(np.isfinite(log_unc))] = np.nanmax(log_unc)*10
     return(log_unc)
     

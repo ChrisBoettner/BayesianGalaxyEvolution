@@ -12,8 +12,8 @@ from model.helper import mag_to_lum, system_path, quantity_path, invert_function
 
 ################ MAIN FUNCTIONS ###############################################
 def fit_model(redshifts, log_ndfs, log_hmfs, quantity_name, feedback_name,
-             prior_name, fitting_method, saving_mode, name_addon = None,
-             **kwargs):
+              prior_name, fitting_method, saving_mode, name_addon = None,
+              **kwargs):
     '''
     Fit the modelled number density functions (ndf) (modelled from HMF + feedback) 
     for specified redshifts (as array) to observations (LFs/SMFs).
@@ -38,9 +38,7 @@ def fit_model(redshifts, log_ndfs, log_hmfs, quantity_name, feedback_name,
     
     Additional parameter can be given to mcmc fit via emcee using **kwargs.
     
-    IMPORTANT : Critical mass presetto 10^12 solar masses.
-    IMPORTANT : Abundances (phi values) below 1e-6 are cut off because they 
-                cant be measured reliably.
+    IMPORTANT : Critical mass presetto 10^(12.45) solar masses.
     '''
     
     parameter, distribution, models = [], [], []
@@ -107,9 +105,6 @@ def fit_model(redshifts, log_ndfs, log_hmfs, quantity_name, feedback_name,
 ################ MODEL CLASS ##################################################
 class Model():
     def __init__(self, log_ndf, log_hmf, quantity_name, feedback_name, m_c, z):
-        # cut unreliable values    
-        log_ndf = log_ndf[log_ndf[:,1]>-6]
-        
         self.quantity_name      = quantity_name
         self.log_observations   = log_ndf
         self.log_hmf_function   = log_hmf
@@ -121,7 +116,7 @@ class Model():
             bounds        = np.array([[-5, 0, 0], [np.log10(2), 4, 0.8]]) # bounds for log_A, alpha, beta
         if self.quantity_name == 'Muv':
             initial_guess = np.array([18, 1, 0.5]) 
-            bounds    = np.array([[13, 0, 0], [20, 4, 0.8]])
+            bounds        = np.array([[13, 0, 0], [20, 4, 0.8]])
         self.feedback_model = feedback_model(feedback_name, m_c, initial_guess,
                                              bounds)
         self.directory      = None

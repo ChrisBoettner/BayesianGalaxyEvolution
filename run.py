@@ -5,37 +5,19 @@ Created on Thu Apr  7 13:48:39 2022.
 
 @author: chris
 """
+import click
 
-import sys
-import timeit
+from model.api import save_model
 
-from model.data.load import load_data, load_hmf_functions
-from model.calibration.calibration import CalibrationResult
+@click.command()
+@click.option('--quantity_name', prompt='Physical quantity',
+              help='Physical quantity: \'Muv\' or \'mstar\'')
+@click.option('--feedback_name', prompt='Feedback model',
+              help='Feedback model: \'none\', \'stellar\' \'stellar_blackhole\' or custom')
+def run(quantity_name, feedback_name):
+    ''''Runs save_model with choosen options'''
+    return(save_model(quantity_name, feedback_name))
 
-fitting_method = 'mcmc' 
-saving_mode    = 'saving'
+if __name__ == '__main__':
+    model = run()
 
-# choose option
-quantity_name  = sys.argv[1]
-prior_name     = sys.argv[2]
-feedback_name  = sys.argv[3]
-
-# load data
-groups, log_ndfs = load_data(quantity_name)
-log_hmfs         = load_hmf_functions()
-redshifts        = list(log_ndfs.keys())
-
-# run
-print(quantity_name, prior_name, feedback_name)
-start = timeit.default_timer()
-
-CalibrationResult(redshifts, log_ndfs, log_hmfs, 
-                  quantity_name, feedback_name, prior_name,
-                  fitting_method, saving_mode,
-                  chain_length = 30000, num_walkers = 250,
-                  autocorr_discard = True, progress=False,
-                  parameter_calc=False)
-                
-end  = timeit.default_timer()
-print('DONE')
-print(end-start)

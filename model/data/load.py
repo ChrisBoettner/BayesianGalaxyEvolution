@@ -8,7 +8,7 @@ Created on Thu Apr  7 12:41:29 2022
 import numpy as np
 from scipy.interpolate import interp1d
 
-from hmf import MassFunction
+from model.helper import make_list
 ################ MAIN FUNCTIONS ###############################################
 path ='model/data/'
 
@@ -36,105 +36,105 @@ def load_hmf_functions(source = 'ShethTormen'):
     hmf_functions = {z:hmf_functions[z] for z in range(20)}
     return(hmf_functions)
 
-def load_data(quantity_name, datasets = None):
+def load_data(quantity_name, data_subset = None):
     '''
-    Wrapper function to load dataset.
+    Wrapper function to load datasets.
+    
+    Can take optional argument that for selecting specific datasets, input dataset
+    name or list of names of form AuthorYear. (e.g. 'Song2016' or
+    ['Davidson2017', 'Duncan2014'])
+    
+    IMPORTANT:  number densities (phi values) below threshold value are cut off 
+                because they can't be measured reliably (default is 10^(-6) for 
+                \'mstar\' and \'Muv\')
     '''
     if quantity_name == 'mstar':
-        groups, data = _load_smf_data(datasets)
+        groups, data = _load_smf_data(cutoff = -6, data_subset = data_subset)
     if quantity_name == 'Muv':
-        groups, data = _load_lf_data(datasets)
-
+        groups, data = _load_lf_data( cutoff = -6, data_subset = data_subset)
     return(groups, data)        
 
-def _load_smf_data(datasets):
+def _load_smf_data(cutoff, data_subset):
     '''
     Load the SMF data. returns list of group objects that contain the data connected
     to individual groups, and a direct directory of SMF ordered by redshift
     (of the form {redshift:data}).
-    Can take optional argument that for selecting specific datasets, input dataset
-    name or list of names of form AuthorYear. (e.g. 'Song2016' or
-    ['Davidson2017', ['Duncan2014']])
+    Remove data with number density below some cutoff limit.
     '''
     # get z=0,1,2,3,4 for Davidson, z=1,2,3 for Ilbert
-    davidson    = np.load(path + 'SMF/Davidson2017SMF.npz') 
-    davidson = {i:davidson[j] for i,j in [['0','1'],['1','2'],['2','4'],['3','6'],['4','8']]}
-    ilbert      = np.load(path + 'SMF/Ilbert2013SMF.npz')   
-    ilbert = {i:ilbert[j] for i,j in [['0','0'],['1','2'],['2','4'],['3','6']]}
-    duncan      = np.load(path + 'SMF/Duncan2014SMF.npz')      
-    song        = np.load(path + 'SMF/Song2016SMF.npz')       
-    bhatawdekar = np.load(path + 'SMF/Bhatawdekar2018SMF.npz')
-    stefanon    = np.load(path + 'SMF/Stefanon2021SMF.npz')
+    davidson    = dict(np.load(path + 'SMF/Davidson2017SMF.npz')) 
+    davidson    = {i:davidson[j] for i,j in [['0','1'],['1','2'],['2','4'],['3','6'],['4','8']]}
+    ilbert      = dict(np.load(path + 'SMF/Ilbert2013SMF.npz'))   
+    ilbert      = {i:ilbert[j] for i,j in [['0','0'],['1','2'],['2','4'],['3','6']]}
+    duncan      = dict(np.load(path + 'SMF/Duncan2014SMF.npz'))      
+    song        = dict(np.load(path + 'SMF/Song2016SMF.npz'))       
+    bhatawdekar = dict(np.load(path + 'SMF/Bhatawdekar2018SMF.npz'))
+    stefanon    = dict(np.load(path + 'SMF/Stefanon2021SMF.npz'))
 
     ## TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
-    davidson    = Group(davidson,    [0,1,2,3,4] ).plot_parameter('black', 'o', 'Davidson2017')
-    ilbert      = Group(ilbert,      [0,1,2,3]   ).plot_parameter('black', 'H', 'Ilbert2013')
-    duncan      = Group(duncan,      [4,5,6,7]   ).plot_parameter('black', 'v', 'Duncan2014')
-    song        = Group(song,        [6,7,8]     ).plot_parameter('black', 's', 'Song2016')
-    bhatawdekar = Group(bhatawdekar, [6,7,8,9]   ).plot_parameter('black', '^', 'Bhatawdekar2019')
-    stefanon    = Group(stefanon,    [6,7,8,9,10]).plot_parameter('black', 'X', 'Stefanon2021')
-    
-    groups       = [davidson, ilbert, duncan, song, bhatawdekar, stefanon]
+    davidson    = Group(davidson,    [0,1,2,3,4] , cutoff).plot_parameter('black', 'o', 'Davidson2017')
+    ilbert      = Group(ilbert,      [0,1,2,3]   , cutoff).plot_parameter('black', 'H', 'Ilbert2013')
+    duncan      = Group(duncan,      [4,5,6,7]   , cutoff).plot_parameter('black', 'v', 'Duncan2014')
+    song        = Group(song,        [6,7,8]     , cutoff).plot_parameter('black', 's', 'Song2016')
+    bhatawdekar = Group(bhatawdekar, [6,7,8,9]   , cutoff).plot_parameter('black', '^', 'Bhatawdekar2019')
+    stefanon    = Group(stefanon,    [6,7,8,9,10], cutoff).plot_parameter('black', 'X', 'Stefanon2021')    
+    groups      = [davidson, ilbert, duncan, song, bhatawdekar, stefanon]
     
     # choose subselection of data if given when calling the function 
-    if datasets is not None:
-        if type(datasets) is str: # if only one label is given, turn to list 
-            datasets = [datasets]
+    if data_subset:
+        data_subset = make_list(data_subset)
         groups = {g.label:g for g in groups}  
-        groups = [groups[dataset] for dataset in datasets] 
+        groups = [groups[dataset] for dataset in data_subset] 
 
     ## DATA SORTED BY REDSHIFT
     smfs = z_ordered_data(groups)
     return(groups, smfs)
 
-def _load_lf_data(datasets):
+def _load_lf_data(cutoff, data_subset):
     '''
     Load the LF data. returns list of group objects that contain the data connected
     to individual groups, and a direct directory of SMF ordered by redshift
     (of the form {redshift:data}).
-    Can take optional argument that for selecting specific datasets, input dataset
-    name or list of names of form AuthorYear. (e.g. 'Song2016' or
-    ['Davidson2017', ['Duncan2014']])
+    Remove data with number density below some cutoff limit.
     '''
     # get z=0,1,2,3,4 for Madau
-    cucciati       = np.load(path + 'UVLF/Cucciati2012UVLF.npz')
-    cucciati = {i:cucciati[j] for i,j in [['0','1'],['1','4'],['2','7'],['3','8'], ['4','9']]}
-    duncan      = np.load(path + 'UVLF/Duncan2014UVLF.npz')      
-    bouwens     = np.load(path + 'UVLF/Bouwens2015UVLF.npz')       
-    bouwens2    = np.load(path + 'UVLF/Bouwens2021UVLF.npz')
-    oesch       = np.load(path + 'UVLF/Oesch2010UVLF.npz')
-    parsa       = np.load(path + 'UVLF/Parsa2016UVLF.npz')
-    bhatawdekar = np.load(path + 'UVLF/Bhatawdekar2019UVLF.npz')
-    atek        = np.load(path + 'UVLF/Atek2018UVLF.npz')
-    livermore   = np.load(path + 'UVLF/Livermore2017UVLF.npz')
-    wyder       = np.load(path + 'UVLF/Wyder2005UVLF.npz')
-    arnouts     = np.load(path + 'UVLF/Arnouts2005UVLF.npz')
-    reddy       = np.load(path + 'UVLF/Reddy2009UVLF.npz')
-    oesch2      = np.load(path + 'UVLF/Oesch2018UVLF.npz')
+    cucciati    = dict(np.load(path + 'UVLF/Cucciati2012UVLF.npz'))
+    cucciati    = {i:cucciati[j] for i,j in [['0','1'],['1','4'],['2','7'],['3','8'], ['4','9']]}
+    duncan      = dict(np.load(path + 'UVLF/Duncan2014UVLF.npz'))      
+    bouwens     = dict(np.load(path + 'UVLF/Bouwens2015UVLF.npz'))       
+    bouwens2    = dict(np.load(path + 'UVLF/Bouwens2021UVLF.npz'))
+    oesch       = dict(np.load(path + 'UVLF/Oesch2010UVLF.npz'))
+    parsa       = dict(np.load(path + 'UVLF/Parsa2016UVLF.npz'))
+    bhatawdekar = dict(np.load(path + 'UVLF/Bhatawdekar2019UVLF.npz'))
+    atek        = dict(np.load(path + 'UVLF/Atek2018UVLF.npz'))
+    livermore   = dict(np.load(path + 'UVLF/Livermore2017UVLF.npz'))
+    wyder       = dict(np.load(path + 'UVLF/Wyder2005UVLF.npz'))
+    arnouts     = dict(np.load(path + 'UVLF/Arnouts2005UVLF.npz'))
+    reddy       = dict(np.load(path + 'UVLF/Reddy2009UVLF.npz'))
+    oesch2      = dict(np.load(path + 'UVLF/Oesch2018UVLF.npz'))
 
     ## TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
-    cucciati    = Group(cucciati,    range(0,5)  ).plot_parameter('black', 'o', 'Cucciati2012')
-    duncan      = Group(duncan,      range(4,8)  ).plot_parameter('black', 'v', 'Duncan2014')
-    bouwens     = Group(bouwens,     range(4,9)  ).plot_parameter('black', 's', 'Bouwens2015')
-    bouwens2    = Group(bouwens2,    range(2,11) ).plot_parameter('black', '^', 'Bouwens2021')
-    oesch       = Group(oesch,       range(1,3)  ).plot_parameter('black', 'X', 'Oesch2010')
-    atek        = Group(atek,        range(6,7)  ).plot_parameter('black', 'o', 'Atek2018')
-    bhatawdekar = Group(bhatawdekar, range(6,10) ).plot_parameter('black', '<', 'Bhatawdekar2019')
-    parsa       = Group(parsa,       range(2,5)  ).plot_parameter('black', '>', 'Parsa2016')
-    livermore   = Group(livermore,   range(6,9)  ).plot_parameter('black', 'H', 'Livermore2017')
-    wyder       = Group(wyder,       range(0,1)  ).plot_parameter('black', '+', 'Wyder2005')
-    arnouts     = Group(arnouts,     range(0,1)  ).plot_parameter('black', 'd', 'Arnouts2005')
-    reddy       = Group(reddy,       range(2,4)  ).plot_parameter('black', 'D', 'Reddy2009')
-    oesch2      = Group(oesch2,      range(10,11)).plot_parameter('black', 'x', 'Oesch2018')
+    cucciati    = Group(cucciati,    range(0,5)  , cutoff).plot_parameter('black', 'o', 'Cucciati2012')
+    duncan      = Group(duncan,      range(4,8)  , cutoff).plot_parameter('black', 'v', 'Duncan2014')
+    bouwens     = Group(bouwens,     range(4,9)  , cutoff).plot_parameter('black', 's', 'Bouwens2015')
+    bouwens2    = Group(bouwens2,    range(2,11) , cutoff).plot_parameter('black', '^', 'Bouwens2021')
+    oesch       = Group(oesch,       range(1,3)  , cutoff).plot_parameter('black', 'X', 'Oesch2010')
+    atek        = Group(atek,        range(6,7)  , cutoff).plot_parameter('black', 'o', 'Atek2018')
+    bhatawdekar = Group(bhatawdekar, range(6,10) , cutoff).plot_parameter('black', '<', 'Bhatawdekar2019')
+    parsa       = Group(parsa,       range(2,5)  , cutoff).plot_parameter('black', '>', 'Parsa2016')
+    livermore   = Group(livermore,   range(6,9)  , cutoff).plot_parameter('black', 'H', 'Livermore2017')
+    wyder       = Group(wyder,       range(0,1)  , cutoff).plot_parameter('black', '+', 'Wyder2005')
+    arnouts     = Group(arnouts,     range(0,1)  , cutoff).plot_parameter('black', 'd', 'Arnouts2005')
+    reddy       = Group(reddy,       range(2,4)  , cutoff).plot_parameter('black', 'D', 'Reddy2009')
+    oesch2      = Group(oesch2,      range(10,11), cutoff).plot_parameter('black', 'x', 'Oesch2018')
     groups      = [cucciati, duncan, bouwens, bouwens2, oesch, atek, bhatawdekar, parsa, livermore,
                    wyder, arnouts, reddy, oesch2]
     
     # choose subselection of data if given when calling the function 
-    if datasets is not None:
-        if type(datasets) is str: # if only one label is given, turn to list 
-            datasets = [datasets]
+    if data_subset is not None:
+        data_subset = make_list(data_subset)
         groups = {g.label:g for g in groups}  
-        groups = [groups[dataset] for dataset in datasets] 
+        groups = [groups[dataset] for dataset in data_subset] 
     
     ## DATA SORTED BY REDSHIFT
     lfs = z_ordered_data(groups)
@@ -143,12 +143,19 @@ def _load_lf_data(datasets):
 ################ CLASSES ######################################################
 # class object for group data (all redshifts) + plotting parameter
 class Group():
-     def __init__(self, data, z_range):
-        if len(data) != len(z_range):
+     def __init__(self, data, redshift, cutoff = None):
+        if len(data) != len(redshift):
             raise ValueError('Length of data list does not match assigned\
-                              redshift range')               
+                              redshift range')
+                              
+        # cutoff data below certain phi threshold
+        if cutoff: 
+            for key in data.keys():
+                d = data[key]
+                data[key] = d[d[:,1]>cutoff]
+            
         self._data     = data
-        self.redshift  = z_range    
+        self.redshift  = redshift    
      def plot_parameter(self, color, marker, label):
         self.color     = color
         self.marker    = marker
@@ -161,10 +168,8 @@ class Group():
         return(Dataset(self._data[str(ind)]))
 
 # object that contains all data for a given dataset (specified group + redshift)
-# important: cuts data with number density < 10^6
 class Dataset():
     def __init__(self, dataset):
-        #dataset = dataset[dataset[:,1]>-6] # cut unreliable values
         if dataset.shape[1] == 4:
             self.data          = dataset
             self.quantity      = dataset[:,0]

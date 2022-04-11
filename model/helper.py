@@ -6,6 +6,7 @@ Created on Thu Apr  7 14:16:21 2022
 @author: chris
 """
 import numpy as np
+import pandas as pd
 import os
 
 from scipy.optimize import root_scalar
@@ -30,7 +31,7 @@ def mag_to_lum(M_uv):
     log_L = (M_uv + 48.6)/(-2.5) + np.log10(4*np.pi*d**2) 
     return(np.power(10,log_L))
 
-################ MATH AND CODING ##############################################
+################ MATH  ########################################################
 def within_bounds(values, lower_bounds, upper_bounds):
     '''
     Checks if list of values is within lower and upper bounds (strictly
@@ -65,6 +66,17 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
         x.append(root)
     x = np.array(x)
     return(x)
+
+################ TYPE CHECKING ################################################
+def make_list(variable):
+    '''
+    Makes input variable into a list if it is not one already. Needed for 
+    functions that may take scalars or arrays.
+    '''
+    if isinstance(variable, (list, pd.core.series.Series, np.ndarray)):
+       return(variable)
+    else:
+       return([variable])
 
 ################ COMPUTER PATHS ###############################################
 def system_path():

@@ -22,9 +22,9 @@ from model.helper import within_bounds
 
 ################ MAIN FUNCTIONS ###############################################
 def mcmc_fit(model, prior, saving_mode,
-             chain_length = 150000, num_walkers = 50, 
+             chain_length = 10000, num_walkers = 250, 
              autocorr_discard = True, parameter_calc = True,
-             progress = False):
+             progress = True):
     '''
     Calculate parameter that match observed numbder density function (LF/SMF) 
     to modelled functionss using MCMC fitting by maximizing the logprobability 
