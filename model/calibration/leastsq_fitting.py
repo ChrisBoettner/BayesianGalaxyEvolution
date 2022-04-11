@@ -57,6 +57,8 @@ def cost_function(params, model, out = 'cost', uncertainties = True):
     IMPORTANT :   We minimize the log of the phi_obs and phi_mod, instead of the
                   values themselves. Otherwise the low-mass end would have much higher
                   constribution due to the larger number density.
+    IMPORTANT :   Weights are not just uncertainties, but uncertainties multiplied
+                  by value, so that high mass end has higher weight.
     '''          
     log_quantity_obs     = model.log_observations[:,0]
     log_phi_obs          = model.log_observations[:,1]  
@@ -75,12 +77,13 @@ def cost_function(params, model, out = 'cost', uncertainties = True):
     if not np.all(np.isfinite(log_phi_mod)):
         return(1e+30)
     
-    # calculate residuals
-    res  = (log_phi_obs - log_phi_mod)/log_phi_obs_uncertainties
+    # calculate residuals and weights
+    res     = log_phi_obs - log_phi_mod
+    weights = np.power(log_phi_obs_uncertainties * log_phi_obs, -2)
     
     if out == 'res':
         return(res) # return residuals
-    cost = 0.5*np.sum(res**2)
+    cost = 0.5*np.sum(res**2 * weights)
     if out == 'cost':
         return(cost) # otherwise return cost
     

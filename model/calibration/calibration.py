@@ -34,7 +34,9 @@ class CalibrationResult():
         self.model         = data(model,        redshifts = self.redshift)
         self.parameter     = data(parameter,    redshifts = self.redshift)
         if saving_mode == 'loading':
-            self.parameter = load_parameter(self, name_addon)
+            parameter      = load_parameter(self, name_addon)
+            parameter      = [p for p in parameter.values()]
+            self.parameter = data(parameter, redshifts = self.redshift)
             
         self.groups        = groups
         
@@ -59,12 +61,13 @@ class CalibrationResult():
         self.label     = label
         return(self)
 
-    def get_parameter_sample(self, z, num = 1):
+    def draw_parameter_sample(self, z, num = 1):
         '''
         Get a sample from feedback parameter distribution at given redshift.
         '''
         # randomly draw from parameter distribution at z 
-        random_draw      = np.random.choice(self.distribution.at_z(z).shape[0], size = num)
+        random_draw      = np.random.choice(self.distribution.at_z(z).shape[0],
+                                            size = num)
         parameter_sample = self.distribution.at_z(z)[random_draw]
         return(parameter_sample)
  
@@ -74,7 +77,7 @@ class CalibrationResult():
         (mstar/Muv) for a given halo mass by drawing parameter sample and
         calculating value for each one (number of draws adaptable.)
         '''     
-        parameter_sample = self.get_parameter_sample(z, num = num)
+        parameter_sample = self.draw_parameter_sample(z, num = num)
         
         log_quantity_dist = []
         for p in parameter_sample:
@@ -89,7 +92,7 @@ class CalibrationResult():
         observable quantity (mstar/Muv) by drawing parameter sample and
         calculating value for each one (number of draws adaptable.)
         '''  
-        parameter_sample = self.get_parameter_sample(z, num = num)
+        parameter_sample = self.draw_parameter_sample(z, num = num)
         
         log_halo_mass_dist = []
         for p in parameter_sample:
@@ -109,9 +112,9 @@ class CalibrationResult():
         '''Calculate number density function over representative range. '''
         if quantity_range is None:
             if self.quantity_name == 'Muv':
-                quantity_range = np.linspace(-25,-12,100)
+                quantity_range = np.linspace(-25.5,-12.5,100)
             if self.quantity_name == 'mstar':
-                quantity_range = np.linspace(7,13,100)
+                quantity_range = np.linspace(7.5,12.5,100)
 
         ndf = self.calculate_ndf(quantity_range, z, parameter)
         return(quantity_range, ndf)

@@ -45,7 +45,7 @@ def fit_model(redshifts, log_ndfs, log_hmfs, quantity_name, feedback_name,
     posterior_samp = None
     bounds         = None
     for z in redshifts:
-        print(z)
+        print('z=' + str(z))
         
         log_ndf = np.copy(log_ndfs[z])
         log_hmf = log_hmfs[z]

@@ -36,6 +36,7 @@ def load_model(quantity_name, feedback_name, data_subset = None,
                               name_addon     = data_subset,
                               fitting_method = 'mcmc',
                               saving_mode    = 'loading',
+                              parameter_calc = False,
                               **kwargs)
     return(model)
     
@@ -76,7 +77,7 @@ def save_model(quantity_name, feedback_name, data_subset = None,
     return(model)
     
 def run_model(quantity_name, feedback_name, fitting_method = 'least_squares',
-              chain_length = 10000, num_walkers = 10, autocorr_discard = False,
+              chain_length = 5000, num_walkers = 10, autocorr_discard = False,
               data_subset = None, prior_name = None, **kwargs):
     '''
     Run a model calibration without saving. Default is least_squares fit (without

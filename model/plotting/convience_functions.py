@@ -5,7 +5,9 @@ Created on Sun Apr 10 18:16:20 2022
 
 @author: chris
 """
-from pathlib import Path
+import numpy as np
+
+from model.helper import make_list, pick_from_list
 
 ################ PLOT DATA ####################################################
 def plot_group_data(axes, groups):
@@ -27,18 +29,14 @@ def plot_best_fit_ndf(axes, CalibrationResult):
     for z in CalibrationResult.redshift:
         quantity, ndf = CalibrationResult.calculate_ndf_curve(z, 
                                                               CalibrationResult.parameter.at_z(z))
-        
-        if isinstance(CalibrationResult.color,str):
-            color = CalibrationResult.color
-        else:
-            color = CalibrationResult.color[z]
             
+        color = pick_from_list(CalibrationResult.color, z)
         axes[z].plot(quantity,
                      ndf,
                      linestyle = CalibrationResult.linestyle,
                      label     = CalibrationResult.label,
                      color     = color)
-    return
+    return(quantity, ndf)
 
 
 ################ ADD TEXT TO PLOT #############################################
@@ -53,12 +51,28 @@ def add_redshift_text(axes, redshifts):
 
 
 ################ LEGEND STUFF #################################################
+def add_legend(axes, ind, sort = False, **kwargs):
+    '''
+    Add legend at axis given by ind. If sort is true, sort labels before
+    displaying legend.
+    '''
+    
+    labels = remove_double_labels(axes)
+    if sort:
+        labels =  dict(sorted(labels.items()))
+    
+    axes[ind].legend(list(labels.values()),
+                     list(labels.keys()),
+                     frameon=False,
+                     prop={'size': 12}, **kwargs)
+    return
+
 def add_separated_legend(axes, separation_point, ncol = 1):
     ''' 
     Add part of legend to first subplot and part to last subplot, devided by 
     separation_point. Can also adjust number of columns of legend.     
     '''
-    labels = remove_double_labeles(axes)
+    labels = remove_double_labels(axes)
     
     axes[0].legend(list(labels.values())[:separation_point],
                    list(labels.keys())[:separation_point],
@@ -70,35 +84,20 @@ def add_separated_legend(axes, separation_point, ncol = 1):
                     prop={'size': 12}, loc = 4, ncol = ncol)
     return
 
-def remove_double_labeles(axes):
-    '''
-    Remove duplicates in legend that have same label.
-    '''
+def remove_double_labels(axes):
+    '''  Remove duplicates in legend that have same label. '''
     handles, labels = [], []
-    for a in axes:
+    for a in axes.flatten():
         handles_, labels_ = a.get_legend_handles_labels()
         handles += handles_
-        labels += labels_
+        labels  += labels_
     by_label = dict(zip(labels, handles))
     return(by_label)
 
 ################ AXES AND LIMITS ##############################################    
-def turn_off_axes(axes, indeces):
-    ''' Turn of axes for subplots that are not used (specified by their indices.'''
-    for ax in axes:
-        if not ax.lines:
+def turn_off_axes(axes):
+    ''' Turn of axes for subplots that are not used. '''
+    for ax in axes.flatten():
+        if (not ax.lines) and (not ax.patches):
             ax.axis('off')
     return
-
-
-################ SAVING #######################################################
-def save_image(fig, quantity_name, file_name, file_format):
-    '''
-    Save plot to file. Input fig object that contains the graphic, the 
-    quantity_name (for deciding saving path), name of the file, and
-    file extension (e.g. \'pdf\' or \'png\').'
-    '''
-    path = 'plots/' + quantity_name + '/'
-    Path(path).mkdir(parents=True, exist_ok=True) 
-    file = file_name + '.' + file_format
-    fig.savefig(path + file)
