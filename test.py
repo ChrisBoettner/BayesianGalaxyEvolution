@@ -11,8 +11,8 @@ from model.api import run_model
 quantity_name = 'Muv'
 #feedback_name = 'none'
 
-m = run_model(quantity_name, 'changing', data_subset = 'Bouwens2021',
-              fitting_method = 'least_squares')
+m = run_model(quantity_name, 'changing', fitting_method = 'least_squares',
+              prior_name = 'uniform', chain_length=100)
 
 #m = [run_model(quantity_name, 'none'),
 #     run_model(quantity_name, 'stellar'),

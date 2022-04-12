@@ -8,13 +8,15 @@ Created on Sun Apr 10 18:15:34 2022
 from matplotlib import rc_file
 rc_file('model/plotting/settings.rc')
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.ticker import MaxNLocator
 
 import numpy as np
 
 from pathlib import Path
 
-from model.helper import make_list, pick_from_list, sort_by_density, t_to_z
+from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
+                         calculate_percentiles
 from model.plotting.convience_functions import plot_group_data, plot_best_fit_ndf,\
                                                add_redshift_text, add_legend,\
                                                add_separated_legend,\
@@ -93,7 +95,7 @@ class Plot_ndfs(Plot):
         if quantity_name == 'Muv':
             xlabel = r'$\mathcal{M}_{UV}$'
             ylabel = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ dex$^{-1}$]'
-            ncol = 2
+            ncol = 3
         
         # add axes labels
         fig.supxlabel(xlabel)
@@ -248,4 +250,43 @@ class Plot_qhmr(Plot):
         self.default_filename = self.quantity_name + '_qhmr'
         
     def _plot(self, CalibrationResult):
-        return
+        if CalibrationResult.quantity_name != 'mstar':
+            raise ValueError('Quantity-halo mass relation plot currently\
+                              only supports mstar.')
+        
+        # general plotting configuration
+        fig, ax = plt.subplots(1,1, sharex = True) 
+        
+        # add axes labels
+        fig.supxlabel('log $M_\mathrm{h}$ [$M_\odot$]')
+        fig.supylabel('log($M_*/M_\mathrm{h}$)', x=0.01)
+        
+        # create custom color map
+        cm = LinearSegmentedColormap.from_list("Custom", ['C2','C1'],
+                                               N=len(CalibrationResult.redshift))
+        
+        # define halo mass range
+        log_m_halo = np.linspace(8,14,100)
+        
+        print('Put this in seperate function and then call')
+        for z in CalibrationResult.redshift[::2]:
+            # calculate quantity distribution and percentiles
+            percentiles = []
+            for m_h in log_m_halo:
+                q_dist = CalibrationResult.calculate_quantity_distribution(m_h, z, int(1e+4))
+                percentiles.append(calculate_percentiles(q_dist))
+            percentiles = np.array(percentiles)
+                     
+            # plot median and 16th/84th percentile
+            ax.plot(log_m_halo, percentiles[:,0], color = cm(z),
+                    label = '$z$ = ' + str(z))
+            
+            ax.fill_between(log_m_halo, percentiles[:,1],percentiles[:,2],
+                            alpha = 0.2, color = cm(z))
+        
+        # add legend and minor ticks
+        add_legend(ax, 0)
+        ax.minorticks_on()
+            #ax.set_xlim([8,14])
+            #ax.set_ylim([-5.5,0])
+        return(fig, ax)

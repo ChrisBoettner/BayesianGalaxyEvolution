@@ -112,10 +112,10 @@ class Model():
         
         # feedback model
         if self.quantity_name == 'mstar':
-            initial_guess = np.array([-2, 1, 0.5])                         # initial guess for log_A, alpha, beta
-            bounds        = np.array([[-5, 0, 0], [np.log10(2), 4, 0.8]]) # bounds for log_A, alpha, beta
+            initial_guess = np.array([-2, 1, 0.2])                         # initial guess for log_A, alpha, beta
+            bounds        = np.array([[-5, 0, 0], [np.log10(2), 4, 0.8]])  # bounds for log_A, alpha, beta
         if self.quantity_name == 'Muv':
-            initial_guess = np.array([18, 1, 0.5]) 
+            initial_guess = np.array([18, 1, 0.2]) 
             bounds        = np.array([[13, 0, 0], [20, 4, 0.8]])
         self.feedback_model = feedback_model(feedback_name, m_c, initial_guess,
                                              bounds)

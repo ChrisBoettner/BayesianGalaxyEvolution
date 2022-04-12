@@ -189,7 +189,6 @@ def z_ordered_data(groups):
     Sort data from list of groups by redshift and return dictonary of form
     redshift:data.
     '''
-    
     # get all datasets and associated redshifts
     all_data = []; all_z = []
     for g in groups:
@@ -199,13 +198,13 @@ def z_ordered_data(groups):
     all_data = np.array(all_data, dtype=object)
     all_z = np.array([item for sublist in all_z for item in sublist]) # flatten nested list
     
-    
     # sort by redshift
     smfs = []
     for i in range(min(all_z),max(all_z)+1):
         z_mask = (all_z==i)
-        data_at_z = all_data[z_mask]
-        smfs.append(np.concatenate(data_at_z))
+        data_at_z = np.concatenate(all_data[z_mask])
+        data_at_z = data_at_z[data_at_z[:,0].argsort()] # sort data
+        smfs.append(data_at_z)
     
     # get unique list of redshifts and connect turn into dictonary
     redshift = sorted(list(set(all_z)))

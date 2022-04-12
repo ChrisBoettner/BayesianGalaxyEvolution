@@ -48,23 +48,18 @@ def lsq_fit(model, method = 'least_squares'):
     par_distribution = None # for compatibility with mcmc fit
     return(par, par_distribution)
 
-def cost_function(params, model, out = 'cost', uncertainties = True):
+def cost_function(params, model, out = 'cost', space = 'linear',
+                  uncertainties = True):
     '''
     Cost function for fitting. Includes physically sensible bounds for parameter.
     
-    If uncertainties is True, include errorbars in fit
+    Choose if you want to fit linear space (res = phi_obs - phi_mod) or
+    log space (res = log_phi_obs - log_phi_mod).
     
-    IMPORTANT :   We minimize the log of the phi_obs and phi_mod, instead of the
-                  values themselves. Otherwise the low-mass end would have much higher
-                  constribution due to the larger number density.
+    If uncertainties is True, include errorbars in fit.
     '''          
     log_quantity_obs     = model.log_observations[:,0]
     log_phi_obs          = model.log_observations[:,1]  
-    
-    if uncertainties: # use symmetrized uncertainties
-        log_phi_obs_uncertainties = symmetrize_uncertainty(log_phi_obs ,model.log_observations[:,2:])
-    else:             # use same uncertainty value for every point
-        log_phi_obs_uncertainties = 1
     
     # check if parameter are within bounds
     if not within_bounds(params, *model.feedback_model.bounds):
@@ -75,31 +70,60 @@ def cost_function(params, model, out = 'cost', uncertainties = True):
     if not np.all(np.isfinite(log_phi_mod)):
         return(1e+30)
     
-    # calculate residuals and weights
-    res     = log_phi_obs - log_phi_mod
-    weights = np.power(log_phi_obs_uncertainties, -1)
+    # calculate residuals 
+    if space == 'linear':
+        res = 10**log_phi_obs - 10**log_phi_mod
+    if space == 'log':
+        res = log_phi_obs - log_phi_mod 
+    
+    # calculate weights
+    if uncertainties:
+        weights = calculate_weights(model, space = space)
+    else:
+        weights = 1
+    
     weighted_res = res * weights
     
     if out == 'res':
         return(weighted_res) # return residuals
-    cost = 0.5*np.sum(weighted_res**2)
+    cost = np.sum(weighted_res**2)
     if out == 'cost':
         return(cost) # otherwise return cost
     
     
-################ MAIN FUNCTIONS ###############################################
-def symmetrize_uncertainty(log_phi_obs, log_uncertainties):
+################ UNCERTAINTIES AND WEIGHTS ####################################
+def calculate_weights(model, space):
+    '''
+    Calculate weights for residuals based on measurement uncertainties.
+    '''
+    log_phi_obs               = model.log_observations[:,1]  
+    log_phi_obs_uncertainties = model.log_observations[:,2:]  
+    
+    # calculate uncertainties
+    uncertainties = symmetrize_uncertainty(log_phi_obs, log_phi_obs_uncertainties,
+                                           space)
+    
+    weights = 1/uncertainties
+    return(weights)    
+
+def symmetrize_uncertainty(log_phi_obs, log_uncertainties, space):
     '''
     Symmetrize the uncertainties by taking their average. Input shape must be
     (n, 2).
+    Choose if you want to symmetrize in linear space, or log space.
+    
     If any uncertainties are not finite (inf or nan), assign 10* largest errors 
     of the remaining set to them, to be save.
-    '''   
-    lower_bound = (log_phi_obs - log_uncertainties[:,0])
-    upper_bound = (log_phi_obs + log_uncertainties[:,1])
-    log_unc     = (upper_bound-lower_bound)/2
+    '''
+    if space == 'linear':
+        lower_bound = 10**(log_phi_obs - log_uncertainties[:,0])
+        upper_bound = 10**(log_phi_obs + log_uncertainties[:,1]) 
+    if space == 'log':
+        lower_bound = (log_phi_obs - log_uncertainties[:,0])
+        upper_bound = (log_phi_obs + log_uncertainties[:,1])
+
+    uncertainty = (upper_bound-lower_bound)/2
     
     # replace nan values with large error estimate
-    log_unc[np.logical_not(np.isfinite(log_unc))] = np.nanmax(log_unc)*10
-    return(log_unc)
-    
+    uncertainty[np.logical_not(np.isfinite(uncertainty))] = np.nanmax(uncertainty)*10
+    return(uncertainty)

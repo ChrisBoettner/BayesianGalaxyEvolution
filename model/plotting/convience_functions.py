@@ -56,7 +56,7 @@ def add_legend(axes, ind, sort = False, **kwargs):
     Add legend at axis given by ind. If sort is true, sort labels before
     displaying legend.
     '''
-    
+    axes = make_list(axes)
     labels = remove_double_labels(axes)
     if sort:
         labels =  dict(sorted(labels.items()))
@@ -81,7 +81,7 @@ def add_separated_legend(axes, separation_point, ncol = 1):
     axes[-1].legend(list(labels.values())[separation_point:],
                     list(labels.keys())[separation_point:],
                     frameon=False,
-                    prop={'size': 12}, loc = 4, ncol = ncol)
+                    prop={'size': 10}, loc = 4, ncol = ncol)
     return
 
 def remove_double_labels(axes):

@@ -87,6 +87,17 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
     x = np.array(x)
     return(x)
 
+def calculate_percentiles(data, axis = 0):
+    '''
+    Returns median, 16th and 84th percentile of data.
+    '''
+    data   = list_to_array(data) # turn into numpy array if not already
+    
+    median = np.percentile(data, 50, axis = axis)
+    lower  = np.percentile(data, 16, axis = axis)
+    upper  = np.percentile(data, 84, axis = axis)
+    return([median, lower, upper])
+
 ################ SORTING AND FILTERING ########################################
 def sort_by_density(data):
     ''' 

@@ -83,7 +83,7 @@ class CalibrationResult():
         for p in parameter_sample:
             log_quantity_dist.append(self.model.at_z(z).
                                      feedback_model.
-                                     calculate_log_quantity(log_halo_mass, *p))
+                                     calculate_log_observable(log_halo_mass, *p))
         return(np.array(log_quantity_dist))    
  
     def calculate_halo_mass_distribution(self, log_quantity, z, num = int(1e+5)):
@@ -112,9 +112,9 @@ class CalibrationResult():
         '''Calculate number density function over representative range. '''
         if quantity_range is None:
             if self.quantity_name == 'Muv':
-                quantity_range = np.linspace(-25.5,-12.5,100)
+                quantity_range = np.linspace(-23.421,-12.4623,100)
             if self.quantity_name == 'mstar':
-                quantity_range = np.linspace(7.5,12.5,100)
+                quantity_range = np.linspace(7.424,11.974,100)
 
         ndf = self.calculate_ndf(quantity_range, z, parameter)
         return(quantity_range, ndf)
