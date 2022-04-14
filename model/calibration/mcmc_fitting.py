@@ -82,7 +82,7 @@ def mcmc_fit(model, prior, saving_mode,
         tau = 0
     posterior_samp = sampler.get_chain(discard=5*np.amax(tau).astype(int), flat=True)
     
-    # calculate best fit parameter
+    # calculate best fit parameter (MAP) using annealing
     if parameter_calc:
         bounds = list(zip(np.percentile(posterior_samp, 16, axis = 0),
                            np.percentile(posterior_samp, 84, axis = 0)))
@@ -281,7 +281,7 @@ def calculate_MAP_estimator(prior, model, method = 'annealing', bounds = None,
     elif method == 'annealing':
         optimization_res = dual_annealing(neg_log_prob, 
                                           bounds = bounds,
-                                          maxiter = 100)
+                                          maxiter = 1000)
     elif method == 'brute':
         optimization_res = brute(neg_log_prob, 
                                  ranges = bounds,

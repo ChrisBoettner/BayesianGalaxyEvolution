@@ -102,11 +102,13 @@ def _load_lf_data(cutoff, data_subset):
     Remove data with number density below some cutoff limit.
     '''
     # get z=0,1,2,3,4 for Madau
+    # remove redshift 10 for Bouwens2021, since this is same data as Oesch2018
     cucciati    = dict(np.load(path + 'UVLF/Cucciati2012UVLF.npz'))
     cucciati    = {i:cucciati[j] for i,j in [['0','1'],['1','4'],['2','7'],['3','8'], ['4','9']]}
     duncan      = dict(np.load(path + 'UVLF/Duncan2014UVLF.npz'))      
     bouwens     = dict(np.load(path + 'UVLF/Bouwens2015UVLF.npz'))       
     bouwens2    = dict(np.load(path + 'UVLF/Bouwens2021UVLF.npz'))
+    bouwens2    = {str(i): bouwens2[str(i)] for i in range(8)}
     oesch       = dict(np.load(path + 'UVLF/Oesch2010UVLF.npz'))
     parsa       = dict(np.load(path + 'UVLF/Parsa2016UVLF.npz'))
     bhatawdekar = dict(np.load(path + 'UVLF/Bhatawdekar2019UVLF.npz'))
@@ -121,7 +123,7 @@ def _load_lf_data(cutoff, data_subset):
     cucciati    = Group(cucciati,    range(0,5)  , cutoff).plot_parameter('black', 'o', 'Cucciati2012')
     duncan      = Group(duncan,      range(4,8)  , cutoff).plot_parameter('black', 'v', 'Duncan2014')
     bouwens     = Group(bouwens,     range(4,9)  , cutoff).plot_parameter('black', 's', 'Bouwens2015')
-    bouwens2    = Group(bouwens2,    range(2,11) , cutoff).plot_parameter('black', '^', 'Bouwens2021')
+    bouwens2    = Group(bouwens2,    range(2,10) , cutoff).plot_parameter('black', '^', 'Bouwens2021')
     oesch       = Group(oesch,       range(1,3)  , cutoff).plot_parameter('black', 'X', 'Oesch2010')
     atek        = Group(atek,        range(6,7)  , cutoff).plot_parameter('black', 'o', 'Atek2018')
     bhatawdekar = Group(bhatawdekar, range(6,10) , cutoff).plot_parameter('black', '<', 'Bhatawdekar2019')
