@@ -40,11 +40,15 @@ def mcmc_fit(model, prior, saving_mode,
     # initalize saving for mcmc runs
     if saving_mode == 'temp':
         savefile = None
-    else:
+    elif saving_mode in ['saving', 'loading']:
         save_path = model.directory       
         Path(save_path).mkdir(parents=True, exist_ok=True) # create dir if it doesn't exist
         filename  = save_path + model.filename +'.h5'
+        if (saving_mode == 'loading') and not Path(filename).is_file():
+            raise FileNotFoundError('mcmc data file does not exist.')
         savefile  = emcee.backends.HDFBackend(filename)
+    else:
+        raise ValueError('saving_mode not known.')
     
     # select initial walker positions near initial guess
     initial_guess = np.array(model.feedback_model.initial_guess)
@@ -58,7 +62,7 @@ def mcmc_fit(model, prior, saving_mode,
     # see https://emcee.readthedocs.io/en/stable/tutorials/parallel/
     global prior_global
     prior_global = prior
-    if (saving_mode == 'saving') or (saving_mode=='temp'):
+    if saving_mode in ['saving', 'temp']:
         if saving_mode == 'saving' and os.path.exists(filename):
             os.remove(filename) # clear file before start writing to it
         # create MCMC sampler and run MCMC
@@ -66,7 +70,7 @@ def mcmc_fit(model, prior, saving_mode,
             sampler = emcee.EnsembleSampler(nwalkers, ndim, 
                                             log_probability, args=(model,),
                                             backend=savefile, pool = pool)
-            sampler.run_mcmc(walker_pos, chain_length, progress=progress)
+            sampler.run_mcmc(walker_pos, chain_length, progress = progress)
     if saving_mode == 'loading':
         # load from savefile 
         sampler = savefile
@@ -271,7 +275,7 @@ def calculate_MAP_estimator(prior, model, method = 'annealing', bounds = None,
     
     if method == 'minimize':
         if x0 is None:
-            raise ValueError('x0 must be specificed for \'minimize\' method.')
+            raise TypeError('x0 must be specificed for \'minimize\' method.')
         optimization_res = minimize(neg_log_prob, x0 = x0, bounds = bounds)
     
     elif method == 'annealing':
@@ -281,7 +285,9 @@ def calculate_MAP_estimator(prior, model, method = 'annealing', bounds = None,
     elif method == 'brute':
         optimization_res = brute(neg_log_prob, 
                                  ranges = bounds,
-                                 Ns = 100)        
+                                 Ns = 100)  
+    else:
+        raise ValueError('method not known.')
         
     par = optimization_res.x
     if not optimization_res.success:

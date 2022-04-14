@@ -5,9 +5,8 @@ Created on Sun Apr 10 18:16:20 2022
 
 @author: chris
 """
-import numpy as np
-
-from model.helper import make_list, pick_from_list
+from model.helper import make_array, pick_from_list
+from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ PLOT DATA ####################################################
 def plot_group_data(axes, groups):
@@ -24,21 +23,19 @@ def plot_group_data(axes, groups):
                              alpha = 0.4)
     return
 
-def plot_best_fit_ndf(axes, CalibrationResult):
+def plot_best_fit_ndf(axes, ModelResult):
     ''' Calculate and plot best fit number density functions. '''
-    for z in CalibrationResult.redshift:
-        quantity, ndf = CalibrationResult.calculate_ndf_curve(z, 
-                                                              CalibrationResult.parameter.at_z(z))
-            
-        color = pick_from_list(CalibrationResult.color, z)
-        axes[z].plot(quantity,
-                     ndf,
-                     linestyle = CalibrationResult.linestyle,
-                     label     = CalibrationResult.label,
+    ndfs = calculate_best_fit_ndf(ModelResult, ModelResult.redshift)
+    
+    for z in ModelResult.redshift:           
+        color = pick_from_list(ModelResult.color, z)
+        axes[z].plot(ndfs[z][:,0],
+                     ndfs[z][:,1],
+                     linestyle = ModelResult.linestyle,
+                     label     = ModelResult.label,
                      color     = color)
-    return(quantity, ndf)
-
-
+    return(ndfs)
+        
 ################ ADD TEXT TO PLOT #############################################
 def add_redshift_text(axes, redshifts):
     ''' Add current redshift as text to upper plot corner. '''
@@ -56,7 +53,8 @@ def add_legend(axes, ind, sort = False, **kwargs):
     Add legend at axis given by ind. If sort is true, sort labels before
     displaying legend.
     '''
-    axes = make_list(axes)
+    axes = make_array(axes)
+    
     labels = remove_double_labels(axes)
     if sort:
         labels =  dict(sorted(labels.items()))
@@ -86,6 +84,8 @@ def add_separated_legend(axes, separation_point, ncol = 1):
 
 def remove_double_labels(axes):
     '''  Remove duplicates in legend that have same label. '''
+    axes = make_array(axes)
+
     handles, labels = [], []
     for a in axes.flatten():
         handles_, labels_ = a.get_legend_handles_labels()

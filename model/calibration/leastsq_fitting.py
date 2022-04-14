@@ -25,7 +25,7 @@ def lsq_fit(model, method = 'least_squares'):
                                          bounds = model.feedback_model.bounds,
                                          args = (model,'res'))
     
-    if method == 'minimize':
+    elif method == 'minimize':
         optimization_res = minimize(cost_function, x0 = model.feedback_model.initial_guess,
                                     bounds = bounds,
                                     args = (model,))
@@ -39,7 +39,9 @@ def lsq_fit(model, method = 'least_squares'):
         optimization_res = brute(cost_function, 
                                   ranges = bounds,
                                   Ns = 100,
-                                  args = (model,))      
+                                  args = (model,))   
+    else:
+        raise ValueError('method not known.')
     
     par = optimization_res.x
     if not optimization_res.success:
@@ -48,8 +50,8 @@ def lsq_fit(model, method = 'least_squares'):
     par_distribution = None # for compatibility with mcmc fit
     return(par, par_distribution)
 
-def cost_function(params, model, out = 'cost', space = 'linear',
-                  uncertainties = True):
+def cost_function(params, model, out = 'cost', space = 'log',
+                  uncertainties = False):
     '''
     Cost function for fitting. Includes physically sensible bounds for parameter.
     
@@ -73,12 +75,14 @@ def cost_function(params, model, out = 'cost', space = 'linear',
     # calculate residuals 
     if space == 'linear':
         res = 10**log_phi_obs - 10**log_phi_mod
-    if space == 'log':
+    elif space == 'log':
         res = log_phi_obs - log_phi_mod 
+    else:
+        raise ValueError('space not known.')
     
     # calculate weights
     if uncertainties:
-        weights = calculate_weights(model, space = space)
+        weights = calculate_weights(model, space)
     else:
         weights = 1
     
@@ -86,9 +90,12 @@ def cost_function(params, model, out = 'cost', space = 'linear',
     
     if out == 'res':
         return(weighted_res) # return residuals
+    
     cost = np.sum(weighted_res**2)
     if out == 'cost':
         return(cost) # otherwise return cost
+    else:
+        raise ValueError('out not known.')
     
     
 ################ UNCERTAINTIES AND WEIGHTS ####################################
@@ -118,9 +125,11 @@ def symmetrize_uncertainty(log_phi_obs, log_uncertainties, space):
     if space == 'linear':
         lower_bound = 10**(log_phi_obs - log_uncertainties[:,0])
         upper_bound = 10**(log_phi_obs + log_uncertainties[:,1]) 
-    if space == 'log':
+    elif space == 'log':
         lower_bound = (log_phi_obs - log_uncertainties[:,0])
         upper_bound = (log_phi_obs + log_uncertainties[:,1])
+    else:
+        raise ValueError('space not known.')
 
     uncertainty = (upper_bound-lower_bound)/2
     

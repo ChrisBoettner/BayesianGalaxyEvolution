@@ -16,12 +16,11 @@ import astropy.units as u
 from astropy.cosmology import Planck18, z_at_value
 
 ################ PHYSICS ######################################################
-# convert between luminosity and abosulte magntidue (luminosity given in 
-#  ergs s^-1 Hz^-1)
 def lum_to_mag(L_nu):
     '''
     Convert luminosity (ergs s^-1 Hz^-1) to Absolute Magnitude.
     '''   
+    L_nu = make_array(L_nu)
     d    = 3.086e+19                # 10pc in cm
     flux = L_nu/(4*np.pi*d**2)
     M_uv = -2.5*np.log10(flux)-48.6 # definition in AB magnitude system
@@ -31,6 +30,7 @@ def mag_to_lum(M_uv):
     '''
     Convert Absolute Magnitude to luminosity (ergs s^-1 Hz^-1).
     '''
+    M_uv = make_array(M_uv)
     d     = 3.086e+19 # 10pc in cm
     log_L = (M_uv + 48.6)/(-2.5) + np.log10(4*np.pi*d**2) 
     return(np.power(10,log_L))
@@ -50,7 +50,6 @@ def t_to_z(t):
     z = np.array([z_at_value(Planck18.lookback_time, k*u.Gyr).value for k in t])
     return(z)
 
-
 ################ MATH #########################################################
 def within_bounds(values, lower_bounds, upper_bounds):
     '''
@@ -62,11 +61,9 @@ def within_bounds(values, lower_bounds, upper_bounds):
         is_within.append((values[i] > lower_bounds[i]) & (values[i] < upper_bounds[i]))
         
     # return True if all elements are within bounds, otherwise False
-    if all(is_within)==True:
-        return(True)
-    return(False)
+    return(all(is_within))
 
-def invert_function(func, fprime, fprime2, x0_func, y, args):
+def invert_function(func, fprime, fprime2, x0_func, y, args, **kwargs):
     '''
     For a function y=f(x), calculate x values for an input set of y values.
     '''
@@ -77,21 +74,23 @@ def invert_function(func, fprime, fprime2, x0_func, y, args):
         
         x0_in = x0_func(val, *args) # guess initial value
         
-        root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, args = args,
-                            method='halley', x0 = x0_in, rtol=1e-6).root
+        root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, 
+                           args = args, method='halley', x0 = x0_in,
+                           **kwargs).root
         # if Halley's method doesn't work, try Newton
         if np.isnan(root):
-                root = root_scalar(root_func, fprime = fprime, fprime2=fprime2, args = args,
-                                    method='newton', x0 = x0_in, rtol=1e-6).root
+                root = root_scalar(root_func, fprime = fprime, fprime2=fprime2,
+                                   args = args, method='newton', x0 = x0_in,
+                                   **kwargs).root
         x.append(root)
     x = np.array(x)
-    return(x)
+    return(x) 
 
 def calculate_percentiles(data, axis = 0):
     '''
     Returns median, 16th and 84th percentile of data.
     '''
-    data   = list_to_array(data) # turn into numpy array if not already
+    data   = make_array(data) # turn into numpy array if not already
     
     median = np.percentile(data, 50, axis = axis)
     lower  = np.percentile(data, 16, axis = axis)
@@ -104,8 +103,7 @@ def sort_by_density(data):
     Estimate density of data using Gaussian KDE and return data sorted by density
     and density values
     '''
-    data = list_to_array(data)
-    #import pdb; pdb.set_trace()
+    data = make_array(data)
     density                 = gaussian_kde(data.T).evaluate(data.T)
     idx                     = density.argsort()
     sorted_data, density    = data[idx], density[idx]
@@ -122,6 +120,18 @@ def make_list(variable):
     else:
        return([variable])
    
+def make_array(variable):
+    '''
+    Makes input variable into a array if it is not one already. Needed for 
+    functions that may take scalars or arrays.
+    '''
+    if isinstance(variable, np.ndarray):
+        return(variable)
+    elif isinstance(variable, (list, pd.core.series.Series)):
+       return(np.array(variable))
+    else:
+       return(np.array([variable]))
+   
 def pick_from_list(variable, ind):
     '''
     Pick specific element from list, if variable is list. If variable is scalar,
@@ -131,15 +141,6 @@ def pick_from_list(variable, ind):
        return(variable[ind])
     else:
        return(variable)
-   
-def list_to_array(variable):
-    '''
-    Makes input variable into numpy array, if its list or pandas Series.
-    '''
-    if isinstance(variable, (list, pd.core.series.Series)):
-        variable = np.array(variable)
-    return(variable)
-   
 
 ################ COMPUTER PATHS ###############################################
 def system_path():
@@ -159,6 +160,8 @@ def quantity_path(quantity_name):
     '''
     if quantity_name == 'mstar':
         path = 'SMF'
-    if quantity_name == 'Muv':
+    elif quantity_name == 'Muv':
         path = 'UVLF'
+    else:
+        raise ValueError('quantity_name not known.')
     return(path)

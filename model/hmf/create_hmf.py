@@ -9,6 +9,12 @@ import numpy as np
 from hmf import MassFunction
 
 def create_hmfs(redshifts, Mmin = 4, Mmax = 18):
+    '''
+    Create Halo mMss Functions using hmf package. Currently build in such a way
+    that HMFs get created for integer redshifts from 1 to 20. HMF model is 
+    Sheth-Tormen.
+    Can adjust minimum and maximum value.
+    '''
     hmfs = {}
     for z in range(20):
         mf = MassFunction(z=z, hmf_model = 'ST', Mmin=Mmin, Mmax=Mmax) # create hmf object

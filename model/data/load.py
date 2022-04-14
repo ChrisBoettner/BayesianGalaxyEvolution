@@ -22,8 +22,10 @@ def load_hmf_functions(source = 'ShethTormen'):
     # either load or create HMFs (self-created ones have larger range)
     if source == 'ShethTormen':
         hmfs = np.load(path + 'HMF/HMF.npz')
-    if source == 'Pratika':
+    elif source == 'Pratika':
         hmfs = np.load(path + 'HMF/HMF_Pratika.npz')
+    else:
+        raise ValueError('HMF source not known.')
     
     # create evaluatable function from data
     hmf_functions = []
@@ -50,8 +52,10 @@ def load_data(quantity_name, data_subset = None):
     '''
     if quantity_name == 'mstar':
         groups, data = _load_smf_data(cutoff = -6, data_subset = data_subset)
-    if quantity_name == 'Muv':
+    elif quantity_name == 'Muv':
         groups, data = _load_lf_data( cutoff = -6, data_subset = data_subset)
+    else:
+        raise ValueError('quantity_name not known.')
     return(groups, data)        
 
 def _load_smf_data(cutoff, data_subset):
@@ -176,12 +180,14 @@ class Dataset():
             self.phi           = dataset[:,1]
             self.lower_error   = dataset[:,2]
             self.upper_error   = dataset[:,3] 
-        if dataset.shape[1] == 2:      
+        elif dataset.shape[1] == 2:      
             self.data          = dataset
             self.quantity      = dataset[:,0]
             self.phi           = dataset[:,1]
             self.lower_error   = None
             self.upper_error   = None
+        else:
+            raise ValueError('Don\'t know how to handle Group Dataset shape.')
 
 ################ HELP FUNCTIONS ###############################################
 def z_ordered_data(groups):
