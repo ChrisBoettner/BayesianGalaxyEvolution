@@ -11,7 +11,8 @@ from model.api import run_model, load_model
 quantity_name = 'Muv'
 #feedback_name = 'none'
 
-m = run_model(quantity_name, 'changing', fitting_method = 'least_squares')
+m = run_model(quantity_name, 'changing', fitting_method = 'mcmc', chain_length = 10,
+              parameter_calc=False)
 
 #m = [run_model(quantity_name, 'none'),
 #     run_model(quantity_name, 'stellar'),
@@ -19,4 +20,4 @@ m = run_model(quantity_name, 'changing', fitting_method = 'least_squares')
 
 from model.plotting.plotting import *
 
-o = Plot_ndfs(m)
+o = Plot_ndf_sample(m)

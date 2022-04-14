@@ -8,25 +8,44 @@ Created on Thu Apr 14 00:20:31 2022
 import numpy as np
 from scipy.optimize import curve_fit
 
-from model.helper import make_list, mag_to_lum, lum_to_mag
+from model.helper import make_list
 
-################ MAIN FUNCTIONS ############################################### 
+################ MAIN FUNCTIONS ###############################################
+def calculate_schechter_parameter_from_data(ModelResult, redshift, num = 100,
+                                            quantity_range = None):
 
-def get_schecher_parameter_distribution(ModelResult, redshift, num = 100):
+
+def get_schechter_function_sample(ModelResult, redshift, num = 100,
+                                  quantity_range = None):
+    '''
+    Calculate sample of Schechter functions over typical quantity_range
+    by fitting functions to ndf samples.
+    '''
+    
+    redshift                    = make_list(redshift)
+    schechter, p0, log_quantity = get_function(ModelResult.quantity_name) 
+            
+    schechter_parameter = get_schechter_parameter_distribution(ModelResult, 
+                                                               redshift,
+                                                               num = num)
+
+    sample = {}
+    for z in redshift:
+        sample_at_z = []
+        for params in schechter_parameter:
+            phi = schechter(log_quantity, *params)
+            sample_at_z.append(np.array([log_quantity, phi]).T)
+        sample[z] = sample_at_z
+    return(sample) 
+
+def get_schechter_parameter_distribution(ModelResult, redshift, num = 1000):
     '''
     Calculate distribution of Schechter parameter for model at a given redshift.
     Do this by calculating num model ndfs and fitting Schechter functions to 
     each one. Returns dictonary of form {redshift:distribution}.
     '''
     redshift = make_list(redshift)
-    
-    # define initial guess for fit
-    if ModelResult.quantity_name == 'mstar':
-        p0 = [-4, 10, -1.5] # log_phi_star, characteristic mass, slope
-    elif ModelResult.quantity_name == 'Muv':
-        p0 = [-4, -20, -1.5] # log_phi_star, characteristic magnitude, slope
-    else:
-        raise ValueError('quantity_name not known.')    
+    schechter, p0, _ = get_function(ModelResult.quantity_name) 
     
     # calculate distributions
     schechter_parameter_distribution = {}
@@ -35,40 +54,22 @@ def get_schecher_parameter_distribution(ModelResult, redshift, num = 100):
         ndf_sample     = ModelResult.get_ndf_sample(z, num = num)
         
         for ndf in ndf_sample:
-            # fit correct Schechter function depending on input
-            if ModelResult.quantity_name == 'mstar':
-                params = fit_schechter_function(ndf, p0 = p0)
-            elif ModelResult.quantity_name == 'Muv':
-                params = fit_mag_schechter_function(ndf, p0 = p0)
-            else:
-                raise ValueError('quantity_name not known.')    
-                
+            params = fit_function(schechter, ndf, p0 = p0)
             parameter_at_z.append(params)
         
         schechter_parameter_distribution[z] = np.array(parameter_at_z)
     return(schechter_parameter_distribution)
 
-
 ################ BASE FUNCTIONS ############################################### 
-def fit_schechter_function(data, p0, uncertainties = None):
+def fit_function(function, data, p0, uncertainties = None):
     '''
-    Fit Schechter function to data. May include uncertainties.
+    Fit (Schechter) function to data. May include uncertainties.
 
     '''
-    fit_parameter, _ = curve_fit(log_schechter_function, data[:,0], data[:,1],
+    fit_parameter, _ = curve_fit(function, data[:,0], data[:,1],
                                  sigma = uncertainties, p0 = p0,
                                  maxfev = int(1e+5))
     return(fit_parameter)
-
-def fit_mag_schechter_function(data, p0, uncertainties = None):
-    '''
-    Fit Magnitude Schechter function to data. May include uncertainties.
-
-    '''
-    schechter_parameter, _ = curve_fit(log_schechter_function_mag, data[:,0],
-                                       data[:,1], sigma = uncertainties, p0 = p0,
-                                       maxfev = int(1e+5))
-    return(schechter_parameter)
 
 def log_schechter_function(log_quantity, log_phi_star, log_quant_star, alpha):
     '''
@@ -104,3 +105,21 @@ def log_schechter_function_mag(magnitude, log_phi_star, mag_star, alpha):
     else:
         exponential = - np.power(10, x)/np.log(10)
     return(norm + power_law + exponential)
+
+################ HELP FUNCTIONS ###############################################
+def get_function(quantity_name):
+    '''
+    Get appropriate Schechter function and initial fitting guesses and
+    typical range of values for a given quantity_name.
+    '''
+    if   quantity_name == 'mstar':
+        schechter = log_schechter_function
+        p0 = [-4, 10, -1.5]
+        quantity_range = np.linspace(-23.42,-12.46,100)
+    elif quantity_name == 'Muv':
+        schechter = log_schechter_function_mag
+        p0 = [-4, -20, -1.5]
+        quantity_range = np.linspace(-23.42,-12.46,100)
+    else:
+        raise ValueError('quantity_name not known.')
+    return(schechter, p0, quantity_range)

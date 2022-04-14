@@ -70,7 +70,7 @@ class Plot(object):
         return(self)
     
         
-class Plot_ndfs(Plot):
+class Plot_best_fit_ndfs(Plot):
     def __init__(self, ModelResults):
         '''
         Plot modelled number density functions and data for comparison. Input
@@ -132,7 +132,7 @@ class Plot_ndfs(Plot):
         
         # turn off unused axes
         turn_off_axes(axes)
-        return(fig, axes)   
+        return(fig, axes)       
     
 class Plot_marginal_pdfs(Plot):
     def __init__(self, ModelResults):
@@ -275,8 +275,8 @@ class Plot_qhmr(Plot):
         # calculate qhmr
         log_m_halos = np.linspace(8,14,100) # define halo mass range
         redshifts   = ModelResult.redshift[::2]
-        qhmr = calculate_qhmr(ModelResult, log_m_halos,
-                              redshifts = redshifts)
+        qhmr        = calculate_qhmr(ModelResult, log_m_halos,
+                                     redshifts = redshifts)
         
         # general plotting configuration
         fig, ax = plt.subplots(1,1, sharex = True) 
@@ -303,3 +303,144 @@ class Plot_qhmr(Plot):
         add_legend(ax, 0)
         ax.minorticks_on()
         return(fig, ax)
+    
+class Plot_ndf_sample(Plot):
+    def __init__(self, ModelResult = None):
+        '''
+        Plot sample of number density functions by randomly drawing from parameter
+        distribution and calculating ndfs.
+        '''
+        super().__init__(ModelResult)
+        self.default_filename = self.quantity_name + '_qhmr'
+        
+    def _plot(self, ModelResult):
+        # get ndf sample
+        ndfs = {}
+        for z in ModelResult.redshift:
+            ndfs[z] = ModelResult.get_ndf_sample(z)
+        
+        # general plotting configuration
+        fig, axes = plt.subplots(4,3, sharey = 'row', sharex=True)
+        axes      = axes.flatten()
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # define plot parameter 
+        linewidth = 0.2
+        alpha     = 0.2
+        color     = 'grey'
+        
+        # quantity specific settings
+        if ModelResult.quantity_name == 'mstar':
+            xlabel = r'log $M_*$ [$M_\odot$]'
+            ylabel = r'log $\phi(M_*)$ [cMpc$^{-3}$ dex$^{-1}$]'
+            ncol = 1
+        elif ModelResult.quantity_name == 'Muv':
+            xlabel = r'$\mathcal{M}_{UV}$'
+            ylabel = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ mag$^{-1}$]'
+            ncol = 3
+        
+        # add axes labels
+        fig.supxlabel(xlabel)
+        fig.supylabel(ylabel, x=0.01)
+        fig.align_ylabels(axes)
+        
+        # add minor ticks and set number of ticks
+        for ax in axes:
+            ax.xaxis.set_major_locator(MaxNLocator(4))
+            ax.minorticks_on()
+        
+        # plot number density functions
+        for z in ModelResult.redshift:                    
+            for ndf in ndfs[z]:
+                axes[z].plot(ndf[:,0], ndf[:,1], color = color,
+                             linewidth = linewidth, alpha = alpha)
+        
+        # plot group data points
+        plot_group_data(axes, ModelResult.groups)
+        
+        # add redshift as text to subplots
+        add_redshift_text(axes, ModelResult.redshift)
+        
+        # add axes limits
+        for ax in axes:
+            ax.set_ylim([-6,3]) 
+            ax.set_xlim([list(ndfs.values())[0][0][0,0],
+                         list(ndfs.values())[0][0][-1,0]])
+        
+        # add legend
+        add_separated_legend(axes, separation_point = 0, ncol = ncol)
+        
+        # turn off unused axes
+        turn_off_axes(axes)
+        return(fig, axes)
+    
+class Plot_schechter_sample(Plot):
+    def __init__(self, ModelResult = None):
+        '''
+        Plot sample of Schechter functions fitted to number density functions 
+        by randomly drawing from parameter distribution, calculating ndfs and 
+        then fitting Schechter functions.
+        '''
+        super().__init__(ModelResult)
+        self.default_filename = self.quantity_name + '_qhmr'
+        
+    def _plot(self, ModelResult):
+        # get ndf sample
+        ndfs = {}
+        for z in ModelResult.redshift:
+            ndfs[z] = ModelResult.get_ndf_sample(z)
+        
+        # general plotting configuration
+        fig, axes = plt.subplots(4,3, sharey = 'row', sharex=True)
+        axes      = axes.flatten()
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # define plot parameter 
+        linewidth = 0.2
+        alpha     = 0.2
+        color     = 'grey'
+        
+        # quantity specific settings
+        if ModelResult.quantity_name == 'mstar':
+            xlabel = r'log $M_*$ [$M_\odot$]'
+            ylabel = r'log $\phi(M_*)$ [cMpc$^{-3}$ dex$^{-1}$]'
+            ncol = 1
+        elif ModelResult.quantity_name == 'Muv':
+            xlabel = r'$\mathcal{M}_{UV}$'
+            ylabel = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ mag$^{-1}$]'
+            ncol = 3
+        
+        # add axes labels
+        fig.supxlabel(xlabel)
+        fig.supylabel(ylabel, x=0.01)
+        fig.align_ylabels(axes)
+        
+        # add minor ticks and set number of ticks
+        for ax in axes:
+            ax.xaxis.set_major_locator(MaxNLocator(4))
+            ax.minorticks_on()
+        
+        # plot number density functions
+        for z in ModelResult.redshift:                    
+            for ndf in ndfs[z]:
+                axes[z].plot(ndf[:,0], ndf[:,1], color = color,
+                             linewidth = linewidth, alpha = alpha)
+        
+        # plot group data points
+        plot_group_data(axes, ModelResult.groups)
+        
+        # add redshift as text to subplots
+        add_redshift_text(axes, ModelResult.redshift)
+        
+        # add axes limits
+        for ax in axes:
+            ax.set_ylim([-6,3]) 
+            ax.set_xlim([list(ndfs.values())[0][0][0,0],
+                         list(ndfs.values())[0][0][-1,0]])
+        
+        # add legend
+        add_separated_legend(axes, separation_point = 0, ncol = ncol)
+        
+        # turn off unused axes
+        turn_off_axes(axes)
+        return(fig, axes)
