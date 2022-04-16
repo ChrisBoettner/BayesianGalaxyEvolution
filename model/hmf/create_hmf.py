@@ -8,22 +8,24 @@ Created on Fri Apr  8 15:00:12 2022
 import numpy as np
 from hmf import MassFunction
 
-def create_hmfs(redshifts, Mmin = 4, Mmax = 18):
+
+def create_hmfs(redshifts, Mmin=4, Mmax=18):
     '''
     Create Halo mMss Functions using hmf package. Currently build in such a way
-    that HMFs get created for integer redshifts from 1 to 20. HMF model is 
+    that HMFs get created for integer redshifts from 1 to 20. HMF model is
     Sheth-Tormen.
     Can adjust minimum and maximum value.
     '''
     hmfs = {}
     for z in range(20):
-        mf = MassFunction(z=z, hmf_model = 'ST', Mmin=Mmin, Mmax=Mmax) # create hmf object
-        log_m    = np.log10(mf.m)
+        mf = MassFunction(z=z, hmf_model='ST', Mmin=Mmin,
+                          Mmax=Mmax)  # create hmf object
+        log_m = np.log10(mf.m)
         # take log of phi, some values are 0 though, so we do it in two parts
-        phi      = mf.dndlog10m
+        phi = mf.dndlog10m
         log_phi = np.copy(phi)
-        log_phi[log_phi<=0] = -np.inf
-        log_phi[log_phi>0] = np.log10(log_phi[log_phi>0])
+        log_phi[log_phi <= 0] = -np.inf
+        log_phi[log_phi > 0] = np.log10(log_phi[log_phi > 0])
         # write to dictionary
         hmfs[str(z)] = np.array([log_m, log_phi]).T
     return(hmfs)

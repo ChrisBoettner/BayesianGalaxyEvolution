@@ -6,18 +6,23 @@ Created on Sun Apr 10 19:27:34 2022
 @author: chris
 """
 
+from model.plotting.plotting import *
 from model.api import run_model, load_model
 
 quantity_name = 'Muv'
 #feedback_name = 'none'
+#m = load_model(quantity_name, 'stellar_blackhole')
 
-m = run_model(quantity_name, 'changing', fitting_method = 'mcmc', chain_length = 10,
-              parameter_calc=False)
+m = run_model(quantity_name, 'changing')
 
-#m = [run_model(quantity_name, 'none'),
+# m = run_model(quantity_name, 'changing', fitting_method = 'mcmc',
+#               chain_length = 5000, num_walkers = 150, data_subset='Bouwens2021',
+#               autocorr_discard = True, parameter_calc = False, progress = True,
+#               redshifts = 2)
+
+# m = [run_model(quantity_name, 'none'),
 #     run_model(quantity_name, 'stellar'),
 #     run_model(quantity_name, 'stellar_blackhole')]
 
-from model.plotting.plotting import *
 
-o = Plot_ndf_sample(m)
+o = Plot_best_fit_ndfs(m)
