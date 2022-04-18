@@ -42,7 +42,7 @@ def get_quantity_specifics(quantity_name):
         options['model_bounds']     = np.array([[-5, 0, 0], [np.log10(2), 4, 0.99]])
         options['schechter']        = log_schechter_function
         options['schechter_p0']     = [-4, 10, -1.5]
-        options['quantity_range']   = np.linspace(-23.42, -12.46, 100)
+        options['quantity_range']   = np.linspace(7.32, 12.46, 100)
         options['ndf_xlabel']       = r'log $M_*$ [$M_\odot$]'
         options['ndf_ylabel']       = r'log $\phi(M_*)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['log_A_label']      = r'$\log A$'

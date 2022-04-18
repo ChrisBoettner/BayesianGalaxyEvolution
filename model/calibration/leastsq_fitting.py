@@ -104,7 +104,7 @@ def cost_function(params, model, out='cost', weighted=True):
 
 
 ################ UNCERTAINTIES AND WEIGHTS ####################################
-def calculate_weights(model, relative=False):
+def calculate_weights(model, z=None, relative=True):
     '''
     Calculate weights for residuals based on measurement uncertainties.
     If any uncertainties are not finite (inf or nan), assign 10* largest errors
@@ -113,8 +113,11 @@ def calculate_weights(model, relative=False):
     If relative is true, use relative uncertainties.
 
     '''
-    log_phi_obs = model.log_ndfs.at_z(model._z)[:, 1]
-    log_phi_obs_uncertainties = model.log_ndfs.at_z(model._z)[:, 2:]
+    if z is None: # if no specific redshift is given, use current temporary one
+        z = model._z
+
+    log_phi_obs = model.log_ndfs.at_z(z)[:, 1]
+    log_phi_obs_uncertainties = model.log_ndfs.at_z(z)[:, 2:]
 
     # transform to linear space
     lower_bound = 10**(log_phi_obs - log_phi_obs_uncertainties[:, 0])

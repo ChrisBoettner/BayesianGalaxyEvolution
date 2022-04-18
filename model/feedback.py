@@ -42,9 +42,9 @@ class StellarBlackholeFeedback(object):
 
         '''
         self.name = 'stellar_blackhole'
-        self.log_m_c = log_m_c         # critical mass for feedback
+        self.log_m_c = log_m_c               # critical mass for feedback
         self.initial_guess = initial_guess   # initial guess for least_squares fit
-        self.bounds = bounds          # parameter (A, alpha, beta) bounds
+        self.bounds = bounds                 # parameter (A, alpha, beta) bounds
 
         # max halo mass (just used to avoid overflows)
         self._upper_m_h = 40

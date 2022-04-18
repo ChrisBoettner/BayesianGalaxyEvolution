@@ -8,13 +8,56 @@ Created on Thu Apr 14 00:20:31 2022
 import numpy as np
 from scipy.optimize import curve_fit
 
-from model.helper import make_list
+from model.helper import make_list, make_array
+from model.calibration.leastsq_fitting import calculate_weights
+from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ MAIN FUNCTIONS ###############################################
+def calculate_best_fit_schechter_parameter(ModelResult, redshift):
+    '''
+    Calculate best fit Schechter parameter for best fit model.
+    '''
+    if ModelResult.parameter.is_None():
+        raise AttributeError(
+            'best fit parameter have not been calculated.')
+        
+    redshift = make_list(redshift)
+    
+    schechter, p0 = ModelResult.quantity_options['schechter'],\
+                    ModelResult.quantity_options['schechter_p0']
+    
+    ndfs = calculate_best_fit_ndf(ModelResult, redshift)
+    
+    schechter_parameter = {}
+    for z in redshift:
+        schechter_parameter[z] = fit_function(schechter,
+                                              ndfs[z],
+                                              p0 = p0)
+    return(schechter_parameter)
+        
 
-#def calculate_schechter_parameter_from_data(ModelResult, redshift, num=100,
-#                                            quantity_range=None):
+def calculate_schechter_parameter_from_data(ModelResult, redshift):
+    '''
+    Calculate Schechter parameter from ndf observational data. Include 
+    uncertainties if possible.
+    '''
+    
+    redshift = make_list(redshift)
+    schechter, p0 = ModelResult.quantity_options['schechter'],\
+                    ModelResult.quantity_options['schechter_p0']
+    
+    schechter_parameter = {}
+    for z in redshift:
+        try: # include uncertainties if given
+            weights  = calculate_weights(ModelResult, z=z)
+        except:
+            weights  = None
 
+        schechter_parameter[z] = fit_function(schechter,
+                                              ModelResult.log_ndfs.at_z(z)[:,:2],
+                                              p0 = p0,
+                                              uncertainties = 1/weights)
+    return(schechter_parameter)
 
 def get_schechter_function_sample(ModelResult, redshift, num=100,
                                   quantity_range=None):
@@ -34,7 +77,7 @@ def get_schechter_function_sample(ModelResult, redshift, num=100,
     sample = {}
     for z in redshift:
         sample_at_z = []
-        for params in schechter_parameter:
+        for params in schechter_parameter[z]:
             phi = schechter(log_quantity, *params)
             sample_at_z.append(np.array([log_quantity, phi]).T)
         sample[z] = sample_at_z
@@ -48,8 +91,8 @@ def get_schechter_parameter_distribution(ModelResult, redshift, num=1000):
     each one. Returns dictonary of form {redshift:distribution}.
     '''
     redshift = make_list(redshift)
-    schechter, p0, _ = ModelResult.quantity_options['schechter'],\
-                       ModelResult.quantity_options['schechter_p0']
+    schechter, p0 = ModelResult.quantity_options['schechter'],\
+                    ModelResult.quantity_options['schechter_p0']
 
     # calculate distributions
     schechter_parameter_distribution = {}
@@ -72,6 +115,10 @@ def fit_function(function, data, p0, uncertainties=None):
     Fit (Schechter) function to data. May include uncertainties.
 
     '''
+    data = make_array(data)
+    # remove infinites and nans
+    data = data[np.isfinite(data[:,1])]
+    
     fit_parameter, _ = curve_fit(function, data[:, 0], data[:, 1],
                                  sigma=uncertainties, p0=p0,
                                  maxfev=int(1e+5))

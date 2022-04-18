@@ -5,12 +5,16 @@ Created on Sun Apr 10 18:15:34 2022
 
 @author: chris
 """
-from model.analysis.calculations import calculate_qhmr
-from model.plotting.convience_functions import plot_group_data, plot_best_fit_ndf,\
-    add_redshift_text, add_legend,\
-    add_separated_legend,\
-    turn_off_axes
+from model.analysis.schechter import get_schechter_function_sample, \
+                                     calculate_best_fit_schechter_parameter,\
+                                     calculate_schechter_parameter_from_data    
+from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf
+from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
+                                                add_redshift_text, add_legend,\
+                                                add_separated_legend,\
+                                                turn_off_axes
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z
+
 
 from pathlib import Path
 import numpy as np
@@ -110,16 +114,17 @@ class Plot_best_fit_ndfs(Plot):
 
         # plot modelled number density functions
         for model in ModelResults:
-            ndfs = plot_best_fit_ndf(axes, model)
+            plot_best_fit_ndf(axes, model)
 
         # add redshift as text to subplots
         add_redshift_text(axes, ModelResults[0].redshift)
 
         # add axes limits
+        quantity_range = ModelResults[0].quantity_options['quantity_range']
         for ax in axes:
             ax.set_ylim([-6, 3])
-            ax.set_xlim([list(ndfs.values())[0][0, 0],
-                         list(ndfs.values())[0][-1, 0]])
+            ax.set_xlim([quantity_range[0],
+                         quantity_range[-1]])
 
         # add legend
         add_separated_legend(axes, separation_point=len(ModelResults),
@@ -173,7 +178,7 @@ class Plot_marginal_pdfs(Plot):
             for z in model.redshift:
                 for i, param_dist in enumerate(model.distribution.at_z(z).T):
                     axes[i, z].hist(param_dist, bins=100, density=True,
-                                    range=(model.model.at_z(z).feedback_model.bounds).T[i],
+                                    range=model.feedback_model.at_z(z).bounds.T[i],
                                     color=pick_from_list(model.color, z),
                                     label=model.label, alpha=0.3)
         # set x limits
@@ -316,7 +321,7 @@ class Plot_ndf_sample(Plot):
         distribution and calculating ndfs.
         '''
         super().__init__(ModelResult)
-        self.default_filename = self.quantity_name + '_qhmr'
+        self.default_filename = self.quantity_name + '_ndf_sample'
 
     def _plot(self, ModelResult):
         if ModelResult.distribution.is_None():
@@ -365,10 +370,11 @@ class Plot_ndf_sample(Plot):
         add_redshift_text(axes, ModelResult.redshift)
 
         # add axes limits
+        quantity_range = ModelResult.quantity_options['quantity_range']
         for ax in axes:
             ax.set_ylim([-6, 3])
-            ax.set_xlim([list(ndfs.values())[0][0][0, 0],
-                         list(ndfs.values())[0][0][-1, 0]])
+            ax.set_xlim([quantity_range[0],
+                         quantity_range[-1]])
 
         # add legend
         add_separated_legend(axes, separation_point=0, ncol=ncol)
@@ -386,16 +392,15 @@ class Plot_schechter_sample(Plot):
         then fitting Schechter functions.
         '''
         super().__init__(ModelResult)
-        self.default_filename = self.quantity_name + '_qhmr'
+        self.default_filename = self.quantity_name + '_schechter_sample'
 
     def _plot(self, ModelResult):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
         # get ndf sample
-        ndfs = {}
-        for z in ModelResult.redshift:
-            ndfs[z] = ModelResult.get_ndf_sample(z)
+        schechter_functions = get_schechter_function_sample(ModelResult,
+                                                            ModelResult.redshift)
 
         # general plotting configuration
         fig, axes = plt.subplots(4, 3, sharey='row', sharex=True)
@@ -424,8 +429,8 @@ class Plot_schechter_sample(Plot):
 
         # plot number density functions
         for z in ModelResult.redshift:
-            for ndf in ndfs[z]:
-                axes[z].plot(ndf[:, 0], ndf[:, 1], color=color,
+            for schechter in schechter_functions[z]:
+                axes[z].plot(schechter[:, 0], schechter[:, 1], color=color,
                              linewidth=linewidth, alpha=alpha)
 
         # plot group data points
@@ -435,13 +440,126 @@ class Plot_schechter_sample(Plot):
         add_redshift_text(axes, ModelResult.redshift)
 
         # add axes limits
+        quantity_range = ModelResult.quantity_options['quantity_range']
         for ax in axes:
             ax.set_ylim([-6, 3])
-            ax.set_xlim([list(ndfs.values())[0][0][0, 0],
-                         list(ndfs.values())[0][0][-1, 0]])
+            ax.set_xlim([quantity_range[0],
+                         quantity_range[-1]])
 
         # add legend
         add_separated_legend(axes, separation_point=0, ncol=ncol)
+
+        # turn off unused axes
+        turn_off_axes(axes)
+        return(fig, axes)
+
+class Plot_schechter_comparison(Plot):
+    def __init__(self, ModelResults):
+        '''
+        Plot sample of Schechter functions fitted to number density functions
+        by randomly drawing from parameter distribution, calculating ndfs and
+        then fitting Schechter functions.
+        '''
+        super().__init__(ModelResults)
+        self.default_filename = self.quantity_name + '_schechter_comparison'
+        
+    def _plot(self, ModelResults):
+        # make list if input is scalar
+        ModelResults = make_list(ModelResults)
+
+        if ModelResults[0].parameter.is_None():
+            raise AttributeError(
+                'best fit parameter have not been calculated.')
+        if ModelResults[0].distribution.is_None():
+            raise AttributeError(
+                'distributions have not been calculated.')
+            
+        # calculate Schechter parameter for data 
+        schechter_data_params = calculate_schechter_parameter_from_data(ModelResults[0],
+                                                                 ModelResults[0].redshift)
+        # calculate Schechter parameter for models
+        schechter_models = []
+        for Model in ModelResults:
+            schechter_models.append(calculate_best_fit_schechter_parameter(
+                                    Model, Model.redshift))
+        
+        # general plotting configuration
+        fig, axes = plt.subplots(4, 3, sharey=True)
+        axes = axes.flatten()
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # further plotting parameter:
+        plot_parameter_model     = {'linewidth': 2.75,
+                                    'alpha':0.5,
+                                    'color':'grey'}
+        plot_parameter_schechter = {'linewidth':1.75,
+                                    'alpha':1,
+                                     'color':'C2'}
+        linestyle = ['-','--','-.']
+
+        # quantity specific settings
+        xlabel, ylabel, ncol  = ModelResults[0].quantity_options['ndf_xlabel'],\
+                                ModelResults[0].quantity_options['ndf_ylabel'],\
+                                ModelResults[0].quantity_options['legend_columns']
+        
+        # def quantity range and Schechter function
+        schechter_function = ModelResults[0].quantity_options['schechter']
+        quantity_range     = ModelResults[0].quantity_options['quantity_range']
+                
+        # plot model ndfs and Schechter fits
+        for i, Model in enumerate(ModelResults):           
+            ndfs             = calculate_best_fit_ndf(Model,
+                                                      Model.redshift)
+            schechter_params = calculate_best_fit_schechter_parameter(
+                                   Model, Model.redshift)
+            for z in Model.redshift:
+                axes[z].plot(ndfs[z][:,0], ndfs[z][:,1],
+                             label = 'Model (' + Model.prior_name + ' prior)',
+                             linestyle = linestyle[i+1],
+                             **plot_parameter_model)
+                
+                axes[z].plot(quantity_range, 
+                             schechter_function(quantity_range, *schechter_params[z]),
+                             label = 'Schechter Function (' + Model.prior_name + ' prior)',
+                             linestyle = linestyle[i+1],
+                             **plot_parameter_schechter)
+        
+        # plot group data points and Schechter fits
+        plot_group_data(axes, ModelResults[0].groups)       
+        for z in ModelResults[0].redshift:
+                axes[z].plot(quantity_range, 
+                             schechter_function(quantity_range,
+                                                *schechter_data_params[z]),
+                             label = 'Schechter Function (data)',
+                             linestyle = linestyle[0],
+                             **plot_parameter_schechter) 
+
+        # add axes labels
+        fig.supxlabel(xlabel)
+        fig.supylabel(ylabel, x=0.01)
+        fig.align_ylabels(axes)
+
+        # add minor ticks and set number of ticks
+        for ax in axes:
+            ax.xaxis.set_major_locator(MaxNLocator(4))
+            ax.minorticks_on()
+
+        # plot group data points
+        plot_group_data(axes, ModelResults[0].groups)
+
+        # add redshift as text to subplots
+        add_redshift_text(axes, ModelResults[0].redshift)
+
+        # add axes limits
+        for ax in axes:
+            ax.set_ylim([-6, 3])
+            ax.set_xlim([quantity_range[0],
+                         quantity_range[-1]])
+
+        # add legend
+        separation_point = 2*len(ModelResults) + 1
+        add_separated_legend(axes, separation_point=separation_point,
+                             ncol=ncol)
 
         # turn off unused axes
         turn_off_axes(axes)

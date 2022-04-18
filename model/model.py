@@ -120,7 +120,8 @@ class ModelResult():
                 'C2', 'v', '-.', 'Stellar + Black Hole Feedback')
         elif self.feedback_name == 'changing':
             self._plot_parameter(
-                ['C2'] * 5 + ['C1'] * 6, 'o', '-', 'Changing Feedback')
+                ['C2'] * 5 + ['C1'] * 6, 'o', '-',
+                ['Stellar + Black Hole Feedback'] * 5 + ['Stellar Feedback'] * 6)
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -306,7 +307,7 @@ class ModelResult():
         log_quantity_dist = []
         for p in parameter_sample:
             log_quantity_dist.append(
-                self.model.at_z(z). feedback_model. calculate_log_observable(
+                self.feedback_model.at_z(z).calculate_log_quantity(
                     log_halo_mass, *p))
         return(np.array(log_quantity_dist))
 
@@ -337,7 +338,7 @@ class ModelResult():
         log_halo_mass_dist = []
         for p in parameter_sample:
             log_halo_mass_dist.append(
-                self.model.at_z(z). feedback_model. calculate_log_halo_mass(
+                self.feedback_model.at_z(z).calculate_log_halo_mass(
                     log_quantity, *p))
         return(np.array(log_halo_mass_dist))
 
@@ -454,4 +455,4 @@ class Redshift_dict():
 
     def is_None(self):
         ''' Check if dictonary is empty. '''
-        return(not bool(self.data))
+        return(list(self.data.values())[0] is None)
