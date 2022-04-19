@@ -6,13 +6,95 @@ Created on Thu Apr 14 00:20:31 2022
 @author: chris
 """
 import numpy as np
+import pandas as pd
 from scipy.optimize import curve_fit
 
-from model.helper import make_list, make_array
+from model.helper import make_list, make_array, calculate_percentiles
 from model.calibration.leastsq_fitting import calculate_weights
 from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ MAIN FUNCTIONS ###############################################
+def tabulate_schechter_parameter(ModelResult, redshift):
+    '''
+    Make Latex table for likely Schechter parameter ranges 
+    (16th-84th percentile).    
+    '''
+    if ModelResult.distribution.is_None():
+        raise AttributeError(
+            'distributions have not been calculated.')
+    redshift = make_list(redshift)
+
+    # calculate distribution    
+    parameter_distribution = get_schechter_parameter_distribution(ModelResult,
+                                                                  redshift)
+    # calculate percentiles (likely parameter ranges)
+    parameter_ranges = []
+    for z in redshift:
+        parameter_ranges = calculate_percentiles(parameter_distribution[z])
+    
+    # pre-load dataframe
+    parameter_num = 3  # number of parameters of Schechter function
+    formatted_DataFrame = pd.DataFrame(index   = redshift,
+                                       columns = parameter_num)
+    
+    for param in parameter_num:
+        for z in redshift:
+            pres = 1    # rounding precision
+            range_lower = parameter_ranges[z][1]
+            range_upper = parameter_ranges[z][2]     
+            
+            # get value of exponent
+            exponent    = np.format_float_scientific(range_upper, precision = pres)
+            _, exponent = exponent.split('e')
+            exponent = int(exponent)
+            
+            if param == 1:  # should be the log_obs_*, looks nicer like this
+                exponent     += -1
+            
+            # round to representable values
+            range_u = np.around(range_upper/10**exponent, pres)
+            range_l = np.around(range_lower/10**exponent, pres)
+            if range_l == 0:
+                range_l = np.around(range_lower/exponent, pres+1) 
+            if range_l == 0:
+                range_l = np.abs(range_l) # bc otherwise there is sometime a -0.0 problem
+                
+            # turn into strings and format latex compatible
+            l_str = str(range_l)
+            u_str = str(range_u)   
+            if len(l_str.split('.')[1]) < pres:
+                l_str = l_str + '0'
+            if len(u_str.split('.')[1]) < pres:
+                u_str = u_str + '0' 
+            if (range_u<0) and (range_l<=0):
+                string = r'$-\left[' + l_str[1:] + ' \text{-} ' + u_str[1:]\
+                         + '\right]$'  
+            elif (range_u>0) and (range_l>=0):
+                string = r'$\left[' + l_str + ' \text{-} ' + u_str + '\right]$' 
+            else:
+                raise ValueError('Whoops, I was to lazy to implement that case')
+            if exponent != 0:
+                string = string[:-1] + r' \cdot 10^{' + str(exponent) + r'}$'
+                     
+            formatted_DataFrame.iloc[z,param] = string
+            
+    # add column for redshifts        
+    formatted_DataFrame.insert(0, 'z', redshift)
+    # add header to DataFrame
+    formatted_DataFrame.columns = ModelResult.quantity_options['schechter_table_header']
+    # add caption to table
+    caption = 'Likely Schechter parameters ranges for'\
+              + ModelResult.quantity_options['ndf_name']\
+              + 'given by 16th and 84th percentile.'
+    # turn into latex
+    latex_table = formatted_DataFrame.to_latex(index = False,
+                                               escape=False,
+                                               column_format = 'rrrr',
+                                               caption = caption)
+    
+    return(latex_table)   
+
+
 def calculate_best_fit_schechter_parameter(ModelResult, redshift):
     '''
     Calculate best fit Schechter parameter for best fit model.
@@ -65,7 +147,7 @@ def get_schechter_function_sample(ModelResult, redshift, num=100,
     Calculate sample of Schechter functions over typical quantity_range
     by fitting functions to ndf samples.
     '''
-
+    
     redshift = make_list(redshift)
     schechter, log_quantity = ModelResult.quantity_options['schechter'],\
                               ModelResult.quantity_options['quantity_range']
@@ -84,12 +166,16 @@ def get_schechter_function_sample(ModelResult, redshift, num=100,
     return(sample)
 
 
-def get_schechter_parameter_distribution(ModelResult, redshift, num=1000):
+def get_schechter_parameter_distribution(ModelResult, redshift, num=100):
     '''
     Calculate distribution of Schechter parameter for model at a given redshift.
     Do this by calculating num model ndfs and fitting Schechter functions to
     each one. Returns dictonary of form {redshift:distribution}.
     '''
+    if ModelResult.distribution.is_None():
+        raise AttributeError(
+            'distributions have not been calculated.')
+    
     redshift = make_list(redshift)
     schechter, p0 = ModelResult.quantity_options['schechter'],\
                     ModelResult.quantity_options['schechter_p0']

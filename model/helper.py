@@ -106,8 +106,8 @@ def calculate_percentiles(data, axis=0):
     data = make_array(data)  # turn into numpy array if not already
 
     median = np.percentile(data, 50, axis=axis)
-    lower = np.percentile(data, 16, axis=axis)
-    upper = np.percentile(data, 84, axis=axis)
+    lower  = np.percentile(data, 16, axis=axis)
+    upper  = np.percentile(data, 84, axis=axis)
     return([median, lower, upper])
 
 ################ SORTING AND FILTERING ########################################
