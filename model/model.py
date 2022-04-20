@@ -106,9 +106,12 @@ class ModelResult():
             self.fit_model(self.redshift, **kwargs)
 
         if saving_mode == 'loading':
-            parameter = load_parameter(self, name_addon)
-            parameter = {int(z): p for z, p in parameter.items()}
-            self.parameter = Redshift_dict(parameter)
+            try:
+                parameter = load_parameter(self, name_addon)
+                parameter = {int(z): p for z, p in parameter.items()}
+                self.parameter = Redshift_dict(parameter)
+            except FileNotFoundError:
+                warnings.warn('Couldn\'t load best fit parameter')
 
         # default plot parameter per feedback_model
         if self.feedback_name == 'none':

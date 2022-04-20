@@ -43,8 +43,9 @@ def get_quantity_specifics(quantity_name):
     if quantity_name == 'mstar':
         options['quantity_name']            = 'mstar'
         options['ndf_name']                 = 'SMF'
-        options['model_p0']                 = np.array([-2, 1, 0.5])
-        options['model_bounds']             = np.array([[-5, 0, 0], [np.log10(2), 4, 0.99]])
+        options['model_p0']                 = np.array([-2, 12.45, 1, 0.5])
+        options['model_bounds']             = np.array([[-5, 8, 0, 0],
+                                                        [np.log10(2), 15, 4, 0.99]])
         options['schechter']                = log_schechter_function
         options['schechter_p0']             = [-4, 10, -1.5]
         options['quantity_range']           = np.linspace(7.32, 12.46, 100)
@@ -60,8 +61,9 @@ def get_quantity_specifics(quantity_name):
     elif quantity_name == 'Muv':
         options['quantity_name']            = 'Muv'
         options['ndf_name']                 = 'UVLF'
-        options['model_p0']                 = np.array([18, 1, 0.5])
-        options['model_bounds']             = np.array([[13, 0, 0], [20, 4, 0.99]])
+        options['model_p0']                 = np.array([18, 12.45, 1, 0.5])
+        options['model_bounds']             = np.array([[13, 8, 0, 0], 
+                                                        [20, 15, 4, 0.99]])
         options['schechter']                = log_schechter_function_mag
         options['schechter_p0']             = [-4, -20, -1.5]
         options['quantity_range']           = np.linspace(-23.42, -12.46, 100)  

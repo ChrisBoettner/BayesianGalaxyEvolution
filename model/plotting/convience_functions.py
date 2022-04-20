@@ -5,6 +5,9 @@ Created on Sun Apr 10 18:16:20 2022
 
 @author: chris
 """
+from matplotlib.lines import Lines2D
+print(' sort by_labels so that Lines2D objects appear first')
+
 from model.helper import make_array, pick_from_list
 from model.analysis.calculations import calculate_best_fit_ndf
 
@@ -33,10 +36,11 @@ def plot_best_fit_ndf(axes, ModelResult):
 
     for z in ModelResult.redshift:
         color = pick_from_list(ModelResult.color, z)
+        label = pick_from_list(ModelResult.label, z)
         axes[z].plot(ndfs[z][:, 0],
                      ndfs[z][:, 1],
                      linestyle=ModelResult.linestyle,
-                     label=ModelResult.label,
+                     label=label,
                      color=color)
     return(ndfs)
 
@@ -54,6 +58,8 @@ def add_redshift_text(axes, redshifts):
 
 
 ################ LEGEND STUFF #################################################
+
+
 def add_legend(axes, ind, sort=False, **kwargs):
     '''
     Add legend at axis given by ind. If sort is true, sort labels before
@@ -99,6 +105,10 @@ def remove_double_labels(axes):
         handles_, labels_ = a.get_legend_handles_labels()
         handles += handles_
         labels += labels_
+    breakpoint()
+    
+    # sort so that Lines2D objects appear first
+    
     by_label = dict(zip(labels, handles))
     return(by_label)
 

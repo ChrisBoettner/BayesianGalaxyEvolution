@@ -14,7 +14,7 @@ from model.helper import is_sublist, make_list
 
 
 def load_model(quantity_name, feedback_name, data_subset=None,
-               prior_name=None, **kwargs):
+               prior_name=None, redshifts=None, **kwargs):
     '''
     Load saved (MCMC) model. Built for simplicity so that feedback_name is
     associated with specific prior, but can be changed if needed.
@@ -25,7 +25,8 @@ def load_model(quantity_name, feedback_name, data_subset=None,
 
     groups, log_ndfs = load_data(quantity_name, data_subset)
     log_hmfs = load_hmf_functions()
-    redshifts = list(log_ndfs.keys())
+    if redshifts is None: 
+        redshifts = list(log_ndfs.keys())
 
     if prior_name is None:
         if feedback_name == 'changing':
@@ -45,7 +46,7 @@ def load_model(quantity_name, feedback_name, data_subset=None,
 
 
 def save_model(quantity_name, feedback_name, data_subset=None,
-               prior_name=None, **kwargs):
+               prior_name=None, redshifts=None, **kwargs):
     '''
     Run and save (MCMC) model. Built for simplicity so that feedback_name is
     associated with specific prior, but can be changed if needed.
@@ -56,7 +57,8 @@ def save_model(quantity_name, feedback_name, data_subset=None,
 
     groups, log_ndfs = load_data(quantity_name, data_subset)
     log_hmfs = load_hmf_functions()
-    redshifts = list(log_ndfs.keys())
+    if redshifts is None: 
+        redshifts = list(log_ndfs.keys())
 
     if prior_name is None:
         if feedback_name == 'changing':
@@ -84,6 +86,7 @@ def save_model(quantity_name, feedback_name, data_subset=None,
 def run_model(quantity_name, feedback_name, fitting_method='least_squares',
               chain_length=5000, num_walkers=10, autocorr_discard=False,
               data_subset=None, prior_name=None, redshifts=None,
+              saving_mode='temp', parameter_calc=True,
               **kwargs):
     '''
     Run a model calibration without saving. Default is least_squares fit (without
@@ -117,7 +120,7 @@ def run_model(quantity_name, feedback_name, fitting_method='least_squares',
                         name_addon=data_subset,
                         chain_length=chain_length,
                         num_walkers=num_walkers,
-                        autocorr_discard=False,
-                        saving_mode='temp',
+                        autocorr_discard=autocorr_discard,
+                        saving_mode=saving_mode,
                         **kwargs)
     return(model)

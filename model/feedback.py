@@ -22,11 +22,11 @@ def feedback_model(feedback_name, log_m_c, initial_guess=None, bounds=None):
         both    : supernova and black hole feedback
     '''
     if feedback_name == 'none':
-        feedback = NoFeedback(log_m_c, initial_guess[:1],
-                              bounds[:, :1])
+        feedback = NoFeedback(log_m_c, initial_guess[:-2],
+                              bounds[:, :-2])
     elif feedback_name == 'stellar':
-        feedback = StellarFeedback(log_m_c, initial_guess[:2],
-                                   bounds[:, :2])
+        feedback = StellarFeedback(log_m_c, initial_guess[:-1],
+                                   bounds[:, :-1])
     elif feedback_name == 'stellar_blackhole':
         feedback = StellarBlackholeFeedback(log_m_c, initial_guess,
                                             bounds)
@@ -49,17 +49,17 @@ class StellarBlackholeFeedback(object):
         # max halo mass (just used to avoid overflows)
         self._upper_m_h = 40
 
-    def calculate_log_quantity(self, log_m_h, log_A, alpha, beta):
+    def calculate_log_quantity(self, log_m_h, log_A, log_m_c, alpha, beta):
         '''
         Calculate observable quantity from input halo mass and model parameter.
         '''
         if np.isnan(log_m_h).any() or (log_m_h > self._upper_m_h).any():
             return(np.nan)
-        sn, bh = self._variable_substitution(log_m_h, alpha, beta)
+        sn, bh = self._variable_substitution(log_m_h,log_m_c, alpha, beta)
         log_quantity = log_A + log_m_h - np.log10(sn + bh)
         return(log_quantity)
 
-    def calculate_log_halo_mass(self, log_quantity, log_A, alpha, beta,
+    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c, alpha, beta,
                                 xtol=0.1):
         '''
         Calculate halo mass from input observable quantity and model paramter.
@@ -72,11 +72,11 @@ class StellarBlackholeFeedback(object):
                                   fprime2=self.calculate_d2logquantity_dlogmh2,
                                   x0_func=self._initial_guess,
                                   y=log_quantity,
-                                  args=(log_A, alpha, beta),
+                                  args=(log_A, log_m_c, alpha, beta),
                                   xtol=xtol)
         return(log_m_h)
 
-    def calculate_log_halo_mass_alternative(self, log_quantity, log_A, alpha,
+    def calculate_log_halo_mass_alternative(self, log_quantity, log_A, log_m_c, alpha,
                                             beta,
                                             spacing=1e-3):
         '''
@@ -92,7 +92,7 @@ class StellarBlackholeFeedback(object):
         # create lookup tables of halo mass and quantities
         log_m_h_lookup = np.arange(8, 17, spacing)
         log_quantity_lookup = StellarBlackholeFeedback.calculate_log_quantity(
-            self, log_m_h_lookup, log_A, alpha, beta)
+            self, log_m_h_lookup, log_m_c, log_A, alpha, beta)
 
         log_quantity = make_list(log_quantity)
         # find closest values to log_quantity in lookup array
@@ -107,25 +107,25 @@ class StellarBlackholeFeedback(object):
             log_m_h = log_m_h[0]
         return(log_m_h)
 
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, alpha, beta):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, log_m_c, alpha, beta):
         '''
         Calculate d/d(log m_h) log_quantity
         '''
         if np.isnan(log_m_h).any() or (log_m_h > self._upper_m_h).any():
             return(np.nan)
-        sn, bh = self._variable_substitution(log_m_h, alpha, beta)
+        sn, bh = self._variable_substitution(log_m_h, log_m_c, alpha, beta)
 
         first_derivative = 1 - (-alpha * sn + beta * bh) / (sn + bh)
         return(first_derivative)
 
-    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, alpha, beta):
+    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, log_m_c, alpha, beta):
         '''
         Calculate d^2/d(log m_h)^2 log_quantity
         '''
 
         if np.isnan(log_m_h).any() or (log_m_h > self._upper_m_h).any():
             return(np.nan)
-        sn, bh = self._variable_substitution(log_m_h, alpha, beta)
+        sn, bh = self._variable_substitution(log_m_h, log_m_c, alpha, beta)
 
         denominator = (sn + bh)
         numerator_one = (alpha**2 * sn + beta**2 * bh)
@@ -135,30 +135,30 @@ class StellarBlackholeFeedback(object):
                                            + numerator_two / denominator**2)
         return(second_derivative)
 
-    def _variable_substitution(self, log_m_h, alpha, beta):
+    def _variable_substitution(self, log_m_h, log_m_c, alpha, beta):
         '''
         Transform input quanitities to more easily handable quantities.
         '''
         if np.isnan(log_m_h).any():
             return(np.nan)
-        ratio = log_m_h - self.log_m_c  # m_h/m_c in log space
+        ratio = log_m_h - log_m_c  # m_h/m_c in log space
 
         log_stellar = - alpha * ratio        # log of sn feedback contribution
         log_black_hole = beta * ratio        # log of bh feedback contribution
         return(10**log_stellar, 10**log_black_hole)
 
-    def _initial_guess(self, log_quantity, log_A, alpha, beta):
+    def _initial_guess(self, log_quantity, log_A, log_m_c, alpha, beta):
         '''
         Calculate initial guess for halo mass (for function inversion). Do this
         by calculating the high and low mass end approximation of the relation.
         '''
         # turnover quantity, where dominating feedback changes
-        log_q_turn = log_A - np.log10(2) + self.log_m_c
+        log_q_turn = log_A - np.log10(2) + log_m_c
 
         if log_quantity < log_q_turn:
-            x0 = (log_quantity - log_A + alpha * self.log_m_c) / (1 + alpha)
+            x0 = (log_quantity - log_A + alpha * log_m_c) / (1 + alpha)
         else:
-            x0 = (log_quantity - log_A - beta * self.log_m_c) / (1 - beta)
+            x0 = (log_quantity - log_A - beta * log_m_c) / (1 - beta)
         return(x0)
 
 
@@ -170,39 +170,42 @@ class StellarFeedback(StellarBlackholeFeedback):
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'stellar'
 
-    def calculate_log_quantity(self, log_m_h, log_A, alpha):
+    def calculate_log_quantity(self, log_m_h, log_A, log_m_c, alpha):
         return(StellarBlackholeFeedback.calculate_log_quantity(self, log_m_h, log_A,
+                                                               log_m_c,
                                                                alpha,
                                                                beta=0))
 
-    def calculate_log_halo_mass(self, log_quantity, log_A, alpha,
+    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c, alpha,
                                 xtol=0.1):
         log_m_h = invert_function(func=self.calculate_log_quantity,
                                   fprime=self.calculate_dlogquantity_dlogmh,
                                   fprime2=self.calculate_d2logquantity_dlogmh2,
                                   x0_func=self._initial_guess,
                                   y=log_quantity,
-                                  args=(log_A, alpha),
+                                  args=(log_A, log_m_c, alpha),
                                   xtol=xtol)
         return(log_m_h)
 
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, alpha):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, log_m_c, alpha):
         return(StellarBlackholeFeedback.calculate_dlogquantity_dlogmh(self, log_m_h,
-                                                                      log_A, alpha,
+                                                                      log_A, log_m_c,
+                                                                      alpha,
                                                                       beta=0))
 
-    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, alpha):
+    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, log_m_c, alpha):
         return(StellarBlackholeFeedback.calculate_d2logquantity_dlogmh2(self, log_m_h,
                                                                         log_A,
+                                                                        log_m_c,
                                                                         alpha,
                                                                         beta=0))
 
-    def _initial_guess(self, log_quantity, log_A, alpha):
+    def _initial_guess(self, log_quantity, log_A, log_m_c, alpha):
         # turnover quantity, where dominating feedback changes
-        log_q_turn = log_A - np.log10(2) + self.log_m_c
+        log_q_turn = log_A - np.log10(2) + log_m_c
 
         if log_quantity < log_q_turn:
-            x0 = (log_quantity - log_A + alpha * self.log_m_c) / (1 + alpha)
+            x0 = (log_quantity - log_A + alpha * log_m_c) / (1 + alpha)
         else:
             x0 = (log_quantity - log_A)
         return(x0)
