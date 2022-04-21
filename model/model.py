@@ -150,8 +150,8 @@ class ModelResult():
         '''
         redshifts = make_list(redshifts)
 
-        posterior_samp = None
-        bounds = None
+        parameters, distributions = {}, {}
+        posterior_samp, bounds = None, None
         for z in redshifts:
             print('z=' + str(z))
             self._z = z # temporary storage for current redshift
@@ -207,8 +207,13 @@ class ModelResult():
             else:
                 raise ValueError('fitting_method not known.')
             
-            self.parameter.add_entry(z, parameter)
-            self.distribution.add_entry(z, posterior_samp)
+            parameters[z]    = parameter
+            distributions[z] = posterior_samp
+            
+        # add distributions to model object after fitting is done, because
+        # otherwise, large amount of data in model slows (parallel) mcmc run
+        self.parameter    = parameters
+        self.distribution = distributions
         return
 
     def calculate_log_abundance(self, log_quantity, z, parameter):
@@ -450,7 +455,11 @@ class Redshift_dict():
 
     def add_entry(self, z, value):
         '''Add new entry at z to dictonary.'''
-        self.data[z] = value
+        if np.isscalar(z):
+            self.data[z] = value
+        else:
+            for i in range(len(z)):
+                self.dat[z[i]] = value[i]
         return
 
     def at_z(self, z):

@@ -9,12 +9,12 @@ Created on Sun Apr 10 19:27:34 2022
 from model.plotting.plotting import *
 from model.interface import run_model, load_model, save_model
 
-quantity_name = 'Muv'
+quantity_name = 'mstar'
 #feedback_name = 'none'
 #m = load_model(quantity_name, 'stellar_blackhole')
 
-m = save_model(quantity_name, 'changing', data_subset='Bouwens2021', 
-               num_walker = 500)
+m = save_model('Muv', 'changing', data_subset='Bouwens2021', 
+               chain_length=15000)
 
 # m = run_model(quantity_name, 'stellar_blackhole',
 #               chain_length = 5000, num_walkers = 200,

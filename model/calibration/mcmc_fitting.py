@@ -22,8 +22,8 @@ from model.helper import within_bounds
 
 
 def mcmc_fit(model, prior, saving_mode,
-             chain_length=10000, num_walker=500,
-             autocorr_discard=True, parameter_calc=True,
+             chain_length=10000, num_walker=250,
+             autocorr_discard=True, parameter_calc=True, parallel = True,
              progress=True):
     '''
     Calculate parameter that match observed numbder density function (LF/SMF)
@@ -34,6 +34,7 @@ def mcmc_fit(model, prior, saving_mode,
     num_walkers is the number of walkers for mcmc sampling.
     If autocorr_discard is True, calculate and discard the burn-in part of the
     chain.
+    If parallel is True, use multithreading.
     If parameter_calc is True, calculate best-fit parameter (MAP estimator).
     If progress is True, show progress bar of mcmc.
     '''
@@ -67,11 +68,17 @@ def mcmc_fit(model, prior, saving_mode,
         if saving_mode == 'saving' and os.path.exists(filename):
             os.remove(filename)  # clear file before start writing to it
         # create MCMC sampler and run MCMC
-        with Pool() as pool:
-            sampler = emcee.EnsembleSampler(nwalkers, ndim,
-                                            log_probability, args=(model,),
-                                            backend=savefile, pool=pool)
+        if parallel:
+            with Pool() as pool:
+                sampler = emcee.EnsembleSampler(nwalkers, ndim,
+                                                log_probability, args=(model,),
+                                                backend=savefile, pool=pool)
+                sampler.run_mcmc(walker_pos, chain_length, progress=progress)
+        else:
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability,
+                                            args=(model,), backend=savefile)
             sampler.run_mcmc(walker_pos, chain_length, progress=progress)
+            
     if saving_mode == 'loading':
         # load from savefile
         sampler = savefile
