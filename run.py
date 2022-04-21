@@ -7,7 +7,7 @@ Created on Thu Apr  7 13:48:39 2022.
 """
 import click
 
-from model.api import save_model
+from model.interface import save_model
 
 
 @click.command()
@@ -15,9 +15,21 @@ from model.api import save_model
               help='Physical quantity: \'Muv\' or \'mstar\'')
 @click.option('--feedback_name', prompt='Feedback model',
               help='Feedback model: \'none\', \'stellar\' \'stellar_blackhole\' or custom')
-def run(quantity_name, feedback_name):
+@click.option('--data_subset', default=None,
+              help='List of data sets names (of form AuthorYear')
+@click.option('--prior_name', default=None,
+              help='Prior model: \'uniform\' or \'successive\'')
+@click.option('--redshift', default=None,
+              help='Choose list of redshift to include.')
+@click.option('--parameter_calc', default=True,
+              help='Choose if best fit parameter should be calculated. True/False.')
+@click.option('--chain_length', default=10000,
+              help='Length of MCMC chains.')
+@click.option('--num_walker', default=500,
+              help='Number of MCMC walker in ensemble.')
+def run(**kwargs):
     ''''Runs save_model with choosen options'''
-    return(save_model(quantity_name, feedback_name))
+    return(save_model(**kwargs))
 
 
 if __name__ == '__main__':

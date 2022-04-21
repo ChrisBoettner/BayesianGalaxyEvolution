@@ -29,7 +29,8 @@ class ModelResult():
     def __init__(self, redshifts, log_ndfs, log_hmf_functions,
                  quantity_name, feedback_name, prior_name,
                  fitting_method, saving_mode, name_addon=None,
-                 groups=None, calibrate=True, **kwargs):
+                 groups=None, calibrate=True, paramter_calc = True,
+                 **kwargs):
         '''
         Main model object. Calibrate the model by fitting parameter to
         observational data.
@@ -67,6 +68,9 @@ class ModelResult():
         calibrate : bool, optional
             Choose if model is supposed to be calibrated or not. 
             The default is True.
+        parameter_calc : bool, optional
+            Choose if best fit parameter are supposed to be calculated 
+            (or laoded). The default is True.
         **kwargs : dict
             Additional arguments that can be passed to the mcmc algorithm.
 
@@ -105,7 +109,7 @@ class ModelResult():
         if calibrate:
             self.fit_model(self.redshift, **kwargs)
 
-        if saving_mode == 'loading':
+        if (saving_mode == 'loading'):
             try:
                 parameter = load_parameter(self, name_addon)
                 parameter = {int(z): p for z, p in parameter.items()}

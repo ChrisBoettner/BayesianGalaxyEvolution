@@ -7,13 +7,14 @@ Created on Sun Apr 10 19:27:34 2022
 """
 
 from model.plotting.plotting import *
-from model.api import run_model, load_model, save_model
+from model.interface import run_model, load_model, save_model
 
 quantity_name = 'Muv'
 #feedback_name = 'none'
 #m = load_model(quantity_name, 'stellar_blackhole')
 
-m = run_model(quantity_name, 'changing')
+m = save_model(quantity_name, 'changing', data_subset='Bouwens2021', 
+               num_walker = 500)
 
 # m = run_model(quantity_name, 'stellar_blackhole',
 #               chain_length = 5000, num_walkers = 200,
@@ -24,4 +25,4 @@ m = run_model(quantity_name, 'changing')
 #     run_model(quantity_name, 'stellar_blackhole')]
 
 
-#o = Plot_schechter_sample(m)
+o = Plot_best_fit_ndfs(m)

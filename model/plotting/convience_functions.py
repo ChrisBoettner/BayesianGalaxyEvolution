@@ -5,8 +5,8 @@ Created on Sun Apr 10 18:16:20 2022
 
 @author: chris
 """
-from matplotlib.lines import Lines2D
-print(' sort by_labels so that Lines2D objects appear first')
+import numpy as np
+from matplotlib.lines import Line2D
 
 from model.helper import make_array, pick_from_list
 from model.analysis.calculations import calculate_best_fit_ndf
@@ -97,7 +97,10 @@ def add_separated_legend(axes, separation_point, ncol=1):
 
 
 def remove_double_labels(axes):
-    '''  Remove duplicates in legend that have same label. '''
+    '''  
+    Remove duplicates in legend that have same label. Also sorts labels so that
+    Line2D objects appear first.
+    '''
     axes = make_array(axes)
 
     handles, labels = [], []
@@ -105,11 +108,17 @@ def remove_double_labels(axes):
         handles_, labels_ = a.get_legend_handles_labels()
         handles += handles_
         labels += labels_
-    breakpoint()
-    
+
     # sort so that Lines2D objects appear first
+    handles        = np.array(handles , dtype='object')
+    labels         = np.array(labels, dtype='object')
+    lines_idx      = [isinstance(handle, Line2D) for handle in handles]
+    handles_sorted = np.concatenate((handles[lines_idx],
+                                    handles[np.logical_not(lines_idx)]))
+    labels_sorted  = np.concatenate((labels[lines_idx],
+                                    labels[np.logical_not(lines_idx)]))
     
-    by_label = dict(zip(labels, handles))
+    by_label = dict(zip(labels_sorted, handles_sorted))
     return(by_label)
 
 ################ AXES AND LIMITS ##############################################

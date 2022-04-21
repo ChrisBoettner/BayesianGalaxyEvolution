@@ -22,7 +22,7 @@ from model.helper import within_bounds
 
 
 def mcmc_fit(model, prior, saving_mode,
-             chain_length=10000, num_walkers=250,
+             chain_length=10000, num_walker=500,
              autocorr_discard=True, parameter_calc=True,
              progress=True):
     '''
@@ -54,7 +54,7 @@ def mcmc_fit(model, prior, saving_mode,
     # select initial walker positions near initial guess
     initial_guess = np.array(model.feedback_model.at_z(model._z).initial_guess)
     ndim = len(initial_guess)
-    nwalkers = num_walkers
+    nwalkers = num_walker
     walker_pos = initial_guess * (1 + 0.1 * np.random.rand(nwalkers, ndim))
 
     # make prior a global variable so it doesn"t have to be called in

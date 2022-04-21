@@ -127,7 +127,12 @@ class Plot_best_fit_ndfs(Plot):
                          quantity_range[-1]])
 
         # add legend
-        add_separated_legend(axes, separation_point=len(ModelResults),
+        if (len(ModelResults)==1) and \
+           (ModelResults[0].feedback_name == 'changing'):
+            separation_point = 2
+        else:
+            separation_point = len(ModelResults)
+        add_separated_legend(axes, separation_point=separation_point,
                              ncol=ncol)
 
         # turn off unused axes

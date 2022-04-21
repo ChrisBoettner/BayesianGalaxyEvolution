@@ -46,7 +46,8 @@ def load_model(quantity_name, feedback_name, data_subset=None,
 
 
 def save_model(quantity_name, feedback_name, data_subset=None,
-               prior_name=None, redshifts=None, **kwargs):
+               prior_name=None, redshift=None, parameter_calc = True,
+               **kwargs):
     '''
     Run and save (MCMC) model. Built for simplicity so that feedback_name is
     associated with specific prior, but can be changed if needed.
@@ -57,8 +58,8 @@ def save_model(quantity_name, feedback_name, data_subset=None,
 
     groups, log_ndfs = load_data(quantity_name, data_subset)
     log_hmfs = load_hmf_functions()
-    if redshifts is None: 
-        redshifts = list(log_ndfs.keys())
+    if redshift is None: 
+        redshift = list(log_ndfs.keys())
 
     if prior_name is None:
         if feedback_name == 'changing':
@@ -68,13 +69,13 @@ def save_model(quantity_name, feedback_name, data_subset=None,
 
     print(quantity_name, prior_name, feedback_name)
     start = timeit.default_timer()
-    model = ModelResult(redshifts, log_ndfs, log_hmfs,
+    model = ModelResult(redshift, log_ndfs, log_hmfs,
                         quantity_name, feedback_name, prior_name,
                         groups=groups,
                         name_addon=data_subset,
                         fitting_method='mcmc',
                         saving_mode='saving',
-                        parameter_calc=True,
+                        parameter_calc=parameter_calc,
                         **kwargs)
     save_parameter(model, data_subset)
     end = timeit.default_timer()
@@ -85,7 +86,7 @@ def save_model(quantity_name, feedback_name, data_subset=None,
 
 def run_model(quantity_name, feedback_name, fitting_method='least_squares',
               chain_length=5000, num_walkers=10, autocorr_discard=False,
-              data_subset=None, prior_name=None, redshifts=None,
+              data_subset=None, prior_name=None, redshift=None,
               saving_mode='temp', parameter_calc=True,
               **kwargs):
     '''
@@ -100,11 +101,11 @@ def run_model(quantity_name, feedback_name, fitting_method='least_squares',
     groups, log_ndfs = load_data(quantity_name, data_subset)
     log_hmfs = load_hmf_functions()
 
-    if not redshifts:
-        redshifts = list(log_ndfs.keys())
+    if not redshift:
+        redshift = list(log_ndfs.keys())
     else:
-        redshifts = make_list(redshifts)
-        if not is_sublist(redshifts, list(log_ndfs.keys())):
+        redshift = make_list(redshift)
+        if not is_sublist(redshift, list(log_ndfs.keys())):
             return ValueError('redshifts not in dataset.')
 
     if prior_name is None:
@@ -113,7 +114,7 @@ def run_model(quantity_name, feedback_name, fitting_method='least_squares',
         else:
             prior_name = 'uniform'
 
-    model = ModelResult(redshifts, log_ndfs, log_hmfs,
+    model = ModelResult(redshift, log_ndfs, log_hmfs,
                         quantity_name, feedback_name, prior_name,
                         groups=groups,
                         fitting_method=fitting_method,
