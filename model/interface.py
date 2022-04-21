@@ -122,6 +122,7 @@ def run_model(quantity_name, feedback_name, fitting_method='least_squares',
                         chain_length=chain_length,
                         num_walker=num_walker,
                         autocorr_discard=autocorr_discard,
+                        parameter_calc=parameter_calc,
                         saving_mode=saving_mode,
                         **kwargs)
     return(model)

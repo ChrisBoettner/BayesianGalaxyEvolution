@@ -212,8 +212,8 @@ class ModelResult():
             
         # add distributions to model object after fitting is done, because
         # otherwise, large amount of data in model slows (parallel) mcmc run
-        self.parameter    = parameters
-        self.distribution = distributions
+        self.parameter    = Redshift_dict(parameters)
+        self.distribution = Redshift_dict(distributions)
         return
 
     def calculate_log_abundance(self, log_quantity, z, parameter):
