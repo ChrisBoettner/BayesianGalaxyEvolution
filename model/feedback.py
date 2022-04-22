@@ -59,7 +59,7 @@ class StellarBlackholeFeedback(object):
         log_quantity = log_A + log_m_h - np.log10(sn + bh)
         return(log_quantity)
 
-    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c, alpha, beta,
+    def calculate_log_halo_mass2(self, log_quantity, log_A, log_m_c, alpha, beta,
                                 xtol=0.1):
         '''
         Calculate halo mass from input observable quantity and model paramter.
@@ -76,9 +76,9 @@ class StellarBlackholeFeedback(object):
                                   xtol=xtol)
         return(log_m_h)
 
-    def calculate_log_halo_mass_alternative(self, log_quantity, log_A, log_m_c, alpha,
-                                            beta,
-                                            spacing=1e-3):
+    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c,
+                                            alpha, beta,
+                                            spacing=1e-6):
         '''
         Calculate halo mass from input quantity quantity and model parameter.
         Do this by creating a lookup table for quantity-halo mass relation
@@ -87,12 +87,11 @@ class StellarBlackholeFeedback(object):
         Increasing spacing makes result more accurate but takes longer to
         calculate.
         '''
-        print('Warning: This method does currently not produce correct results.')
-
+        #print('Warning: This method does currently not produce correct results.')
         # create lookup tables of halo mass and quantities
-        log_m_h_lookup = np.arange(8, 17, spacing)
+        log_m_h_lookup = np.arange(-10, 40, spacing)
         log_quantity_lookup = StellarBlackholeFeedback.calculate_log_quantity(
-            self, log_m_h_lookup, log_m_c, log_A, alpha, beta)
+            self, log_m_h_lookup, log_A, log_m_c, alpha, beta)
 
         log_quantity = make_list(log_quantity)
         # find closest values to log_quantity in lookup array
@@ -214,7 +213,7 @@ class StellarFeedback(StellarBlackholeFeedback):
 class NoFeedback(StellarBlackholeFeedback):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
-        Model for without feedback.
+        Model without feedback.
         '''
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'none'

@@ -13,8 +13,7 @@ quantity_name = 'mstar'
 #feedback_name = 'none'
 #m = load_model(quantity_name, 'stellar_blackhole')
 
-m = save_model('Muv', 'changing', data_subset='Bouwens2021', 
-               chain_length=15000)
+m = run_model(quantity_name, 'stellar_blackhole')
 
 # m = run_model(quantity_name, 'stellar_blackhole',
 #               chain_length = 5000, num_walkers = 200,
