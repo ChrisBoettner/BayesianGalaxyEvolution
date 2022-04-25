@@ -22,8 +22,8 @@ def feedback_model(feedback_name, log_m_c, initial_guess=None, bounds=None):
         both    : supernova and black hole feedback
     '''
     if feedback_name == 'none':
-        feedback = NoFeedback(log_m_c, initial_guess[:-2],
-                              bounds[:, :-2])
+        feedback = NoFeedback(log_m_c, initial_guess[:1],
+                              bounds[:, :1])
     elif feedback_name == 'stellar':
         feedback = StellarFeedback(log_m_c, initial_guess[:-1],
                                    bounds[:, :-1])
@@ -59,7 +59,7 @@ class StellarBlackholeFeedback(object):
         log_quantity = log_A + log_m_h - np.log10(sn + bh)
         return(log_quantity)
 
-    def calculate_log_halo_mass2(self, log_quantity, log_A, log_m_c, alpha, beta,
+    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c, alpha, beta,
                                 xtol=0.1):
         '''
         Calculate halo mass from input observable quantity and model paramter.
@@ -76,9 +76,9 @@ class StellarBlackholeFeedback(object):
                                   xtol=xtol)
         return(log_m_h)
 
-    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c,
-                                            alpha, beta,
-                                            spacing=1e-6):
+    def calculate_log_halo_mass_alternative(self, log_quantity, log_A, log_m_c, alpha,
+                                            beta,
+                                            spacing=1e-3):
         '''
         Calculate halo mass from input quantity quantity and model parameter.
         Do this by creating a lookup table for quantity-halo mass relation
@@ -87,9 +87,10 @@ class StellarBlackholeFeedback(object):
         Increasing spacing makes result more accurate but takes longer to
         calculate.
         '''
-        #print('Warning: This method does currently not produce correct results.')
+        print('Warning: This method does currently not produce correct results.')
+
         # create lookup tables of halo mass and quantities
-        log_m_h_lookup = np.arange(-10, 40, spacing)
+        log_m_h_lookup = np.arange(8, 17, spacing)
         log_quantity_lookup = StellarBlackholeFeedback.calculate_log_quantity(
             self, log_m_h_lookup, log_A, log_m_c, alpha, beta)
 
@@ -217,24 +218,16 @@ class NoFeedback(StellarBlackholeFeedback):
         '''
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'none'
-
+        self.log2 = np.log10(2) # so it doesn't need t be calc everytime
+        
     def calculate_log_quantity(self, log_m_h, log_A):
-        return(StellarBlackholeFeedback.calculate_log_quantity(self, log_m_h, log_A,
-                                                               alpha=0,
-                                                               beta=0))
+        return(log_A - self.log2 + log_m_h)
 
     def calculate_log_halo_mass(self, log_quantity, log_A):
-        return(log_quantity - log_A + np.log10(2))
+        return(log_quantity - log_A + self.log2)
 
     def calculate_dlogquantity_dlogmh(self, log_m_h, log_A):
-        return(StellarBlackholeFeedback.calculate_dlogquantity_dlogmh(self, log_m_h,
-                                                                      log_A,
-                                                                      alpha=0,
-                                                                      beta=0))
+        return(1)
 
     def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A):
-        return(StellarBlackholeFeedback.calculate_d2logquantity_dlogmh2(self,
-                                                                        log_m_h,
-                                                                        log_A,
-                                                                        alpha=0,
-                                                                        beta=0))
+        return(0)

@@ -14,7 +14,7 @@ from model.calibration.leastsq_fitting import calculate_weights
 from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ MAIN FUNCTIONS ###############################################
-def tabulate_schechter_parameter(ModelResult, redshift):
+def tabulate_schechter_parameter(ModelResult, redshift, num=100):
     '''
     Make Latex table for likely Schechter parameter ranges 
     (16th-84th percentile).    
@@ -23,32 +23,34 @@ def tabulate_schechter_parameter(ModelResult, redshift):
         raise AttributeError(
             'distributions have not been calculated.')
     redshift = make_list(redshift)
-
+    #breakpoint()
     # calculate distribution    
     parameter_distribution = get_schechter_parameter_distribution(ModelResult,
-                                                                  redshift)
+                                                                  redshift,
+                                                                  num=num)
     # calculate percentiles (likely parameter ranges)
-    parameter_ranges = []
+    lower_bounds, upper_bounds = {}, {}
     for z in redshift:
-        parameter_ranges = calculate_percentiles(parameter_distribution[z])
+        _, lower_bounds[z], upper_bounds[z] = calculate_percentiles(
+            parameter_distribution[z])
     
     # pre-load dataframe
     parameter_num = 3  # number of parameters of Schechter function
     formatted_DataFrame = pd.DataFrame(index   = redshift,
-                                       columns = parameter_num)
+                                       columns = range(parameter_num))
     
-    for param in parameter_num:
+    for p in range(parameter_num):
         for z in redshift:
             pres = 1    # rounding precision
-            range_lower = parameter_ranges[z][1]
-            range_upper = parameter_ranges[z][2]     
+            range_lower = lower_bounds[z][p]
+            range_upper = upper_bounds[z][p]     
             
             # get value of exponent
             exponent    = np.format_float_scientific(range_upper, precision = pres)
             _, exponent = exponent.split('e')
             exponent = int(exponent)
             
-            if param == 1:  # should be the log_obs_*, looks nicer like this
+            if p == 1:  # should be the log_obs_*, looks nicer like this
                 exponent     += -1
             
             # round to representable values
@@ -76,7 +78,7 @@ def tabulate_schechter_parameter(ModelResult, redshift):
             if exponent != 0:
                 string = string[:-1] + r' \cdot 10^{' + str(exponent) + r'}$'
                      
-            formatted_DataFrame.iloc[z,param] = string
+            formatted_DataFrame.loc[z,p] = string
             
     # add column for redshifts        
     formatted_DataFrame.insert(0, 'z', redshift)
@@ -204,6 +206,8 @@ def fit_function(function, data, p0, uncertainties=None):
     data = make_array(data)
     # remove infinites and nans
     data = data[np.isfinite(data[:,1])]
+    if len(data) == 0:
+        return(np.array([np.nan,np.nan,np.nan]))
     
     fit_parameter, _ = curve_fit(function, data[:, 0], data[:, 1],
                                  sigma=uncertainties, p0=p0,

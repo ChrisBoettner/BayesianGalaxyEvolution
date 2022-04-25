@@ -58,12 +58,15 @@ def mcmc_fit(model, prior, saving_mode,
     nwalkers = num_walker
     walker_pos = initial_guess * (1 + 0.1 * np.random.rand(nwalkers, ndim))
 
-    # make prior a global variable so it doesn"t have to be called in
-    # log_probability explicitly. This helps with parallization and makes it
-    # a lot faster
+    # make prior and model object a global variable so it doesn"t have to be 
+    # called in log_probability explicitly. This helps with parallization and 
+    # makes it a lot faster,
     # see https://emcee.readthedocs.io/en/stable/tutorials/parallel/
+    global mod
+    mod = model
     global prior_global
     prior_global = prior
+    
     if saving_mode in ['saving', 'temp']:
         if saving_mode == 'saving' and os.path.exists(filename):
             os.remove(filename)  # clear file before start writing to it
@@ -71,17 +74,17 @@ def mcmc_fit(model, prior, saving_mode,
         if parallel:
             with Pool() as pool:
                 sampler = emcee.EnsembleSampler(nwalkers, ndim,
-                                                log_probability, args=(model,),
+                                                log_probability,
                                                 backend=savefile, pool=pool)
                 sampler.run_mcmc(walker_pos, chain_length, progress=progress)
         else:
             sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability,
-                                            args=(model,), backend=savefile)
-            sampler.run_mcmc(walker_pos, chain_length, progress=progress)
-            
-    if saving_mode == 'loading':
+                                            backend=savefile)  
+    elif saving_mode == 'loading':
         # load from savefile
         sampler = savefile
+    else:
+        raise ValueError('saving_mode not known.')
 
     # get autocorrelationtime and discard burn-in of mcmc walk
     if autocorr_discard:
@@ -95,14 +98,12 @@ def mcmc_fit(model, prior, saving_mode,
     if parameter_calc:
         bounds = list(zip(np.percentile(posterior_samp, 16, axis=0),
                           np.percentile(posterior_samp, 84, axis=0)))
-        params = calculate_MAP_estimator(
-            prior_global,
-            model,
-            method='annealing',
-            bounds=bounds,
-            x0=np.median(
-                posterior_samp,
-                axis=0))
+        params = calculate_MAP_estimator(prior_global, model,
+                                         method='annealing',
+                                         bounds=bounds,
+                                         x0=np.median(
+                                             posterior_samp, 
+                                             axis=0))
     else:
         params = None
 
@@ -111,7 +112,7 @@ def mcmc_fit(model, prior, saving_mode,
 ################ PROBABILITY FUNCTIONS ########################################
 
 
-def log_probability(params, model):
+def log_probability(params):
     '''
     Calculate total probability (which will be maximized by MCMC fitting).
     Total probability is given by likelihood*prior_probability, meaning
@@ -119,13 +120,13 @@ def log_probability(params, model):
     '''
 
     # check if parameter are within bounds
-    if not within_bounds(params, *model.feedback_model.at_z(model._z).bounds):
+    if not within_bounds(params, *mod.feedback_model.at_z(mod._z).bounds):
         return(-np.inf)
 
     # PRIOR
     l_prior = log_prior(params, prior_global)
     # LIKELIHOOD
-    l_likelihood = log_likelihood(params, model)
+    l_likelihood = log_likelihood(params, mod)
     return(l_prior + l_likelihood)
 
 
