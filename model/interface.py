@@ -85,7 +85,6 @@ def save_model(quantity_name, feedback_name, data_subset=None,
 
 
 def run_model(quantity_name, feedback_name, fitting_method='least_squares',
-              chain_length=5000, num_walker=10, autocorr_discard=False,
               data_subset=None, prior_name=None, redshift=None,
               saving_mode='temp', parameter_calc=True,
               **kwargs):
@@ -119,9 +118,6 @@ def run_model(quantity_name, feedback_name, fitting_method='least_squares',
                         groups=groups,
                         fitting_method=fitting_method,
                         name_addon=data_subset,
-                        chain_length=chain_length,
-                        num_walker=num_walker,
-                        autocorr_discard=autocorr_discard,
                         parameter_calc=parameter_calc,
                         saving_mode=saving_mode,
                         **kwargs)

@@ -241,6 +241,7 @@ class ModelResult():
             Log value of ndf at the input value and redshift.
 
         '''
+        log_quantity = make_list(log_quantity)
         if self.quantity_name == 'mstar':
             pass
         elif self.quantity_name == 'Muv':
@@ -256,11 +257,17 @@ class ModelResult():
         # calculate halo masses from stellar masses using model
         log_m_h = self.feedback_model.at_z(z).calculate_log_halo_mass(
             log_quantity, *parameter)
-        # calculate modelled number density function
+        
+        ## calculate modelled number density function
+        # calculate value of halo mass function
         log_hmf = self.log_hmfs.at_z(z)(log_m_h)
-        log_fb_factor = np.log10(
-            self.feedback_model.at_z(z).calculate_dlogquantity_dlogmh(
-                log_m_h, *parameter))
+        # calculate feedback effect (and deal with zero values)
+        fb_factor = self.feedback_model.at_z(z).calculate_dlogquantity_dlogmh(
+            log_m_h, *parameter)
+        log_fb_factor                 = np.empty_like(fb_factor)
+        log_fb_factor[fb_factor == 0] = np.inf
+        log_fb_factor[fb_factor != 0] = np.log10(fb_factor[fb_factor!=0])
+            
         # calculate modelled phi value
         log_phi = log_hmf - log_fb_factor
         return(log_phi)

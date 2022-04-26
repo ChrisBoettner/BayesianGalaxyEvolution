@@ -22,21 +22,64 @@ from model.helper import within_bounds
 
 
 def mcmc_fit(model, prior, saving_mode,
-             chain_length=10000, num_walker=250,
-             autocorr_discard=True, parameter_calc=True, parallel = True,
-             progress=True):
+             num_walker=250, min_chain_length = 10000, tolerance=0.01,
+             autocorr_chain_multiple = 50, autocorr_discard=10, 
+             parameter_calc=True, parallel = True, progress=False):
     '''
     Calculate parameter that match observed numbder density function (LF/SMF)
-    to modelled functionss using MCMC fitting by maximizing the logprobability
-    function which is the product of the loglikelihood and logprior.
+    to modelled functions using MCMC fitting by maximizing the log probability
+    function which is the product of the log likelihood and log prior.
 
-    chain_length is the length of the Markov chains.
     num_walkers is the number of walkers for mcmc sampling.
-    If autocorr_discard is True, calculate and discard the burn-in part of the
-    chain.
-    If parallel is True, use multithreading.
-    If parameter_calc is True, calculate best-fit parameter (MAP estimator).
-    If progress is True, show progress bar of mcmc.
+    min_chain_length is the minimum length of the Markov chains for it to be
+    considered converged (as a multiple of the autocorrelation time).
+
+    Parameters
+    ----------
+    model : ModelResult instance
+        The ModelResult that is used for the fit.
+    prior : array
+        A numpy array output of np.histogram used to calculate the prior value.
+    saving_mode : str
+        Choose if Markov chain is supposed to be saved/loaded or not stored.
+        Options are 'saving', 'loading' and temp.
+    num_walker : int, optional
+        Number of walkers for mcmc sampling. The default is 250.
+    min_chain_length : int, optional
+        Minimum length of the Markov chains. The default is 20000.
+    tolerance : float, optional
+        Allowed relative deviation from one autocorrelation estimate to the
+        next for the autocorrelation to be considered converged. The default 
+        is 0.01.
+    autocorr_chain_multiple : int, optional
+        Minimum (length of chain/maximum autocorr time) for autocorr estimate
+        to be considered trustworthy. The default is 50
+    autocorr_discard : int, optional
+        Multiple of maximum autocorrelation time that is regarded as burn-in
+        and discarded (turn off with 0). The default is 10
+    parameter_calc : bool, optional
+        Choose if best fit parameter (MAP estimator) is supposed to be 
+        calculated. The default is True.
+    parallel : bool, optional
+        Choose if calculation is supposed to be done in parallel. The default 
+        is True.
+    progress : bool, optional
+        Choose if progress bar is supposed to be shown. The default is True.
+
+    Raises
+    ------
+    FileNotFoundError
+        If mode is 'loading' and mcmc chain is supposed to be loaded from a 
+        file that does not exist.
+    ValueError
+        If saving_mode is not known.
+    McmcConvergenceError
+        If autocorrelation estimate does not converge in maximum chain length.
+
+    Returns
+    -------
+    None.
+
     '''
     # initalize saving for mcmc runs
     if saving_mode == 'temp':
@@ -67,32 +110,59 @@ def mcmc_fit(model, prior, saving_mode,
     global prior_global
     prior_global = prior
     
-    if saving_mode in ['saving', 'temp']:
+    if saving_mode in ['saving', 'temp']:       
         if saving_mode == 'saving' and os.path.exists(filename):
             os.remove(filename)  # clear file before start writing to it
-        # create MCMC sampler and run MCMC
-        if parallel:
-            with Pool() as pool:
-                sampler = emcee.EnsembleSampler(nwalkers, ndim,
-                                                log_probability,
-                                                backend=savefile, pool=pool)
-                sampler.run_mcmc(walker_pos, chain_length, progress=progress)
-        else:
-            sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability,
-                                            backend=savefile)  
+        with Pool() as pool:
+            # create MCMC sampler
+            if parallel:      
+                    sampler = emcee.EnsembleSampler(nwalkers, ndim,
+                                                    log_probability,
+                                                    backend = savefile,
+                                                    pool=pool)
+            else:
+                sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability,
+                                                backend = savefile)
+                
+            # run burn-in until autocorrelation converges
+            max_iterations = int(5e+5)
+            convergence_flag = False
+            old_tau = np.inf            
+            for sample in sampler.sample(walker_pos, iterations=max_iterations,
+                                         progress=progress):
+                # only check convergence every 1000 steps
+                if sampler.iteration % 100:
+                    continue
+                # compute the autocorrelation time so far
+                tau = sampler.get_autocorr_time(tol=0)      
+                # check convergence
+                rel_deviation = np.abs(old_tau - tau) / tau
+                converged  = np.all(rel_deviation < tolerance)
+                converged &= np.all(tau * autocorr_chain_multiple 
+                                    < sampler.iteration)
+                print(f'\rAutocorrelation estimate: {tau}'
+                      f' on Iteration {sampler.iteration}',
+                      end = '\r', flush = True)
+                if converged and (sampler.iteration>=min_chain_length):
+                    print('\nConverged!')
+                    convergence_flag = True
+                    break
+                else:
+                    old_tau = tau
+            if not convergence_flag:
+                raise McmcConvergenceError('Autocorrelation estimate did not'
+                                           ' converge.')
+                
     elif saving_mode == 'loading':
         # load from savefile
         sampler = savefile
     else:
         raise ValueError('saving_mode not known.')
 
-    # get autocorrelationtime and discard burn-in of mcmc walk
-    if autocorr_discard:
-        tau = np.array(sampler.get_autocorr_time())
-    else:
-        tau = 0
+    # discard burn-in of mcmc walk
     posterior_samp = sampler.get_chain(
-        discard=5 * np.amax(tau).astype(int), flat=True)
+                      discard= autocorr_discard*np.amax(tau).astype(int),
+                      flat=True)
 
     # calculate best fit parameter (MAP) using annealing
     if parameter_calc:
@@ -280,6 +350,11 @@ def uniform_prior(model, dist, dist_bounds):
         edges.append(edge)
     return([hists, edges], dist_bounds)
 
+
+################ ERROR HANDLING ###############################################
+class McmcConvergenceError(Exception):
+    '''Raised when autocorrelation estimate did not converge.'''
+    pass
 
 ################ PARAMETER ESTIMATION #########################################
 def calculate_MAP_estimator(prior, model, method='annealing', bounds=None,

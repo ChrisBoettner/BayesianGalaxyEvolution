@@ -45,10 +45,10 @@ def get_quantity_specifics(quantity_name):
         options['ndf_name']                 = 'SMF'
         options['model_p0']                 = np.array([-2, 12.45, 1, 0.5])
         options['model_bounds']             = np.array([[-5, 8, 0, 0],
-                                                        [np.log10(2), 15, 4, 0.99]])
+                                                        [np.log10(2), 15, 4, 0.96]])
         options['schechter']                = log_schechter_function
         options['schechter_p0']             = [-4, 10, -1.5]
-        options['quantity_range']           = np.linspace(7.32, 12.46, 100)
+        options['quantity_range']           = np.linspace(7.32, 12.16, 100)
         options['ndf_xlabel']               = r'log $M_*$ [$M_\odot$]'
         options['ndf_ylabel']               = r'log $\phi(M_*)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['log_A_label']              = r'$\log A$'
