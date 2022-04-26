@@ -8,6 +8,7 @@ Created on Thu Apr  7 15:23:57 2022
 
 import numpy as np
 import emcee
+from progressbar import FormatLabel, NullBar
 
 import os
 from multiprocessing import Pool
@@ -16,7 +17,7 @@ from pathlib import Path
 from scipy.optimize import dual_annealing, minimize, brute
 
 from model.calibration.leastsq_fitting import cost_function
-from model.helper import within_bounds
+from model.helper import within_bounds, custom_progressbar
 
 ################ MAIN FUNCTIONS ###############################################
 
@@ -24,7 +25,7 @@ from model.helper import within_bounds
 def mcmc_fit(model, prior, saving_mode,
              num_walker=250, min_chain_length = 10000, tolerance=0.01,
              autocorr_chain_multiple = 50, autocorr_discard=10, 
-             parameter_calc=True, parallel = True, progress=False):
+             parameter_calc=True, parallel=True, progress=True):
     '''
     Calculate parameter that match observed numbder density function (LF/SMF)
     to modelled functions using MCMC fitting by maximizing the log probability
@@ -100,6 +101,12 @@ def mcmc_fit(model, prior, saving_mode,
     ndim = len(initial_guess)
     nwalkers = num_walker
     walker_pos = initial_guess * (1 + 0.1 * np.random.rand(nwalkers, ndim))
+    
+    # define progressbar
+    if progress:
+        ProgressBar = custom_progressbar()
+    else:
+        ProgressBar = NullBar()
 
     # make prior and model object a global variable so it doesn"t have to be 
     # called in log_probability explicitly. This helps with parallization and 
@@ -128,8 +135,9 @@ def mcmc_fit(model, prior, saving_mode,
             max_iterations = int(5e+5)
             convergence_flag = False
             old_tau = np.inf            
-            for sample in sampler.sample(walker_pos, iterations=max_iterations,
-                                         progress=progress):
+            mcmc = sampler.sample(walker_pos, iterations=max_iterations)
+            
+            for sample in ProgressBar(mcmc):
                 # only check convergence every 1000 steps
                 if sampler.iteration % 100:
                     continue
@@ -140,11 +148,12 @@ def mcmc_fit(model, prior, saving_mode,
                 converged  = np.all(rel_deviation < tolerance)
                 converged &= np.all(tau * autocorr_chain_multiple 
                                     < sampler.iteration)
-                print(f'\rAutocorrelation estimate: {tau}'
-                      f' on Iteration {sampler.iteration}',
-                      end = '\r', flush = True)
+                
+                if progress:
+                    autocorr_update = f' Autocorrelation estimate: {tau}'
+                    ProgressBar.widgets[-1] = FormatLabel(autocorr_update)
+                    
                 if converged and (sampler.iteration>=min_chain_length):
-                    print('\nConverged!')
                     convergence_flag = True
                     break
                 else:

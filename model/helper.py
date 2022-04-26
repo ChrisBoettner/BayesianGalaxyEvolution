@@ -115,8 +115,8 @@ def calculate_percentiles(data, axis=0):
 
 def sort_by_density(data):
     '''
-    Estimate density of data using Gaussian KDE and return data sorted by density
-    and density values
+    Estimate density of data using Gaussian KDE and return data sorted by
+    density and density values.
     '''
     data = make_array(data)
     density = gaussian_kde(data.T).evaluate(data.T)
@@ -131,6 +131,20 @@ def is_sublist(list1, list2):
     '''
     return(set(list1) <= set(list2))
 
+################ PROGRESS TRACKING ############################################
+
+
+def custom_progressbar():
+    ''' Define how progressbar should look like. '''
+    from progressbar import ProgressBar, Counter, FormatLabel, Timer,\
+        FileTransferSpeed
+        
+    widgets = [Counter('Iteration: %(value)d'),' ||| ', Timer('%(elapsed)s'), 
+               ' |||', FileTransferSpeed(unit='it'),' |||', FormatLabel('')]
+    
+    progressbar = ProgressBar(widgets=widgets)
+    return(progressbar)
+    
 ################ TYPE CHECKING ################################################
 
 

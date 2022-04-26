@@ -56,13 +56,21 @@ class StellarBlackholeFeedback(object):
         if np.isnan(log_m_h).any():
             return(np.nan)
         log_m_h = self._check_overflow(log_m_h)
-                
+        
         sn, bh = self._variable_substitution(log_m_h, log_m_c, alpha, beta)
-        log_quantity = log_A + log_m_h - np.log10(sn + bh)
+        log_quantity = np.empty_like(bh)
+        
+        # deal with bh becoming infinite sometimes
+        inf_mask = np.isfinite(log_m_h) 
+        sn       = sn[inf_mask]
+        bh       = bh[inf_mask]
+        
+        log_quantity[inf_mask] = log_A + log_m_h[inf_mask] - np.log10(sn + bh)
+        log_quantity[np.logical_not(inf_mask)] = np.inf
         return(log_quantity)
 
     def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c, alpha,
-                                beta, num = 1000):
+                                beta, num = 500):
         '''
         Calculate halo mass from input quantity quantity and model parameter.
         Do this by calculating table of quantity for halo masses near critical

@@ -153,7 +153,7 @@ class ModelResult():
         parameters, distributions = {}, {}
         posterior_samp, bounds = None, None
         for z in redshifts:
-            print('z=' + str(z))
+            print('\nz=' + str(z))
             self._z = z # temporary storage for current redshift
 
             # add saving paths and file name
