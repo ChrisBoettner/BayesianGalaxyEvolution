@@ -17,4 +17,4 @@ from model.plotting.plotting import *
 mstar = load_model('mstar','changing')
 muv   = load_model('Muv','changing')
 
-Plot_best_fit_ndfs(muv)
+#Plot_best_fit_ndfs(muv)

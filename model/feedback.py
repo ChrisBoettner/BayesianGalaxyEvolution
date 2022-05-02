@@ -56,6 +56,7 @@ class StellarBlackholeFeedback(object):
         '''
         Calculate observable quantity from input halo mass and model parameter.
         '''
+        log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h)
         
         sn, bh = self._variable_substitution(log_m_h, alpha, beta)

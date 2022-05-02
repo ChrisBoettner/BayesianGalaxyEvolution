@@ -29,10 +29,10 @@ def calculate_qhmr(ModelResult, log_m_halos, redshifts):
         for m_h in log_m_halos:
             # calculate distribution
             q_dist = ModelResult.calculate_quantity_distribution(
-                m_h, z, int(5e+3))
+                m_h, z, int(1e+4))
             # calculate percentiles and add to list
             percentiles_at_z.append(calculate_percentiles(q_dist))
-        qhmr[z] = np.array(percentiles_at_z)
+        qhmr[z] = np.array(percentiles_at_z)[:,:,0]
     return(qhmr)
 
 

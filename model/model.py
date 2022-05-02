@@ -318,7 +318,7 @@ class ModelResult():
             Calculated distribution.
 
         '''
-
+        
         parameter_sample = self.draw_parameter_sample(z, num=num)
 
         log_quantity_dist = []

@@ -186,7 +186,6 @@ class Plot_marginal_pdfs(Plot):
             for z in model.redshift:
                 for i, param_dist in enumerate(model.distribution.at_z(z).T):
                     axes[i, z].hist(param_dist, bins=100, density=True,
-                                    range=model.feedback_model.at_z(z).bounds.T[i],
                                     color=pick_from_list(model.color, z),
                                     label=pick_from_list(model.label, z),
                                     alpha=0.3)
@@ -291,7 +290,7 @@ class Plot_qhmr(Plot):
             raise AttributeError('distributions have not been calculated.')
 
         # calculate qhmr
-        log_m_halos = np.linspace(8, 14, 100)  # define halo mass range
+        log_m_halos = np.linspace(8, 14, 50)  # define halo mass range
         redshifts = ModelResult.redshift[::2]
         qhmr = calculate_qhmr(ModelResult, log_m_halos,
                               redshifts=redshifts)

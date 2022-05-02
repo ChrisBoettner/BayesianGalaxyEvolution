@@ -84,7 +84,6 @@ def add_separated_legend(axes, separation_point, ncol=1):
     separation_point. Can also adjust number of columns of legend.
     '''
     labels = remove_double_labels(axes)
-
     axes[0].legend(list(labels.values())[:separation_point],
                    list(labels.keys())[:separation_point],
                    frameon=False,
@@ -101,6 +100,7 @@ def remove_double_labels(axes):
     Remove duplicates in legend that have same label. Also sorts labels so that
     Line2D objects appear first.
     '''
+    from itertools import compress
     axes = make_array(axes)
 
     handles, labels = [], []
@@ -110,14 +110,11 @@ def remove_double_labels(axes):
         labels += labels_
 
     # sort so that Lines2D objects appear first
-    handles        = np.array(handles , dtype='object')
-    labels         = np.array(labels, dtype='object')
     lines_idx      = [isinstance(handle, Line2D) for handle in handles]
-    handles_sorted = np.concatenate((handles[lines_idx],
-                                    handles[np.logical_not(lines_idx)]))
-    labels_sorted  = np.concatenate((labels[lines_idx],
-                                    labels[np.logical_not(lines_idx)]))
-    
+    handles_sorted = list(compress(handles, lines_idx)) \
+                     + list(compress(handles, np.logical_not(lines_idx)))
+    labels_sorted = list(compress(labels, lines_idx)) \
+                     + list(compress(labels, np.logical_not(lines_idx)))                
     by_label = dict(zip(labels_sorted, handles_sorted))
     return(by_label)
 
