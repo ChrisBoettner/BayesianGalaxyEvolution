@@ -12,7 +12,8 @@ from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf
 from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
                                                 add_redshift_text, add_legend,\
                                                 add_separated_legend,\
-                                                turn_off_axes
+                                                turn_off_axes,\
+                                                get_distribution_limits
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z
 
 
@@ -24,6 +25,11 @@ import matplotlib.pyplot as plt
 from matplotlib import rc_file
 rc_file('model/plotting/settings.rc')
 
+def get_list_of_plots():
+    '''
+    Return overview of all possible plots by listing subclasses of Plot.
+    '''
+    return(Plot.__subclasses__())
 
 class Plot(object):
     def __init__(self, ModelResult):
@@ -157,28 +163,20 @@ class Plot_marginal_pdfs(Plot):
             raise AttributeError('distributions have not been calculated.')
 
         # general plotting configuration
-        fig, axes = plt.subplots(4, 11, sharex='row', sharey='row')
+        fig, axes = plt.subplots(3, 11, sharex='row', sharey='row')
         fig.subplots_adjust(**self.plot_limits)
         fig.subplots_adjust(hspace=0.2)
 
-        # quantity specific settings
-        if ModelResults[0].quantity_name == 'mstar':
-            ax0_xlim =  (0.16, 1.94)
-            ax1_xlim = (0.001, 3.63)
-            ax2_xlim = (0.001, 0.79)
-        elif ModelResults[0].quantity_name == 'Muv':
-            ax0_xlim = (17.67, 20.21)
-            ax1_xlim = (0.001, 1.63)
-            ax2_xlim = (0.001, 0.79)
-        else:
-            raise ValueError('quantity_name not known.')
+        # set plot limits
+        limits = get_distribution_limits(ModelResults)
+        for i, limit in enumerate(limits):
+            axes[i, 0]. set_xlim(*limit)
 
         # add axes labels
         ax0_label = ModelResults[0].quantity_options['log_A_label']
         axes[0, 0].set_ylabel(ax0_label, multialignment='center')
-        axes[1, 0].set_ylabel(r'$\log m_c$')
-        axes[2, 0].set_ylabel(r'$\gamma$')
-        axes[3, 0].set_ylabel(r'$\delta$')
+        axes[1, 0].set_ylabel(r'$\gamma$')
+        axes[2, 0].set_ylabel(r'$\delta$')
         fig.supxlabel('Parameter Value')
         fig.supylabel('(Marginal) Probability Density', x=0.01)
         fig.align_ylabels(axes)
@@ -193,9 +191,9 @@ class Plot_marginal_pdfs(Plot):
                                     label=pick_from_list(model.label, z),
                                     alpha=0.3)
         # set x limits
-        #axes[0, 0].set_xlim(*ax0_xlim)
-        #axes[1, 0].set_xlim(*ax1_xlim)
-        #axes[2, 0].set_xlim(*ax2_xlim)
+        limits = get_distribution_limits(ModelResults)
+        for i, limit in enumerate(limits):
+            axes[i, 0]. set_xlim(*limit)
 
         # turn of y ticks
         for ax in axes.flatten():
@@ -224,7 +222,7 @@ class Plot_parameter_sample(Plot):
 
     def _plot(self, ModelResult):
         # general plotting configuration
-        fig, axes = plt.subplots(4, 1, sharex=True)
+        fig, axes = plt.subplots(3, 1, sharex=True)
         fig.subplots_adjust(**self.plot_limits)
 
         if ModelResult.distribution.is_None():
@@ -235,7 +233,6 @@ class Plot_parameter_sample(Plot):
 
         # add axes labels
         axes[0].set_ylabel(ax0_label, multialignment='center')
-        axes[2].set_ylabel(r'$\log m_c$')
         axes[1].set_ylabel(r'$\gamma$')
         axes[2].set_ylabel(r'$\delta$')
         axes[2].set_xlabel(r'Redshift $z$')

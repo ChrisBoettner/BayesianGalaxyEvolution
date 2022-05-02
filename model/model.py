@@ -9,7 +9,7 @@ import warnings
 
 import numpy as np
 
-from model.helper import mag_to_lum, within_bounds, make_list, system_path
+from model.helper import mag_to_lum, within_bounds, make_array, system_path
 
 from model.calibration import mcmc_fitting, leastsq_fitting
 
@@ -80,17 +80,15 @@ class ModelResult():
 
         '''
 
-        self.redshift = make_list(redshifts)
+        self.redshift = make_array(redshifts)
         self.log_ndfs = Redshift_dict(log_ndfs)
         self.log_hmfs = Redshift_dict(log_hmf_functions)
         self.groups = groups
-        
-        #pre-set critical mass for feedback
-        self.log_m_c = 12.45
 
         self.quantity_name = quantity_name
         # load options related to the quantity 
         self.quantity_options = get_quantity_specifics(self.quantity_name)
+        self.log_m_c = self.quantity_options['m_c']
         
         self.feedback_name = feedback_name
         self.prior_name = prior_name
@@ -148,12 +146,12 @@ class ModelResult():
         None.
 
         '''
-        redshifts = make_list(redshifts)
+        redshifts = make_array(redshifts)
 
         parameters, distributions = {}, {}
         posterior_samp, bounds = None, None
         for z in redshifts:
-            print('\nz=' + str(z))
+            print('z=' + str(z))
             self._z = z # temporary storage for current redshift
 
             # add saving paths and file name
@@ -241,7 +239,7 @@ class ModelResult():
             Log value of ndf at the input value and redshift.
 
         '''
-        log_quantity = make_list(log_quantity)
+        log_quantity = make_array(log_quantity)
         if self.quantity_name == 'mstar':
             pass
         elif self.quantity_name == 'Muv':
@@ -458,24 +456,31 @@ class Redshift_dict():
         None.
         
         '''
-        self.data = input_dict
+        self.dict = input_dict
+        self.list = None
+        self.update_data()
 
     def add_entry(self, z, value):
         '''Add new entry at z to dictonary.'''
         if np.isscalar(z):
-            self.data[z] = value
+            self.dict[z] = value
         else:
             for i in range(len(z)):
-                self.dat[z[i]] = value[i]
+                self.dict[z[i]] = value[i]
+        self.update_data()
         return
 
     def at_z(self, z):
         ''' Retrieve data at z.'''
-        if z not in list(self.data.keys()):
+        if z not in list(self.dict.keys()):
             raise ValueError('Redshift not in data.')
         else:
-            return(self.data[z])
+            return(self.dict[z])
 
     def is_None(self):
         ''' Check if dictonary is empty. '''
-        return(list(self.data.values())[0] is None)
+        return(list(self.dict.values())[0] is None)
+    
+    def update_data(self):
+        self.data = list(self.dict.values())
+        return

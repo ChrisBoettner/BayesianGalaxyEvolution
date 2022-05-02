@@ -45,19 +45,20 @@ class StellarBlackholeFeedback(object):
         self.log_m_c = log_m_c               # critical mass for feedback
         self.initial_guess = initial_guess   # initial guess for least_squares fit
         self.bounds = bounds                 # parameter (A, alpha, beta) bounds
-
+        
         # max halo mass (just used to avoid overflows)
         self._upper_m_h = 50
+        # latest parameter used
+        self._current_parameter = None
+        self.log_m_h_function   = None
 
-    def calculate_log_quantity(self, log_m_h, log_A, log_m_c, alpha, beta):
+    def calculate_log_quantity(self, log_m_h, log_A, alpha, beta):
         '''
         Calculate observable quantity from input halo mass and model parameter.
         '''
-        if np.isnan(log_m_h).any():
-            return(np.nan)
         log_m_h = self._check_overflow(log_m_h)
         
-        sn, bh = self._variable_substitution(log_m_h, log_m_c, alpha, beta)
+        sn, bh = self._variable_substitution(log_m_h, alpha, beta)
         log_quantity = np.empty_like(bh)
         
         # deal with bh becoming infinite sometimes
@@ -69,32 +70,38 @@ class StellarBlackholeFeedback(object):
         log_quantity[np.logical_not(inf_mask)] = np.inf
         return(log_quantity)
 
-    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c, alpha,
+    def calculate_log_halo_mass(self, log_quantity, log_A, alpha,
                                 beta, num = 500):
         '''
         Calculate halo mass from input quantity quantity and model parameter.
         Do this by calculating table of quantity for halo masses near critical
         mass and linearly interpolating inbetween (and extrapolating beyond
-        range).
+        range). Once interpolated function is created, it's saved and called 
+        for new calculations until new parameter are passed.
         num controls number of points that halo mass is initially calculated for,
         higher values make result more accurate but also more expensive.
+
         '''
-        # create lookup tables of halo mass and quantities
-        log_m_h_lookup = self._make_m_h_space(log_m_c, alpha, beta, num)
-        log_quantity_lookup = StellarBlackholeFeedback.calculate_log_quantity(
-            self, log_m_h_lookup, log_A, log_m_c, alpha, beta)
+        if self._current_parameter == [log_A, alpha, beta]:
+            pass
+        else:
+            self._current_parameter = [log_A, alpha, beta]
+            # create lookup tables of halo mass and quantities
+            log_m_h_lookup = self._make_m_h_space(alpha, beta, num)
+            log_quantity_lookup = StellarBlackholeFeedback.calculate_log_quantity(
+                self, log_m_h_lookup, log_A, alpha, beta)
+            
+            # use lookup table to create callable spline
+            self.log_m_h_function = interp1d(log_quantity_lookup, log_m_h_lookup,
+                                    bounds_error = False,
+                                    fill_value=([-np.inf],[np.inf]))
         
-        # use lookup table to create callable spline
-        log_m_h_func = interp1d(log_quantity_lookup, log_m_h_lookup,
-                                bounds_error = False,
-                                fill_value=([-np.inf],[np.inf]))
-        log_m_h = log_m_h_func(log_quantity)
-        
+        log_m_h = self.log_m_h_function(log_quantity)
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h) # deal with very large m_h
         return(log_m_h)
     
-    def calculate_log_halo_mass_alternative(self, log_quantity, log_A, log_m_c,
+    def calculate_log_halo_mass_alternative(self, log_quantity, log_A,
                                             alpha, beta, xtol=0.1):
         '''
         Calculate halo mass from input observable quantity and model paramter.
@@ -109,20 +116,18 @@ class StellarBlackholeFeedback(object):
                                   fprime2=self.calculate_d2logquantity_dlogmh2,
                                   x0_func=self._initial_guess,
                                   y=log_quantity,
-                                  args=(log_A, log_m_c, alpha, beta),
+                                  args=(log_A, alpha, beta),
                                   xtol=xtol)
         return(log_m_h)
 
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, log_m_c, alpha, beta):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, alpha, beta):
         '''
         Calculate d/d(log m_h) log_quantity. High mass end for beta near
         one treated as special case, where value apporaches zero.
         '''
-        if np.isnan(log_m_h).any():
-            return(np.nan)
         log_m_h = self._check_overflow(log_m_h)
             
-        sn, bh = self._variable_substitution(log_m_h, log_m_c, alpha, beta)
+        sn, bh = self._variable_substitution(log_m_h, alpha, beta)
         first_derivative = np.empty_like(bh)
         
         # deal with bh becoming infinite sometimes
@@ -134,16 +139,14 @@ class StellarBlackholeFeedback(object):
         first_derivative[np.logical_not(inf_mask)] = 0
         return(first_derivative)
 
-    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, log_m_c, alpha, beta):
+    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, alpha, beta):
         '''
         Calculate d^2/d(log m_h)^2 log_quantity. High mass end for beta near
         one treated as special case, where value apporaches zero.
         '''
-        if np.isnan(log_m_h).any():
-            return(np.nan)
         log_m_h = self._check_overflow(log_m_h)
         
-        x = 10**((alpha+beta) * (log_m_h - log_m_c))
+        x = 10**((alpha+beta) * (log_m_h - self.log_m_c))
         second_derivative = np.empty_like(x)
         
         # deal with bh becoming infinite sometimes
@@ -155,36 +158,41 @@ class StellarBlackholeFeedback(object):
         second_derivative[np.logical_not(inf_mask)] = 0
         return(second_derivative)
 
-    def _variable_substitution(self, log_m_h, log_m_c, alpha, beta):
+    def _variable_substitution(self, log_m_h, alpha, beta):
         '''
         Transform input quanitities to more easily handable quantities.
         '''
-        if np.isnan(log_m_h).any():
-            return(np.nan)
-        ratio = log_m_h - log_m_c  # m_h/m_c in log space
-
+        log_m_h = self._check_overflow(log_m_h)
+        
+        ratio = log_m_h - self.log_m_c       # m_h/m_c in log space
         log_stellar    = - alpha * ratio     # log of sn feedback contribution
-        log_black_hole =    beta * ratio     # log of bh feedback contribution
+        if beta == 0:
+            log_black_hole = np.full_like(log_stellar, 0)
+        else:
+            log_black_hole = beta * ratio     # log of bh feedback contribution
         return(10**log_stellar, 10**log_black_hole)
 
-    def _initial_guess(self, log_quantity, log_A, log_m_c, alpha, beta):
+    def _initial_guess(self, log_quantity, log_A, alpha, beta):
         '''
         Calculate initial guess for halo mass (for function inversion). Do this
         by calculating the high and low mass end approximation of the relation.
         '''
         # turnover quantity, where dominating feedback changes
-        log_q_turn = log_A - np.log10(2) + log_m_c
+        log_q_turn = log_A - np.log10(2) + self.log_m_c
 
         if log_quantity < log_q_turn:
-            x0 = (log_quantity - log_A + alpha * log_m_c) / (1 + alpha)
+            x0 = (log_quantity - log_A + alpha * self.log_m_c) / (1 + alpha)
         else:
-            x0 = (log_quantity - log_A - beta * log_m_c) / (1 - beta)
+            x0 = (log_quantity - log_A - beta * self.log_m_c) / (1 - beta)
         return(x0)
     
     def _check_overflow(self, log_m_h):
         '''
         Control for overflows by checking if halo mass exceeds upper limit.
+        Also deal with Nans.
         '''
+        if np.isnan(log_m_h).any():
+            return(np.full_like(log_m_h,np.nan))
         if np.any(log_m_h>self._upper_m_h):
             if np.isscalar(log_m_h):
                 log_m_h = np.inf
@@ -192,7 +200,7 @@ class StellarBlackholeFeedback(object):
                 log_m_h[log_m_h>self._upper_m_h] = np.inf
         return(log_m_h)
     
-    def _make_m_h_space(self, log_m_c, alpha, beta, num, epsilon = 0.001):
+    def _make_m_h_space(self, alpha, beta, num, epsilon = 0.001):
         '''
         Create array of m_h points arranged so that the points are dense where
         q(m_h) changes quickly and sparse where they aren't.
@@ -207,9 +215,9 @@ class StellarBlackholeFeedback(object):
         # this is log_m_lim = -1/(alpha+beta) * log(epsilon) + log_m_c
         
         # mass where bh feedback dominanting
-        log_m_bh = -1/(alpha+beta) * np.log10(epsilon) + log_m_c
+        log_m_bh = -1/(alpha+beta) * np.log10(epsilon) + self.log_m_c
         # mass where sn feedback dominanting
-        log_m_sn =  1/(alpha+beta) * np.log10(epsilon) + log_m_c       
+        log_m_sn =  1/(alpha+beta) * np.log10(epsilon) + self.log_m_c       
         
         # create high density space
         dense_log_m_h = np.linspace(log_m_sn, log_m_bh, int(num*0.8))
@@ -231,45 +239,31 @@ class StellarFeedback(StellarBlackholeFeedback):
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'stellar'
 
-    def calculate_log_quantity(self, log_m_h, log_A, log_m_c, alpha):
+    def calculate_log_quantity(self, log_m_h, log_A, alpha):
         return(StellarBlackholeFeedback.calculate_log_quantity(self, log_m_h, log_A,
-                                                               log_m_c,
                                                                alpha,
                                                                beta=0))
+    
+    def calculate_log_halo_mass(self, log_quantity, log_A, alpha,
+                                num = 500):
+        return(StellarBlackholeFeedback.calculate_log_halo_mass(self,
+                                                                log_quantity,
+                                                                log_A,
+                                                                alpha,
+                                                                beta=0,
+                                                                num=num))
 
-    def calculate_log_halo_mass(self, log_quantity, log_A, log_m_c, alpha,
-                                xtol=0.1):
-        log_m_h = invert_function(func=self.calculate_log_quantity,
-                                  fprime=self.calculate_dlogquantity_dlogmh,
-                                  fprime2=self.calculate_d2logquantity_dlogmh2,
-                                  x0_func=self._initial_guess,
-                                  y=log_quantity,
-                                  args=(log_A, log_m_c, alpha),
-                                  xtol=xtol)
-        return(log_m_h)
-
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, log_m_c, alpha):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, alpha):
         return(StellarBlackholeFeedback.calculate_dlogquantity_dlogmh(self, log_m_h,
-                                                                      log_A, log_m_c,
+                                                                      log_A,
                                                                       alpha,
                                                                       beta=0))
 
-    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, log_m_c, alpha):
+    def calculate_d2logquantity_dlogmh2(self, log_m_h, log_A, alpha):
         return(StellarBlackholeFeedback.calculate_d2logquantity_dlogmh2(self, log_m_h,
                                                                         log_A,
-                                                                        log_m_c,
                                                                         alpha,
                                                                         beta=0))
-
-    def _initial_guess(self, log_quantity, log_A, log_m_c, alpha):
-        # turnover quantity, where dominating feedback changes
-        log_q_turn = log_A - np.log10(2) + log_m_c
-
-        if log_quantity < log_q_turn:
-            x0 = (log_quantity - log_A + alpha * log_m_c) / (1 + alpha)
-        else:
-            x0 = (log_quantity - log_A)
-        return(x0)
 
 
 class NoFeedback(StellarBlackholeFeedback):
@@ -279,7 +273,7 @@ class NoFeedback(StellarBlackholeFeedback):
         '''
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'none'
-        self.log2 = np.log10(2) # so it doesn't need t be calc everytime
+        self.log2 = np.log10(2) # so it doesn't need to be calc everytime
         
     def calculate_log_quantity(self, log_m_h, log_A):
         return(log_A - self.log2 + log_m_h)

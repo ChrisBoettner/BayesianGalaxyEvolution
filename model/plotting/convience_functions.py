@@ -8,7 +8,7 @@ Created on Sun Apr 10 18:16:20 2022
 import numpy as np
 from matplotlib.lines import Line2D
 
-from model.helper import make_array, pick_from_list
+from model.helper import make_array, make_list, pick_from_list
 from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ PLOT DATA ####################################################
@@ -130,3 +130,38 @@ def turn_off_axes(axes):
         if (not ax.lines) and (not ax.patches):
             ax.axis('off')
     return
+
+def get_distribution_limits(ModelResults):  
+    ''' 
+    Get minimum and maximum values for distributions across redshifts
+    and different models (e.g. for pdf plot limits).
+    '''
+    
+    ModelResults = make_list(ModelResults)
+    
+    max_values, min_values = {}, {}
+    for Model in ModelResults:
+        for z in Model.redshift:
+            distribution = Model.distribution.at_z(z)
+            for i in range(distribution.shape[1]):
+                max_values.setdefault(i, -np.inf) # check if key already exists,
+                                                  # if not, create it and put value
+                                                  # to -infinity
+                min_values.setdefault(i, np.inf)  
+                
+                current_max = np.amax(distribution[:,i])
+                current_min = np.amin(distribution[:,i])
+                
+                # update maximum and minimum values
+                if current_max>max_values[i]:
+                    max_values[i] = current_max
+                if current_min< min_values[i]:
+                    min_values[i] = current_min    
+                    
+    # return as list of limits
+    limits = list(zip(min_values.values(),max_values.values()))
+    return(limits)
+    
+    
+    
+    

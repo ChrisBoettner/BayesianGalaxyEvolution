@@ -15,8 +15,7 @@ def save_parameter(ModelResult, name_addon=None):
     Save best fit parameter as numpy npz (dictonary of form str(z):parameter)
     to folder that usually contains distribution data.
     '''
-    redshifts = ModelResult.redshift
-    parameter = ModelResult.parameter.data
+    parameter = ModelResult.parameter.dict
     if ModelResult.parameter.is_None():
         raise ValueError(
             'parameter dict is empty, probably weren\'t calculated.')

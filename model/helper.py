@@ -140,10 +140,22 @@ def custom_progressbar():
         FileTransferSpeed
         
     widgets = [Counter('Iteration: %(value)d'),' ||| ', Timer('%(elapsed)s'), 
-               ' |||', FileTransferSpeed(unit='it'),' |||', FormatLabel('')]
+               ' ||| ', FileTransferSpeed(unit='it'),' ||| ', FormatLabel('')]
     
     progressbar = ProgressBar(widgets=widgets)
     return(progressbar)
+
+################ ERROR HANDLING ###############################################
+
+
+def catch_warnings(catch=True):
+    ''' Catch warnings as if they were exceptions '''
+    import warnings
+    if catch:
+        warnings.filterwarnings('error')
+    else:
+        warnings.filterwarnings('default')
+    return()
     
 ################ TYPE CHECKING ################################################
 

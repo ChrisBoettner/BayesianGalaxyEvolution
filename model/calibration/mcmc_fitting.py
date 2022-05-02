@@ -47,7 +47,8 @@ def mcmc_fit(model, prior, saving_mode,
     num_walker : int, optional
         Number of walkers for mcmc sampling. The default is 250.
     min_chain_length : int, optional
-        Minimum length of the Markov chains. The default is 20000.
+        Minimum length of the Markov chains (after discarding burn-in).
+        The default is 10000.
     tolerance : float, optional
         Allowed relative deviation from one autocorrelation estimate to the
         next for the autocorrelation to be considered converged. The default 
@@ -112,8 +113,8 @@ def mcmc_fit(model, prior, saving_mode,
     # called in log_probability explicitly. This helps with parallization and 
     # makes it a lot faster,
     # see https://emcee.readthedocs.io/en/stable/tutorials/parallel/
-    global mod
-    mod = model
+    global mod_global
+    mod_global = model
     global prior_global
     prior_global = prior
     
@@ -150,14 +151,17 @@ def mcmc_fit(model, prior, saving_mode,
                                     < sampler.iteration)
                 
                 if progress:
-                    autocorr_update = f' Autocorrelation estimate: {tau}'
+                    autocorr_update = f'Autocorrelation estimate: {tau}'
                     ProgressBar.widgets[-1] = FormatLabel(autocorr_update)
-                    
-                if converged and (sampler.iteration>=min_chain_length):
+                
+                discard = autocorr_discard*np.amax(tau) 
+                if converged and (sampler.iteration-discard>=min_chain_length):
                     convergence_flag = True
                     break
                 else:
                     old_tau = tau
+            if progress:
+                print('\n')
             if not convergence_flag:
                 raise McmcConvergenceError('Autocorrelation estimate did not'
                                            ' converge.')
@@ -165,6 +169,7 @@ def mcmc_fit(model, prior, saving_mode,
     elif saving_mode == 'loading':
         # load from savefile
         sampler = savefile
+        tau = sampler.get_autocorr_time()   
     else:
         raise ValueError('saving_mode not known.')
 
@@ -199,13 +204,14 @@ def log_probability(params):
     '''
 
     # check if parameter are within bounds
-    if not within_bounds(params, *mod.feedback_model.at_z(mod._z).bounds):
+    if not within_bounds(params, *mod_global.feedback_model.at_z(
+                        mod_global._z).bounds):
         return(-np.inf)
 
     # PRIOR
     l_prior = log_prior(params, prior_global)
     # LIKELIHOOD
-    l_likelihood = log_likelihood(params, mod)
+    l_likelihood = log_likelihood(params, mod_global)
     return(l_prior + l_likelihood)
 
 
@@ -274,8 +280,16 @@ def dist_from_hist_nd(model, dist, dist_bounds):
     param_num = len(model.feedback_model.at_z(model._z).initial_guess)
 
     dist_bounds_new = list(zip(*model.feedback_model.at_z(model._z).bounds))
-    if dist_bounds is None:  # if bounds are not provided, use the ones from model
-        dist_bounds = dist_bounds_new
+    dist_bounds = dist_bounds_new
+    
+    # if new model has fewer parameter, marginalise over leftover parameter
+    if param_num<dist.shape[1]:
+        dist = dist[:,:-(dist.shape[1]-param_num)]
+    elif param_num > dist.shape[1]:
+        raise NotImplementedError('Parameter number of model should not increase.')
+    else:
+        pass
+    
     # create histogram
     hist_nd, edges = np.histogramdd(dist, bins=100, range=dist_bounds)
     # make empty spots have 0.1% of actual prob, so that these are not
@@ -283,14 +297,6 @@ def dist_from_hist_nd(model, dist, dist_bounds):
     hist_nd[hist_nd == 0] = 0.001 * np.sum(hist_nd) / np.sum(hist_nd == 0)
     # normalize
     hist_nd = hist_nd / np.sum(hist_nd)
-
-    # marginalise over parameters if new model has fewer parameter than given
-    # in dist (assume later columns in model are to be marginalised over)
-    marg_variables = hist_nd.ndim - param_num
-    if marg_variables > 0:
-        for n in range(marg_variables):
-            hist_nd = np.sum(hist_nd, axis=-1)
-        edges = edges[:-marg_variables]
     return([[hist_nd], edges], dist_bounds_new)
 
 

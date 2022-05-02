@@ -61,7 +61,7 @@ def lsq_fit(model, method='least_squares'):
     return(par, par_distribution)
 
 
-def cost_function(params, model, out='cost', weighted=True):
+def cost_function(params, model, out='cost', weighted=True, z=None):
     '''
     Cost function for fitting. Includes physically sensible bounds for parameter.
 
@@ -70,15 +70,18 @@ def cost_function(params, model, out='cost', weighted=True):
     If weighted is True, include errorbars in fit. The weights are calculated
     as the inverse of the RELATIVE uncertainties.
     '''
-    log_quantity_obs = model.log_ndfs.at_z(model._z)[:, 0]
-    log_phi_obs = model.log_ndfs.at_z(model._z)[:, 1]
+    if z is None:
+        z = model._z
+    
+    log_quantity_obs = model.log_ndfs.at_z(z)[:, 0]
+    log_phi_obs = model.log_ndfs.at_z(z)[:, 1]
 
     # check if parameter are within bounds
-    if not within_bounds(params, *model.feedback_model.at_z(model._z).bounds):
+    if not within_bounds(params, *model.feedback_model.at_z(z).bounds):
         return(1e+30)  # if outside of bound, return huge value to for cost func
 
     # calculate model ndf
-    log_phi_mod = model.calculate_log_abundance(log_quantity_obs, model._z, params)
+    log_phi_mod = model.calculate_log_abundance(log_quantity_obs, z, params)
     if not np.all(np.isfinite(log_phi_mod)):
         return(1e+30)
 
