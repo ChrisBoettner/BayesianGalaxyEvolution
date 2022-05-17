@@ -22,4 +22,4 @@ Files of form 'LF_Vmax_udFUV_z'*'.dat' with * from 0-9
 z = 0-5
 Chabrier IMF
 Additional information:
-- values given in log
+- values given in log (except magnitude, of course)

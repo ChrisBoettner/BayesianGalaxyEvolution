@@ -12,9 +12,10 @@ from model.interface import save_model
 
 @click.command()
 @click.option('--quantity_name', prompt='Physical quantity',
-              help='Physical quantity: \'Muv\' or \'mstar\'')
+              help='Physical quantity: \'Muv\', \'mstar\' or \'Lbol\'')
 @click.option('--feedback_name', prompt='Feedback model',
-              help='Feedback model: \'none\', \'stellar\' \'stellar_blackhole\' or custom')
+              help='Feedback model: \'none\', \'stellar\', \'stellar_blackhole\,\
+                  \'changing\', \'quasar\' or custom')
 @click.option('--data_subset', default=None,
               help='List of data sets names (of form AuthorYear')
 @click.option('--prior_name', default=None,

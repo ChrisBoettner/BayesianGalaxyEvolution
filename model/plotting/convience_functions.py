@@ -91,7 +91,7 @@ def add_separated_legend(axes, separation_point, ncol=1):
     axes[-1].legend(list(labels.values())[separation_point:],
                     list(labels.keys())[separation_point:],
                     frameon=False,
-                    prop={'size': 10}, loc=4, ncol=ncol)
+                    prop={'size': 10}, loc=3, ncol=ncol)
     return
 
 
@@ -130,7 +130,7 @@ def turn_off_axes(axes):
 
 def get_distribution_limits(ModelResults):  
     ''' 
-    Get minimum and maximum values for distributions across redshifts
+    Get upper and lower values for distributions across redshifts
     and different models (e.g. for pdf plot limits).
     '''
     
@@ -146,8 +146,8 @@ def get_distribution_limits(ModelResults):
                                                   # to -infinity
                 min_values.setdefault(i, np.inf)  
                 
-                current_max = np.amax(distribution[:,i])
-                current_min = np.amin(distribution[:,i])
+                current_max = np.percentile(distribution[:,i], 95)
+                current_min = np.percentile(distribution[:,i],  5)
                 
                 # update maximum and minimum values
                 if current_max>max_values[i]:

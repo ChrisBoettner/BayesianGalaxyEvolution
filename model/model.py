@@ -88,7 +88,7 @@ class ModelResult():
         self.quantity_name = quantity_name
         # load options related to the quantity 
         self.quantity_options = get_quantity_specifics(self.quantity_name)
-        self.log_m_c = self.quantity_options['m_c']
+        self.log_m_c = self.quantity_options['log_m_c']
         
         self.feedback_name = feedback_name
         self.prior_name = prior_name
@@ -123,10 +123,17 @@ class ModelResult():
         elif self.feedback_name == 'stellar_blackhole':
             self._plot_parameter(
                 'C2', 'v', '-.', 'Stellar + Black Hole Feedback')
-        elif self.feedback_name == 'changing':
+        elif self.feedback_name == 'quasar':
             self._plot_parameter(
-                ['C2'] * 5 + ['C1'] * 6, 'o', '-',
-                ['Stellar + Black Hole Feedback'] * 5 + ['Stellar Feedback'] * 6)
+                'C3', '^', ':', 'Quasar Growth Model')
+        elif self.feedback_name == 'changing':
+            feedback_change_z = self.quantity_options['feedback_change_z']
+            max_z             = 10
+            self._plot_parameter(
+                ['C2'] * feedback_change_z + ['C1'] * (max_z+1-feedback_change_z),
+                'o', '-',
+                ['Stellar + Black Hole Feedback'] * feedback_change_z \
+                + ['Stellar Feedback'] * (max_z+1-feedback_change_z))
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -164,13 +171,14 @@ class ModelResult():
             self.filename.add_entry(z, filename)
       
             # create feedback model
-            if self.feedback_name in ['none', 'stellar', 'stellar_blackhole']:
+            if self.feedback_name in ['none', 'stellar', 'stellar_blackhole',
+                                      'quasar']:
                 fb_name = self.feedback_name
             elif self.feedback_name == 'changing':  # standard changing feedback
-                feedback_change_z = 4
-                if z <= feedback_change_z:
+                feedback_change_z = self.quantity_options['feedback_change_z']
+                if z < feedback_change_z:
                     fb_name = 'stellar_blackhole'
-                elif z > feedback_change_z:
+                elif z >= feedback_change_z:
                     fb_name = 'stellar'
             else:
                 raise ValueError('feedback_name not known.')
@@ -240,13 +248,9 @@ class ModelResult():
 
         '''
         log_quantity = make_array(log_quantity)
-        if self.quantity_name == 'mstar':
-            pass
-        elif self.quantity_name == 'Muv':
+        if self.quantity_name == 'Muv':
             # convert magnitude to luminosity
             log_quantity = np.log10(mag_to_lum(log_quantity))
-        else:
-            raise ValueError('quantity_name not known.')
 
         # check that parameters are within bounds
         if not within_bounds(parameter, *self.feedback_model.at_z(z).bounds):
@@ -287,7 +291,7 @@ class ModelResult():
             List of parameter samples.
         '''
         if self.distribution.is_None():
-            raise AttributeError('distribution dictonary is empty. Probably' +\
+            raise AttributeError('distribution dictonary is empty. Probably'\
                                  ' wasn\'t calculated.')
         
         # randomly draw from parameter distribution at z

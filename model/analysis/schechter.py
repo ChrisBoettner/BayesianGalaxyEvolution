@@ -85,9 +85,9 @@ def tabulate_schechter_parameter(ModelResult, redshift, num=100):
     # add header to DataFrame
     formatted_DataFrame.columns = ModelResult.quantity_options['schechter_table_header']
     # add caption to table
-    caption = 'Likely Schechter parameters ranges for'\
+    caption = 'Likely Schechter parameters ranges for '\
               + ModelResult.quantity_options['ndf_name']\
-              + 'given by 16th and 84th percentile.'
+              + ' given by 16th and 84th percentile.'
     # turn into latex
     latex_table = formatted_DataFrame.to_latex(index = False,
                                                escape=False,
@@ -100,6 +100,9 @@ def tabulate_schechter_parameter(ModelResult, redshift, num=100):
 def calculate_best_fit_schechter_parameter(ModelResult, redshift):
     '''
     Calculate best fit Schechter parameter for best fit model.
+    
+    IMPORTANT: only fit ndfs up to log_phi > -6 to stay consistent with 
+               calibration.
     '''
     if ModelResult.parameter.is_None():
         raise AttributeError(
@@ -114,8 +117,13 @@ def calculate_best_fit_schechter_parameter(ModelResult, redshift):
     
     schechter_parameter = {}
     for z in redshift:
+        ndf = ndfs[z]
+        # cutoff for log_phi < -6
+        cutoff = -6
+        ndf = ndf[ndf[:,1]>cutoff]
+        
         schechter_parameter[z] = fit_function(schechter,
-                                              ndfs[z],
+                                              ndf,
                                               p0 = p0)
     return(schechter_parameter)
         

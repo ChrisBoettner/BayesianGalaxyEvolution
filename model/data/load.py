@@ -51,12 +51,14 @@ def load_data(quantity_name, data_subset=None):
 
     IMPORTANT:  number densities (phi values) below threshold value are cut off
                 because they can't be measured reliably (default is 10^(-6) for
-                \'mstar\' and \'Muv\')
+                'mstar' and 'Muv', -np.inf for 'Lbol')
     '''
     if quantity_name == 'mstar':
         groups, data = _load_smf_data(cutoff=-6, data_subset=data_subset)
     elif quantity_name == 'Muv':
-        groups, data = _load_lf_data(cutoff=-6, data_subset=data_subset)
+        groups, data = _load_uvlf_data(cutoff=-6, data_subset=data_subset)
+    elif quantity_name == 'Lbol':
+        groups, data = _load_qlf_data(cutoff=-np.inf, data_subset=data_subset)
     else:
         raise ValueError('quantity_name not known.')
     return(groups, data)
@@ -64,9 +66,9 @@ def load_data(quantity_name, data_subset=None):
 
 def _load_smf_data(cutoff, data_subset):
     '''
-    Load the SMF data. returns list of group objects that contain the data connected
-    to individual groups, and a direct directory of SMF ordered by redshift
-    (of the form {redshift:data}).
+    Load the SMF data. returns list of group objects that contain the data 
+    connected to individual groups, and a direct directory of SMF ordered by 
+    redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
     '''
     # get z=0,1,2,3,4 for Davidson, z=1,2,3 for Ilbert
@@ -110,20 +112,22 @@ def _load_smf_data(cutoff, data_subset):
     return(groups, smfs)
 
 
-def _load_lf_data(cutoff, data_subset):
+def _load_uvlf_data(cutoff, data_subset):
     '''
-    Load the LF data. returns list of group objects that contain the data connected
-    to individual groups, and a direct directory of SMF ordered by redshift
-    (of the form {redshift:data}).
+    Load the UVLF data. returns list of group objects that contain the data
+    connected to individual groups, and a direct directory of SMF ordered by 
+    redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
     '''
     # get z=0,1,2,3,4 for Madau
-    # remove redshift 10 for Bouwens2021, since this is same data as Oesch2018
+    # remove redshift 10 for Bouwens2021, since this is same data as Oesch2018,
+    # also only load Bouwens2021, since Bouwens2015 contains same data
     cucciati = dict(np.load(path + 'UVLF/Cucciati2012UVLF.npz'))
     cucciati = {i: cucciati[j] for i, j in [['0', '1'],
-                                            ['1', '4'], ['2', '7'], ['3', '8'], ['4', '9']]}
+                                            ['1', '4'], ['2', '7'],
+                                            ['3', '8'], ['4', '9']]}
     duncan = dict(np.load(path + 'UVLF/Duncan2014UVLF.npz'))
-    bouwens = dict(np.load(path + 'UVLF/Bouwens2015UVLF.npz'))
+    #bouwens = dict(np.load(path + 'UVLF/Bouwens2015UVLF.npz'))
     bouwens2 = dict(np.load(path + 'UVLF/Bouwens2021UVLF.npz'))
     bouwens2 = {str(i): bouwens2[str(i)] for i in range(8)}
     oesch = dict(np.load(path + 'UVLF/Oesch2010UVLF.npz'))
@@ -141,8 +145,8 @@ def _load_lf_data(cutoff, data_subset):
         'black', 'o', 'Cucciati2012')
     duncan = Group(duncan,range(4, 8), cutoff).plot_parameter(
             'black', 'v', 'Duncan2014')
-    bouwens = Group(bouwens, range(4, 9), cutoff).plot_parameter(
-            'black', 's', 'Bouwens2015')
+    #bouwens = Group(bouwens, range(4, 9), cutoff).plot_parameter(
+    #        'black', 's', 'Bouwens2015')
     bouwens2 = Group(bouwens2, range(2, 10), cutoff).plot_parameter(
         'black', '^', 'Bouwens2021')
     oesch = Group(oesch, range(1, 3), cutoff).plot_parameter(
@@ -163,7 +167,7 @@ def _load_lf_data(cutoff, data_subset):
             'black', 'D', 'Reddy2009')
     oesch2 = Group(oesch2, range(10, 11), cutoff).plot_parameter(
             'black', 'x', 'Oesch2018')
-    groups = [cucciati, duncan, bouwens, bouwens2, oesch, atek, bhatawdekar,
+    groups = [cucciati, duncan, bouwens2, oesch, atek, bhatawdekar,
               parsa, livermore, wyder, arnouts, reddy, oesch2]
 
     # choose subselection of data if given when calling the function
@@ -179,10 +183,38 @@ def _load_lf_data(cutoff, data_subset):
     lfs = z_ordered_data(groups)
     return(groups, lfs)
 
+def _load_qlf_data(cutoff, data_subset):
+    '''
+    Load the QLF data. returns list of group objects that contain the data 
+    connected to individual groups, and a direct directory of SMF ordered by 
+    redshift (of the form {redshift:data}).
+    Remove data with number density below some cutoff limit.
+    '''
+    # get z=0,1,2,3,4 for Davidson, z=1,2,3 for Ilbert
+    shen = dict(np.load(path + 'QLF/Shen2020QLF.npz'))
+    
+    # TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
+    shen = Group(shen, range(0,8), cutoff).plot_parameter(
+        'black', 'o', 'Shen2020')
+    groups = [shen]
+
+    # choose subselection of data if given when calling the function
+    if data_subset:
+        data_subset = make_list(data_subset)
+        groups = {g.label: g for g in groups}
+        try:
+            groups = [groups[dataset] for dataset in data_subset]
+        except BaseException:
+            raise KeyError('dataset not in groups')
+
+    # DATA SORTED BY REDSHIFT
+    smfs = z_ordered_data(groups)
+    return(groups, smfs)
+
 ################ CLASSES ######################################################
+
+
 # class object for group data (all redshifts) + plotting parameter
-
-
 class Group():
     def __init__(self, data, redshift, cutoff=None):
         if len(data) != len(redshift):

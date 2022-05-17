@@ -85,7 +85,7 @@ class Plot_best_fit_ndfs(Plot):
         can be a single model object or a list of objects.
         '''
         super().__init__(ModelResults)
-        self.default_filename = self.quantity_name + '_ndf'
+        self.default_filename = self.quantity_name + '_ndf_' + self.prior_name
 
     def _plot(self, ModelResults):
         # make list if input is scalar
@@ -96,7 +96,8 @@ class Plot_best_fit_ndfs(Plot):
                 'best fit parameter have not been calculated.')
 
         # general plotting configuration
-        fig, axes = plt.subplots(4, 3, sharey=True)
+        subplot_grid = ModelResults[0].quantity_options['subplot_grid']
+        fig, axes = plt.subplots(*subplot_grid, sharey=True)
         axes = axes.flatten()
         fig.subplots_adjust(**self.plot_limits)
 
@@ -128,7 +129,7 @@ class Plot_best_fit_ndfs(Plot):
         # add axes limits
         quantity_range = ModelResults[0].quantity_options['quantity_range']
         for ax in axes:
-            ax.set_ylim([-6, 3])
+            ax.set_ylim(ModelResults[0].quantity_options['ndf_y_axis_limit'])
             ax.set_xlim([quantity_range[0],
                          quantity_range[-1]])
 
@@ -163,20 +164,21 @@ class Plot_marginal_pdfs(Plot):
             raise AttributeError('distributions have not been calculated.')
 
         # general plotting configuration
-        fig, axes = plt.subplots(3, 11, sharex='row', sharey='row')
+        fig, axes = plt.subplots(ModelResults[0].quantity_options['model_param_num'],
+                                 len(ModelResults[0].redshift),
+                                 sharex='row', sharey='row')
         fig.subplots_adjust(**self.plot_limits)
         fig.subplots_adjust(hspace=0.2)
 
         # set plot limits
         limits = get_distribution_limits(ModelResults)
-        for i, limit in enumerate(limits):
-            axes[i, 0]. set_xlim(*limit)
+        #for i, limit in enumerate(limits):
+        #    axes[i, 0]. set_xlim(*limit)
 
         # add axes labels
-        ax0_label = ModelResults[0].quantity_options['log_A_label']
-        axes[0, 0].set_ylabel(ax0_label, multialignment='center')
-        axes[1, 0].set_ylabel(r'$\gamma$')
-        axes[2, 0].set_ylabel(r'$\delta$')
+        param_labels =  ModelResults[0].quantity_options['param_y_labels']
+        for i, label in enumerate(param_labels):
+            axes[i, 0].set_ylabel(label, multialignment='center')
         fig.supxlabel('Parameter Value')
         fig.supylabel('(Marginal) Probability Density', x=0.01)
         fig.align_ylabels(axes)
@@ -189,14 +191,12 @@ class Plot_marginal_pdfs(Plot):
                                     color=pick_from_list(model.color, z),
                                     label=pick_from_list(model.label, z),
                                     alpha=0.3)
-        # set x limits
-        limits = get_distribution_limits(ModelResults)
-        for i, limit in enumerate(limits):
-            axes[i, 0]. set_xlim(*limit)
 
-        # turn of y ticks
+        # turn of y ticks, add minor ticks and set number for x ticks
         for ax in axes.flatten():
             ax.get_yaxis().set_ticks([])
+            ax.xaxis.set_major_locator(MaxNLocator(3))
+            ax.minorticks_on()
 
         # add redshift as text
         add_redshift_text(axes[0], ModelResults[0].redshift)
@@ -221,20 +221,19 @@ class Plot_parameter_sample(Plot):
 
     def _plot(self, ModelResult):
         # general plotting configuration
-        fig, axes = plt.subplots(3, 1, sharex=True)
+        param_num = ModelResult.quantity_options['model_param_num']
+        fig, axes = plt.subplots(param_num,
+                                 1, sharex=True)
         fig.subplots_adjust(**self.plot_limits)
 
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
-        # quantity specific settings
-        ax0_label = ModelResult.quantity_options['log_A_label']
-
         # add axes labels
-        axes[0].set_ylabel(ax0_label, multialignment='center')
-        axes[1].set_ylabel(r'$\gamma$')
-        axes[2].set_ylabel(r'$\delta$')
-        axes[2].set_xlabel(r'Redshift $z$')
+        param_labels =  ModelResult.quantity_options['param_y_labels']
+        for i, label in enumerate(param_labels):
+            axes[i].set_ylabel(label, multialignment='center')
+        axes[-1].set_xlabel(r'Redshift $z$')
         fig.align_ylabels(axes)
 
         # draw and plot parameter samples
@@ -341,7 +340,8 @@ class Plot_ndf_sample(Plot):
             ndfs[z] = ModelResult.get_ndf_sample(z)
 
         # general plotting configuration
-        fig, axes = plt.subplots(4, 3, sharey='row', sharex=True)
+        subplot_grid = ModelResult.quantity_options['subplot_grid']
+        fig, axes = plt.subplots(*subplot_grid, sharey='row', sharex=True)
         axes = axes.flatten()
         fig.subplots_adjust(**self.plot_limits)
 
@@ -380,7 +380,7 @@ class Plot_ndf_sample(Plot):
         # add axes limits
         quantity_range = ModelResult.quantity_options['quantity_range']
         for ax in axes:
-            ax.set_ylim([-6, 3])
+            ax.set_ylim(ModelResult.quantity_options['ndf_y_axis_limit'])
             ax.set_xlim([quantity_range[0],
                          quantity_range[-1]])
 
@@ -406,19 +406,20 @@ class Plot_schechter_sample(Plot):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
-        # get ndf sample
+        # get schechter sample
         schechter_functions = get_schechter_function_sample(ModelResult,
                                                             ModelResult.redshift)
 
         # general plotting configuration
-        fig, axes = plt.subplots(4, 3, sharey='row', sharex=True)
+        subplot_grid = ModelResult.quantity_options['subplot_grid']
+        fig, axes = plt.subplots(*subplot_grid, sharey='row', sharex=True)
         axes = axes.flatten()
         fig.subplots_adjust(**self.plot_limits)
 
         # define plot parameter
-        linewidth = 0.2
-        alpha = 0.2
-        color = 'grey'
+        plot_parameter = {'linewidth':0.2,
+                          'alpha':0.2,
+                          'color':'grey'}
 
         # quantity specific settings
         xlabel, ylabel, ncol  = ModelResult.quantity_options['ndf_xlabel'],\
@@ -438,8 +439,8 @@ class Plot_schechter_sample(Plot):
         # plot number density functions
         for z in ModelResult.redshift:
             for schechter in schechter_functions[z]:
-                axes[z].plot(schechter[:, 0], schechter[:, 1], color=color,
-                             linewidth=linewidth, alpha=alpha)
+                axes[z].plot(schechter[:, 0], schechter[:, 1], 
+                             **plot_parameter)
 
         # plot group data points
         plot_group_data(axes, ModelResult.groups)
@@ -450,7 +451,7 @@ class Plot_schechter_sample(Plot):
         # add axes limits
         quantity_range = ModelResult.quantity_options['quantity_range']
         for ax in axes:
-            ax.set_ylim([-6, 3])
+            ax.set_ylim(ModelResult.quantity_options['ndf_y_axis_limit'])
             ax.set_xlim([quantity_range[0],
                          quantity_range[-1]])
 
@@ -490,19 +491,28 @@ class Plot_schechter_comparison(Plot):
         for Model in ModelResults:
             schechter_models.append(calculate_best_fit_schechter_parameter(
                                     Model, Model.redshift))
-        
+            
+        # calculate Schechter samples (only for single ModelResult)
+        if len(ModelResults) == 1:
+            schechter_functions = get_schechter_function_sample(ModelResults[0],
+                                                                ModelResults[0].redshift)
+                  
         # general plotting configuration
-        fig, axes = plt.subplots(4, 3, sharey=True)
+        subplot_grid = ModelResults[0].quantity_options['subplot_grid']
+        fig, axes = plt.subplots(*subplot_grid, sharey=True)
         axes = axes.flatten()
         fig.subplots_adjust(**self.plot_limits)
         
         # further plotting parameter:
-        plot_parameter_model     = {'linewidth': 2.75,
-                                    'alpha':0.5,
+        plot_parameter_model     = {'linewidth': 3,
+                                    'alpha':1,
                                     'color':'grey'}
         plot_parameter_schechter = {'linewidth':1.75,
                                     'alpha':1,
                                      'color':'C2'}
+        plot_parameter_schechter_sample = {'linewidth':0.2,
+                                           'alpha':0.4,
+                                           'color':'grey'}
         linestyle = ['-','--','-.']
 
         # quantity specific settings
@@ -514,7 +524,7 @@ class Plot_schechter_comparison(Plot):
         schechter_function = ModelResults[0].quantity_options['schechter']
         quantity_range     = ModelResults[0].quantity_options['quantity_range']
                 
-        # plot model ndfs and Schechter fits
+        # plot model ndfs and Schechter fits to ndfs
         for i, Model in enumerate(ModelResults):           
             ndfs             = calculate_best_fit_ndf(Model,
                                                       Model.redshift)
@@ -526,13 +536,20 @@ class Plot_schechter_comparison(Plot):
                              linestyle = linestyle[i+1],
                              **plot_parameter_model)
                 
+                if len(ModelResults) == 1:
+                    for schechter in schechter_functions[z]:
+                        axes[z].plot(schechter[:, 0], schechter[:, 1], 
+                                     linestyle = linestyle[i+1], 
+                                     **plot_parameter_schechter_sample)
+                
                 axes[z].plot(quantity_range, 
                              schechter_function(quantity_range, *schechter_params[z]),
                              label = 'Schechter Function (' + Model.prior_name + ' prior)',
                              linestyle = linestyle[i+1],
                              **plot_parameter_schechter)
+                
         
-        # plot group data points and Schechter fits
+        # plot group data points and Schechter fits to data
         plot_group_data(axes, ModelResults[0].groups)       
         for z in ModelResults[0].redshift:
                 axes[z].plot(quantity_range, 
@@ -560,7 +577,7 @@ class Plot_schechter_comparison(Plot):
 
         # add axes limits
         for ax in axes:
-            ax.set_ylim([-6, 3])
+            ax.set_ylim(ModelResults[0].quantity_options['ndf_y_axis_limit'])
             ax.set_xlim([quantity_range[0],
                          quantity_range[-1]])
 
