@@ -84,13 +84,23 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     log_phi_mod = model.calculate_log_abundance(log_quantity_obs, z, params)
     if not np.all(np.isfinite(log_phi_mod)):
         return(1e+30)
-
+    
+    
+    # quantity-related fitting options
+    fitting_space    = model.quantity_options['fitting_space']
+    relative_weights = model.quantity_options['relative_weights']
+    
     # calculate residuals in log space
-    res = log_phi_obs - log_phi_mod
+    if fitting_space == 'log':
+        res = log_phi_obs - log_phi_mod
+    elif fitting_space == 'linear':
+        res = 10**log_phi_obs - 10**log_phi_mod
+    else:
+        raise ValueError('Fitting space not known.')
 
     # calculate weights
     if weighted:
-        weights = calculate_weights(model, relative=True)
+        weights = calculate_weights(model, relative=relative_weights)
     else:
         weights = 1
 

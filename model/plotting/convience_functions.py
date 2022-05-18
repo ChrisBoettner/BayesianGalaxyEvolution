@@ -130,7 +130,7 @@ def turn_off_axes(axes):
 
 def get_distribution_limits(ModelResults):  
     ''' 
-    Get upper and lower values for distributions across redshifts
+    Get minimum and maximum values for distributions across redshifts
     and different models (e.g. for pdf plot limits).
     '''
     
@@ -146,8 +146,8 @@ def get_distribution_limits(ModelResults):
                                                   # to -infinity
                 min_values.setdefault(i, np.inf)  
                 
-                current_max = np.percentile(distribution[:,i], 95)
-                current_min = np.percentile(distribution[:,i],  5)
+                current_max = np.amax(distribution[:,i])
+                current_min = np.amin(distribution[:,i])
                 
                 # update maximum and minimum values
                 if current_max>max_values[i]:

@@ -172,8 +172,8 @@ class Plot_marginal_pdfs(Plot):
 
         # set plot limits
         limits = get_distribution_limits(ModelResults)
-        #for i, limit in enumerate(limits):
-        #    axes[i, 0]. set_xlim(*limit)
+        for i, limit in enumerate(limits):
+            axes[i, 0]. set_xlim(*limit)
 
         # add axes labels
         param_labels =  ModelResults[0].quantity_options['param_y_labels']

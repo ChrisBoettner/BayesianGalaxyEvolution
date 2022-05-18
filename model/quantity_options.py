@@ -24,6 +24,10 @@ def get_quantity_specifics(quantity_name):
         model_param_num         : (Maximum) number of model parameter.
         model_p0                : Initial conditions for fitting the model.
         model_bounds            : Bounds for model parameter.
+        fitting_space           : Choose if quantity is fit in 'linear' or 
+                                  'log' space.
+        relative_weights        : Choose if relative or absolute uncertainties
+                                  are used as weights (True/False).          
         
         schechter               : Callable Schechter function adapted to quantity.
         schechter_p0            : Initial guess for fitting a Schechter function.
@@ -61,6 +65,8 @@ def get_quantity_specifics(quantity_name):
         options['model_p0']                 = np.array([-2, 1, 0.5])
         options['model_bounds']             = np.array([[-5, 0, 0],
                                                         [np.log10(2), 4, 0.96]])
+        options['fitting_space']            = 'log'
+        options['relative_weights']         = True
         #SCHECHTER
         options['schechter']                = log_schechter_function
         options['schechter_p0']             = [-4, 10, -1.5]
@@ -90,6 +96,8 @@ def get_quantity_specifics(quantity_name):
         options['model_p0']                 = np.array([18, 1, 0.5])
         options['model_bounds']             = np.array([[13, 0, 0], 
                                                         [20, 4, 0.99]])
+        options['fitting_space']            = 'log'
+        options['relative_weights']         = True
         # SCHECHTER
         options['schechter']                = log_schechter_function_mag
         options['schechter_p0']             = [-4, -20, -1.5]
@@ -115,12 +123,14 @@ def get_quantity_specifics(quantity_name):
         options['log_m_c']                  = 11.5
         options['feedback_change_z']        = np.nan
         # MODE
-        options['model_param_num']          = 2
-        options['model_p0']                 = np.array([35, 3])
+        options['model_param_num']          = 3
+        options['model_p0']                 = np.array([39.1552, 0.01, 3])
         # lower limit for A parameter in model chosen to be minimum observed
         # luminosity
-        options['model_bounds']             = np.array([[30, 0], 
-                                                        [39.1552, 10]])
+        options['model_bounds']             = np.array([[37, 0, 0], 
+                                                        [50, 5, 5]])
+        options['fitting_space']            = 'linear'
+        options['relative_weights']         = False
         # SCHECHTER        
         options['schechter']                = np.nan
         options['schechter_p0']             = np.nan
