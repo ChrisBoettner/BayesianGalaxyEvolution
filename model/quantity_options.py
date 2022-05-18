@@ -123,19 +123,19 @@ def get_quantity_specifics(quantity_name):
         options['log_m_c']                  = 11.5
         options['feedback_change_z']        = np.nan
         # MODE
-        options['model_param_num']          = 3
-        options['model_p0']                 = np.array([39.1552, 0.01, 3])
+        options['model_param_num']          = 2
+        options['model_p0']                 = np.array([35, 1])
         # lower limit for A parameter in model chosen to be minimum observed
         # luminosity
-        options['model_bounds']             = np.array([[37, 0, 0], 
-                                                        [50, 5, 5]])
-        options['fitting_space']            = 'linear'
-        options['relative_weights']         = False
+        options['model_bounds']             = np.array([[30, 0], 
+                                                        [np.nan, 5]])
+        options['fitting_space']            = 'log'
+        options['relative_weights']         = True
         # SCHECHTER        
         options['schechter']                = np.nan
         options['schechter_p0']             = np.nan
         # PLOTS AND TABLES
-        options['quantity_range']           = np.linspace(39.65, 50.71, 100)  
+        options['quantity_range']           = np.linspace(41, 50.71, 100)  
         options['subplot_grid']             = (4,2)
         options['ndf_xlabel']               = r'$L_\mathrm{bol}$'
         options['ndf_ylabel']               = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
@@ -152,3 +152,17 @@ def get_quantity_specifics(quantity_name):
     else:
         raise ValueError('quantity_name not known.')
     return(options)
+
+def get_bounds(model):
+    '''
+    Get model parameter bounds.
+    '''
+    bounds = model.quantity_options['model_bounds']
+    
+    # for Lbol model, upper limit for log_A is lowest measured luminosity at
+    # that redshift
+    if model.quantity_name == 'Lbol':
+        bounds[1,0] = np.amin(model.log_ndfs.at_z(model._z)[:,0])    
+    return(bounds)
+    
+    

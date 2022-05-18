@@ -13,7 +13,7 @@ from model.helper import mag_to_lum, within_bounds, make_array, system_path
 
 from model.calibration import mcmc_fitting, leastsq_fitting
 
-from model.quantity_options import get_quantity_specifics
+from model.quantity_options import get_quantity_specifics, get_bounds
 from model.feedback import feedback_model
 
 from model.calibration.parameter import load_parameter
@@ -183,11 +183,14 @@ class ModelResult():
             else:
                 raise ValueError('feedback_name not known.')
 
+            # get model parameter bounds
+            bounds_at_z = get_bounds(self)
+
             self.feedback_model.add_entry(z, feedback_model(
                 fb_name,
                 self.log_m_c,
                 initial_guess=self.quantity_options['model_p0'],
-                bounds=self.quantity_options['model_bounds']))
+                bounds=bounds_at_z))
 
             # create new prior from distribution of previous iteration
             if self.prior_name == 'uniform':

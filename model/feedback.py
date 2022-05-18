@@ -331,54 +331,38 @@ class QuasarFeedback_free_m_c(object):
         self._current_parameter = None
         self.log_m_h_function   = None
 
-    def calculate_log_quantity(self, log_m_h, log_m_c, log_A, gamma, delta):
+    def calculate_log_quantity(self, log_m_h, log_m_c, log_A, gamma):
         '''
         Calculate observable quantity from input halo mass and model parameter.
         '''
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h)       
         
-        slow, fast   = self._variable_substitution(log_m_h, log_m_c, gamma, 
-                                                   delta)
-        log_quantity = log_A + np.log10(slow + fast) 
+        x            = self._variable_substitution(log_m_h, log_m_c, gamma)
+        log_quantity = log_A + np.log10(1 + x) 
         return(log_quantity)
 
-    def calculate_log_halo_mass(self, log_quantity, log_m_c, log_A, gamma,
-                                delta, num = 500):
+    def calculate_log_halo_mass(self, log_quantity, log_m_c, log_A, gamma):
         '''
-        Calculate halo mass from input quantity quantity and model parameter.
-        Do this by calculating table of quantity for halo masses near critical
-        mass and linearly interpolating inbetween (and extrapolating beyond
-        range). Once interpolated function is created, it's saved and called 
-        for new calculations until new parameter are passed.
-        num controls number of points that halo mass is initially calculated for,
-        higher values make result more accurate but also more expensive.
-
+        Calculate halo mass from input observable quantity and model parameter.
         '''
-        if self._current_parameter == [log_m_c, log_A, gamma, delta]:
-            pass
-        else:
-            self._current_parameter = [log_m_c, log_A, gamma, delta]
-            # create lookup tables of halo mass and quantities
-            log_m_h_lookup = self._make_m_h_space(log_m_c, gamma, delta, num)
-            log_quantity_lookup = QuasarFeedback_free_m_c.\
-                                  calculate_log_quantity(
-                                  self, log_m_h_lookup, log_m_c, log_A,
-                                  gamma, delta)
-            
-            # use lookup table to create callable spline
-            self.log_m_h_function = interp1d(log_quantity_lookup, 
-                                             log_m_h_lookup,
-                                             bounds_error = False,
-                                             fill_value=([-np.inf],[np.inf]))
         
-        log_m_h = self.log_m_h_function(log_quantity)
+        x = np.power(10, log_quantity - log_A) - 1
+        
+        # deal with infinities
+        log_m_h  = np.empty_like(x)
+        inf_mask = x==0
+        
+        log_m_h[inf_mask]                 = -np.inf
+        log_m_h[np.logical_not(inf_mask)] = 1/gamma *\
+                                            np.log10(x[np.logical_not(inf_mask)]) +\
+                                            log_m_c
+        
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h) # deal with very large m_h
         return(log_m_h)
     
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_m_c, log_A, gamma,
-                                      delta):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_m_c, log_A, gamma):
         '''
         Calculate d/d(log m_h) log_quantity. High mass end for beta near
         one treated as special case, where value apporaches zero.
@@ -386,28 +370,19 @@ class QuasarFeedback_free_m_c(object):
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h)
             
-        slow, fast  = self._variable_substitution(log_m_h, log_m_c, gamma, delta)
-        numerator   = gamma * slow + delta * fast
-        denominator = slow + fast
-        
-        # deal with bh becoming infinite sometimes
-        inf_mask         = np.isfinite(log_m_h) 
-        first_derivative = np.empty_like(log_m_h)
-        
-        first_derivative[inf_mask] = numerator[inf_mask]/denominator[inf_mask]
-        first_derivative[np.logical_not(inf_mask)] = 0
+        x = self._variable_substitution(log_m_h, log_m_c, gamma)
+        first_derivative = 1/(1+1/x) * gamma
         return(first_derivative)
 
-    def _variable_substitution(self, log_m_h, log_m_c, gamma, delta):
+    def _variable_substitution(self, log_m_h, log_m_c, gamma):
         '''
         Transform input quanitities to more easily handable quantities.
         '''
         log_m_h = self._check_overflow(log_m_h)
         
         ratio    = log_m_h - log_m_c  # m_h/m_c in log space
-        log_slow    =  gamma * ratio     # log of slow accretion contribution
-        log_fast    =  delta * ratio     # log of fast accretion contribution
-        return(10**log_slow, 10**log_fast)
+        log_x    = gamma * ratio      # log of sn feedback contribution
+        return(10**log_x)
     
     def _check_overflow(self, log_m_h):
         '''
@@ -422,33 +397,8 @@ class QuasarFeedback_free_m_c(object):
             else:
                 log_m_h[log_m_h>self._upper_m_h] = np.inf
         return(log_m_h)
-
-    def _make_m_h_space(self, log_m_c, gamma, delta, num, epsilon = 0.001):
-        '''
-        Create array of m_h points arranged so that the points are dense where
-        q(m_h) changes quickly and sparse where they aren't.
-        num controls number of points that are calculated.
-        epsilon controls how far out points are created (epsilon is the 
-        ration between the strength of the two modes, i.e. 
-        slow/fast = epsilon).
-
-        '''
-        
-        # mass where fast accretion dominating
-        log_m_fast = -1/(gamma+delta) * np.log10(epsilon) + log_m_c
-        # mass where slow accretion dominating
-        log_m_slow =  1/(gamma+delta) * np.log10(epsilon) + log_m_c       
-        
-        # create high density space
-        dense_log_m_h = np.linspace(log_m_slow, log_m_fast, int(num*0.8))
-        # create low density spaces
-        sparse_log_m_lower = np.linspace(log_m_slow/2, log_m_slow, int(num*0.1))
-        sparse_log_m_upper = np.linspace(log_m_fast, 2*log_m_fast, int(num*0.1))
-        
-        log_m_h_table = np.sort(np.concatenate([dense_log_m_h, 
-                                                sparse_log_m_lower,
-                                                sparse_log_m_upper]))
-        return(np.unique(log_m_h_table))
+    
+    
 ################ MODEL WITH FIXED CRITICAL MASS ###############################
 
 class StellarBlackholeFeedback(StellarBlackholeFeedback_free_m_c):
@@ -567,6 +517,7 @@ class NoFeedback(StellarBlackholeFeedback):
         log_m_h = make_array(log_m_h)
         return(np.full_like(log_m_h, 0))
     
+    
 class QuasarFeedback(QuasarFeedback_free_m_c):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
@@ -575,26 +526,23 @@ class QuasarFeedback(QuasarFeedback_free_m_c):
         '''
         super().__init__(log_m_c, initial_guess, bounds)
 
-    def calculate_log_quantity(self, log_m_h, log_A, gamma, delta):
+    def calculate_log_quantity(self, log_m_h, log_A, gamma):
         return(QuasarFeedback_free_m_c.
                    calculate_log_quantity(self, log_m_h,
                                           log_m_c = self.log_m_c,
                                           log_A   = log_A,
-                                          gamma   = gamma,
-                                          delta   = delta))
+                                          gamma   = gamma))
     
-    def calculate_log_halo_mass(self, log_quantity, log_A, gamma, delta):
+    def calculate_log_halo_mass(self, log_quantity, log_A, gamma):
         return(QuasarFeedback_free_m_c.
                    calculate_log_halo_mass(self, log_quantity, 
                                            log_m_c = self.log_m_c,
                                            log_A = log_A,
-                                           gamma = gamma,
-                                           delta = delta))
+                                           gamma = gamma))
 
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, gamma, delta):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, gamma):
         return(QuasarFeedback_free_m_c.
                    calculate_dlogquantity_dlogmh(self, log_m_h,
                                                  log_m_c = self.log_m_c,
                                                  log_A   = log_A,
-                                                 gamma   = gamma,
-                                                 delta   = delta))
+                                                 gamma   = gamma))
