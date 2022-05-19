@@ -41,7 +41,7 @@ def load_hmf_functions(source='ShethTormen'):
     return(hmf_functions)
 
 
-def load_data(quantity_name, data_subset=None):
+def load_data(quantity_name, cutoff, data_subset=None):
     '''
     Wrapper function to load datasets.
 
@@ -54,11 +54,13 @@ def load_data(quantity_name, data_subset=None):
                 'mstar' and 'Muv', -np.inf for 'Lbol')
     '''
     if quantity_name == 'mstar':
-        groups, data = _load_smf_data(cutoff=-6, data_subset=data_subset)
+        groups, data = _load_smf_data(cutoff=cutoff, data_subset=data_subset)
     elif quantity_name == 'Muv':
-        groups, data = _load_uvlf_data(cutoff=-6, data_subset=data_subset)
+        groups, data = _load_uvlf_data(cutoff=cutoff, data_subset=data_subset)
     elif quantity_name == 'Lbol':
-        groups, data = _load_qlf_data(cutoff=-np.inf, data_subset=data_subset)
+        groups, data = _load_qlf_data(cutoff=cutoff, data_subset=data_subset)
+    elif quantity_name == 'mbh':
+        groups, data = _load_bhmf_data(cutoff=cutoff, data_subset=data_subset)
     else:
         raise ValueError('quantity_name not known.')
     return(groups, data)
@@ -66,7 +68,7 @@ def load_data(quantity_name, data_subset=None):
 
 def _load_smf_data(cutoff, data_subset):
     '''
-    Load the SMF data. returns list of group objects that contain the data 
+    Load the SMF data. Returns list of group objects that contain the data 
     connected to individual groups, and a direct directory of SMF ordered by 
     redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
@@ -114,7 +116,7 @@ def _load_smf_data(cutoff, data_subset):
 
 def _load_uvlf_data(cutoff, data_subset):
     '''
-    Load the UVLF data. returns list of group objects that contain the data
+    Load the UVLF data. Returns list of group objects that contain the data
     connected to individual groups, and a direct directory of SMF ordered by 
     redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
@@ -185,7 +187,7 @@ def _load_uvlf_data(cutoff, data_subset):
 
 def _load_qlf_data(cutoff, data_subset):
     '''
-    Load the QLF data. returns list of group objects that contain the data 
+    Load the QLF data. Returns list of group objects that contain the data 
     connected to individual groups, and a direct directory of SMF ordered by 
     redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
@@ -208,8 +210,36 @@ def _load_qlf_data(cutoff, data_subset):
             raise KeyError('dataset not in groups')
 
     # DATA SORTED BY REDSHIFT
-    smfs = z_ordered_data(groups)
-    return(groups, smfs)
+    qlfs = z_ordered_data(groups)
+    return(groups, qlfs)
+
+def _load_bhmf_data(cutoff, data_subset):
+    '''
+    Load the BHLF data. Returns list of group objects that contain the data 
+    connected to individual groups, and a direct directory of SMF ordered by 
+    redshift (of the form {redshift:data}).
+    Remove data with number density below some cutoff limit.
+    '''
+    # get z=0,1,2,3,4 for Davidson, z=1,2,3 for Ilbert
+    zhang = dict(np.load(path + 'BHMF/Zhang2021BHMF.npz'))
+    
+    # TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
+    zhang = Group(zhang, range(0,6), cutoff).plot_parameter(
+        'black', 'o', 'Zhang2021')
+    groups = [zhang]
+
+    # choose subselection of data if given when calling the function
+    if data_subset:
+        data_subset = make_list(data_subset)
+        groups = {g.label: g for g in groups}
+        try:
+            groups = [groups[dataset] for dataset in data_subset]
+        except BaseException:
+            raise KeyError('dataset not in groups')
+
+    # DATA SORTED BY REDSHIFT
+    bhmfs = z_ordered_data(groups)
+    return(groups, bhmfs)
 
 ################ CLASSES ######################################################
 

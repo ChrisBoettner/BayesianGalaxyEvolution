@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import os
 
-from scipy.optimize import root_scalar
+from scipy.optimize import root_scalar, curve_fit
 from scipy.stats import gaussian_kde
 
 import astropy.units as u
@@ -110,6 +110,24 @@ def calculate_percentiles(data, axis=0):
     upper  = np.percentile(data, 84, axis=axis)
     return([median, lower, upper])
 
+def fit_function(function, data, p0, uncertainties=None, 
+                 bounds = (-np.inf, np.inf)):
+    '''
+    Fit function to data. May include uncertainties and bounds.
+
+    '''
+    data = make_array(data)
+    # remove infinites and nans
+    data = data[np.isfinite(data[:,1])]
+    if len(data) == 0:
+        return(np.array([np.nan,np.nan,np.nan]))
+    
+    fit_parameter, _ = curve_fit(function, data[:, 0], data[:, 1],
+                                 sigma=uncertainties, p0=p0,
+                                 bounds = bounds,
+                                 maxfev=int(1e+5))
+    return(fit_parameter)
+
 ################ SORTING AND FILTERING ########################################
 
 
@@ -139,8 +157,9 @@ def custom_progressbar():
     from progressbar import ProgressBar, Counter, FormatLabel, Timer,\
         FileTransferSpeed
         
-    widgets = [Counter('Iteration: %(value)d'),' ||| ', Timer('%(elapsed)s'), 
-               ' ||| ', FileTransferSpeed(unit='it'),' ||| ', FormatLabel('')]
+    widgets = [FormatLabel(''),' ||| ', Counter('Iteration: %(value)d'),
+               ' ||| ',  Timer('%(elapsed)s'), ' ||| ',
+               FileTransferSpeed(unit='it'),' ||| ', FormatLabel('')]
     
     progressbar = ProgressBar(widgets=widgets)
     return(progressbar)

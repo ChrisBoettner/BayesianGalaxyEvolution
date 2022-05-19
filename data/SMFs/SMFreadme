@@ -1,7 +1,7 @@
 Data processed to npz files
 
 ##
-Rows: log(masses)  log(value)  error_lower(log)  error_upper(log)
+Columns: log(masses)  log(value)  error_lower(log)  error_upper(log)
 ##
 
 Readshift bins:

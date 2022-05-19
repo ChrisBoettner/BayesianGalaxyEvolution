@@ -9,13 +9,12 @@ import warnings
 
 import numpy as np
 
+from progressbar import ProgressBar, FormatLabel, NullBar
+
 from model.helper import mag_to_lum, within_bounds, make_array, system_path
-
 from model.calibration import mcmc_fitting, leastsq_fitting
-
 from model.quantity_options import get_quantity_specifics, get_bounds
 from model.feedback import feedback_model
-
 from model.calibration.parameter import load_parameter
 
 ################ MAIN CLASSES #################################################
@@ -30,7 +29,7 @@ class ModelResult():
                  quantity_name, feedback_name, prior_name,
                  fitting_method, saving_mode, name_addon=None,
                  groups=None, calibrate=True, paramter_calc = True,
-                 **kwargs):
+                 progress=True, **kwargs):
         '''
         Main model object. Calibrate the model by fitting parameter to
         observational data.
@@ -71,8 +70,11 @@ class ModelResult():
         parameter_calc : bool, optional
             Choose if best fit parameter are supposed to be calculated 
             (or laoded). The default is True.
+        progress : bool, optional
+            Choose if progress bar is supposed to be shown. The default is 
+            True.
         **kwargs : dict
-            Additional arguments that can be passed to the mcmc algorithm.
+            Additional arguments that can be passed to the mcmc function.
 
         Returns
         -------
@@ -104,6 +106,9 @@ class ModelResult():
         self.filename = Redshift_dict({})
         self.parameter = Redshift_dict({})
         self.distribution = Redshift_dict({})
+        
+        self.progress = progress
+        
         if calibrate:
             self.fit_model(self.redshift, **kwargs)
 
@@ -125,7 +130,7 @@ class ModelResult():
                 'C2', 'v', '-.', 'Stellar + Black Hole Feedback')
         elif self.feedback_name == 'quasar':
             self._plot_parameter(
-                'C3', '^', ':', 'Quasar Growth Model')
+                'C3', '^', ':', 'BH Growth Model')
         elif self.feedback_name == 'changing':
             feedback_change_z = self.quantity_options['feedback_change_z']
             max_z             = 10
@@ -153,12 +158,28 @@ class ModelResult():
         None.
 
         '''
+        # define progress bar (mcmc uses custom one)
+        custom_bar_flag =  ((self.progress and 
+                             self.fitting_method=='mcmc' and 
+                             not (self.saving_mode=='loading')) 
+                            or (not self.progress))
+        if custom_bar_flag:
+            PBar = NullBar()
+        else:
+            PBar = ProgressBar(widgets=[FormatLabel('')])
+        
         redshifts = make_array(redshifts)
-
+        
+        # run fits
         parameters, distributions = {}, {}
         posterior_samp, bounds = None, None
-        for z in redshifts:
-            print('z=' + str(z))
+        for z in PBar(redshifts):
+            # progress tracking
+            if not custom_bar_flag:
+                model_details = self.quantity_options['ndf_name'] + ' - ' +\
+                               'feedback('+self.feedback_name + ') - ' +\
+                                self.prior_name + ' prior: '
+                PBar.widgets[0] = model_details + f'z = {z}'
             self._z = z # temporary storage for current redshift
 
             # add saving paths and file name
@@ -212,17 +233,22 @@ class ModelResult():
                 parameter, posterior_samp = leastsq_fitting.lsq_fit(self)
             elif self.fitting_method == 'mcmc':
                 parameter, posterior_samp = mcmc_fitting.mcmc_fit(
-                    self, prior, saving_mode=self.saving_mode, **kwargs)
+                    self, prior, saving_mode=self.saving_mode, 
+                    progress = self.progress, **kwargs)
             else:
                 raise ValueError('fitting_method not known.')
             
             parameters[z]    = parameter
             distributions[z] = posterior_samp
             
+            if (not custom_bar_flag) and (z==redshifts[-1]):
+                PBar.widgets[0] = model_details + 'DONE'
+            
         # add distributions to model object after fitting is done, because
         # otherwise, large amount of data in model slows (parallel) mcmc run
         self.parameter    = Redshift_dict(parameters)
         self.distribution = Redshift_dict(distributions)
+        
         return
 
     def calculate_log_abundance(self, log_quantity, z, parameter):
@@ -441,10 +467,10 @@ class ModelResult():
         None.
         
         '''
-        self.color = color
-        self.marker = marker
+        self.color     = color
+        self.marker    = marker
         self.linestyle = linestyle
-        self.label = label
+        self.label     = label
         return
 
 

@@ -102,12 +102,6 @@ def mcmc_fit(model, prior, saving_mode,
     ndim = len(initial_guess)
     nwalkers = num_walker
     walker_pos = initial_guess * (1 + 0.1 * np.random.rand(nwalkers, ndim))
-    
-    # define progressbar
-    if progress:
-        ProgressBar = custom_progressbar()
-    else:
-        ProgressBar = NullBar()
 
     # make prior and model object a global variable so it doesn"t have to be 
     # called in log_probability explicitly. This helps with parallization and 
@@ -117,8 +111,14 @@ def mcmc_fit(model, prior, saving_mode,
     mod_global = model
     global prior_global
     prior_global = prior
-    
-    if saving_mode in ['saving', 'temp']:       
+
+    if saving_mode in ['saving', 'temp']:     
+        # define progressbar
+        if progress:
+            ProgressBar = custom_progressbar()
+        else:
+            ProgressBar = NullBar()
+        
         if saving_mode == 'saving' and os.path.exists(filename):
             os.remove(filename)  # clear file before start writing to it
         with Pool() as pool:
@@ -138,6 +138,8 @@ def mcmc_fit(model, prior, saving_mode,
             old_tau = np.inf            
             mcmc = sampler.sample(walker_pos, iterations=max_iterations)
             
+            if progress:
+                ProgressBar.widgets[0] = f'z = {model._z}'
             for sample in ProgressBar(mcmc):
                 # only check convergence every 1000 steps
                 if sampler.iteration % 100:
@@ -160,8 +162,6 @@ def mcmc_fit(model, prior, saving_mode,
                     break
                 else:
                     old_tau = tau
-            if progress:
-                print('\n')
             if not convergence_flag:
                 raise McmcConvergenceError('Autocorrelation estimate did not'
                                            ' converge.')
@@ -291,10 +291,12 @@ def dist_from_hist_nd(model, dist, dist_bounds):
         pass
     
     # create histogram
-    hist_nd, edges = np.histogramdd(dist, bins=100, range=dist_bounds)
+    hist_nd, edges = np.histogramdd(dist, bins=10000, range=dist_bounds)
     # make empty spots have 0.1% of actual prob, so that these are not
     # completely ignored
-    hist_nd[hist_nd == 0] = 0.001 * np.sum(hist_nd) / np.sum(hist_nd == 0)
+    if np.any(hist_nd == 0):
+        hist_nd = hist_nd.astype(float)
+        hist_nd[hist_nd == 0] = 0.001 * np.sum(hist_nd) / np.sum(hist_nd == 0)
     # normalize
     hist_nd = hist_nd / np.sum(hist_nd)
     return([[hist_nd], edges], dist_bounds_new)
@@ -330,10 +332,12 @@ def dist_from_hist_1d(model, dist, dist_bounds):
         lower_bound = dist_bounds[i][0]
         upper_bound = dist_bounds[i][1]
         hist, edge = np.histogram(dist[:, i], range=(lower_bound, upper_bound),
-                                  bins=100)
+                                  bins=10000)
         # make empty spots have 0.1% of actual prob, so that these are not
         # completely ignored
-        hist[hist == 0] = 0.001 * np.sum(hist) / np.sum(hist == 0)
+        if np.any(hist == 0):
+            hist = hist.astype(float)
+            hist[hist == 0] = 0.001 * np.sum(hist) / np.sum(hist == 0)
         # normalize
         hist = hist / np.sum(hist)
 

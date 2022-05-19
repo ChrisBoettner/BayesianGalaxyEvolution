@@ -13,9 +13,9 @@ from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ PLOT DATA ####################################################
 
-
-def plot_group_data(axes, groups):
+def plot_group_data(axes, ModelResult):
     ''' Use list of group objects to plot group data. '''
+    groups = ModelResult.groups    
     for g in groups:
         for z in g.redshift:
             axes[z].errorbar(g.data_at_z(z).quantity,
@@ -26,7 +26,7 @@ def plot_group_data(axes, groups):
                              fmt=g.marker,
                              color=g.color,
                              label=g.label,
-                             alpha=0.4)
+                             alpha=ModelResult.quantity_options['marker_alpha'])
     return
 
 
@@ -43,6 +43,19 @@ def plot_best_fit_ndf(axes, ModelResult):
                      label=label,
                      color=color)
     return(ndfs)
+
+def plot_model_limit(axes, ModelResult, color):
+    '''
+    Plot vertical line, where model breaks down.
+    '''
+    # for Lbol quasar model, lowest possible luminosity is equal to 
+    # normalisation log_A
+    if ModelResult.feedback_name == 'quasar':           
+        for z in ModelResult.redshift:
+            c   = pick_from_list(color, z)
+            lim = ModelResult.parameter.at_z(z)[0] 
+            axes[z].axvline(lim, color=c)
+    return
 
 ################ ADD TEXT TO PLOT #############################################
 
@@ -78,7 +91,7 @@ def add_legend(axes, ind, sort=False, **kwargs):
     return
 
 
-def add_separated_legend(axes, separation_point, ncol=1):
+def add_separated_legend(axes, separation_point, ncol=1, loc=9):
     '''
     Add part of legend to first subplot and part to last subplot, devided by
     separation_point. Can also adjust number of columns of legend.
@@ -87,7 +100,7 @@ def add_separated_legend(axes, separation_point, ncol=1):
     axes[0].legend(list(labels.values())[:separation_point],
                    list(labels.keys())[:separation_point],
                    frameon=False,
-                   prop={'size': 12}, loc=9)
+                   prop={'size': 12}, loc=loc)
     axes[-1].legend(list(labels.values())[separation_point:],
                     list(labels.keys())[separation_point:],
                     frameon=False,
@@ -135,7 +148,6 @@ def get_distribution_limits(ModelResults):
     '''
     
     ModelResults = make_list(ModelResults)
-    
     max_values, min_values = {}, {}
     for Model in ModelResults:
         for z in Model.redshift:

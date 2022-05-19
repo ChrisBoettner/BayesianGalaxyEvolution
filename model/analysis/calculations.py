@@ -36,7 +36,7 @@ def calculate_qhmr(ModelResult, log_m_halos, redshifts):
     return(qhmr)
 
 
-def calculate_best_fit_ndf(ModelResult, redshifts):
+def calculate_best_fit_ndf(ModelResult, redshifts, quantity_range=None):
     '''
     Calculate best fit number density function by passing calculated best fit
     parameter to calculate_ndf method. Returns array of form {redshift:ndf}
@@ -46,6 +46,7 @@ def calculate_best_fit_ndf(ModelResult, redshifts):
     best_fit_ndfs = {}
     for z in redshifts:
         quantity, phi = ModelResult.calculate_ndf(
-            z, ModelResult.parameter.at_z(z))
+            z, ModelResult.parameter.at_z(z),
+            quantity_range=quantity_range)
         best_fit_ndfs[z] = np.array([quantity, phi]).T
     return(best_fit_ndfs)

@@ -349,14 +349,16 @@ class QuasarFeedback_free_m_c(object):
         
         x = np.power(10, log_quantity - log_A) - 1
         
-        # deal with infinities
         log_m_h  = np.empty_like(x)
-        inf_mask = x==0
         
-        log_m_h[inf_mask]                 = -np.inf
-        log_m_h[np.logical_not(inf_mask)] = 1/gamma *\
-                                            np.log10(x[np.logical_not(inf_mask)]) +\
-                                            log_m_c
+        # deal with infinities and negative values, and regime where model
+        # breaks down
+        inf_mask            = x<=0
+        log_m_h[inf_mask]   = -np.inf
+        
+        # calculate halo mass
+        valid_mask = np.logical_not(inf_mask)
+        log_m_h[valid_mask] = 1/gamma * np.log10(x[valid_mask]) + log_m_c
         
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h) # deal with very large m_h
@@ -371,7 +373,16 @@ class QuasarFeedback_free_m_c(object):
         log_m_h = self._check_overflow(log_m_h)
             
         x = self._variable_substitution(log_m_h, log_m_c, gamma)
-        first_derivative = 1/(1+1/x) * gamma
+        
+        # deal with values where model breaks down
+        first_derivative = np.empty_like(log_m_h)
+        mask             = log_m_h<=0
+        first_derivative[mask] = np.inf # so that phi will be = 0
+        
+        #calculate first derivative
+        first_derivative[np.logical_not(mask)] = 1/(1+
+                                                 1/x[np.logical_not(mask)])*\
+                                                    gamma
         return(first_derivative)
 
     def _variable_substitution(self, log_m_h, log_m_c, gamma):

@@ -1,6 +1,6 @@
 Data processed to npz files
 
-Rows: abs_magnitude  value  error_lower  error_upper 
+Columns: abs_magnitude  value  error_lower  error_upper 
 
 Readshift bins:
 Madau2014

@@ -65,7 +65,9 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     '''
     Cost function for fitting. Includes physically sensible bounds for parameter.
 
-    Fitting is perfomed in log space (res = log_phi_obs - log_phi_mod).
+    Fitting is perfomed in either log space (res = log_phi_obs - log_phi_mod)
+    or linear space (res = 10**log_phi_obs - 10**log_phi_mod), depending on
+    quantity_options of model.
 
     If weighted is True, include errorbars in fit. The weights are calculated
     as the inverse of the RELATIVE uncertainties.

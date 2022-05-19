@@ -11,6 +11,7 @@ from model.data.load import load_data, load_hmf_functions
 from model.model import ModelResult
 from model.calibration.parameter import save_parameter
 from model.helper import is_sublist, make_list
+from model.quantity_options import get_quantity_specifics
 
 
 def load_model(quantity_name, feedback_name, data_subset=None,
@@ -22,8 +23,8 @@ def load_model(quantity_name, feedback_name, data_subset=None,
     Can choose to load and run on subset of data, just put in list of data set
     names (of form AuthorYear).
     '''
-
-    groups, log_ndfs = load_data(quantity_name, data_subset)
+    cutoff = get_quantity_specifics(quantity_name)['cutoff']
+    groups, log_ndfs = load_data(quantity_name, cutoff, data_subset)
     log_hmfs = load_hmf_functions()
     if redshifts is None: 
         redshifts = list(log_ndfs.keys())
@@ -55,8 +56,8 @@ def save_model(quantity_name, feedback_name, data_subset=None,
     Can choose to load and run on subset of data, just put in list of data set
     names (of form AuthorYear).
     '''
-
-    groups, log_ndfs = load_data(quantity_name, data_subset)
+    cutoff = get_quantity_specifics(quantity_name)['cutoff']
+    groups, log_ndfs = load_data(quantity_name, cutoff, data_subset)
     log_hmfs = load_hmf_functions()
     if redshift is None: 
         redshift = list(log_ndfs.keys())
@@ -96,11 +97,11 @@ def run_model(quantity_name, feedback_name, fitting_method='least_squares',
     Can choose to load and run on subset of data, just put in list of data set
     names (of form AuthorYear).
     '''
-
-    groups, log_ndfs = load_data(quantity_name, data_subset)
+    cutoff = get_quantity_specifics(quantity_name)['cutoff']
+    groups, log_ndfs = load_data(quantity_name, cutoff, data_subset)
     log_hmfs = load_hmf_functions()
 
-    if not redshift:
+    if redshift is None:
         redshift = list(log_ndfs.keys())
     else:
         redshift = make_list(redshift)

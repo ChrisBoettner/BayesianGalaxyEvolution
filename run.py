@@ -12,7 +12,7 @@ from model.interface import save_model
 
 @click.command()
 @click.option('--quantity_name', prompt='Physical quantity',
-              help='Physical quantity: \'Muv\', \'mstar\' or \'Lbol\'')
+              help='Physical quantity: \'Muv\', \'mstar\', \'Lbol\' or \'mbh\'')
 @click.option('--feedback_name', prompt='Feedback model',
               help='Feedback model: \'none\', \'stellar\', \'stellar_blackhole\,\
                   \'changing\', \'quasar\' or custom')
