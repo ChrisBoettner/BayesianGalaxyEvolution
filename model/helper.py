@@ -62,14 +62,14 @@ def t_to_z(t):
 
 def within_bounds(values, lower_bounds, upper_bounds):
     '''
-    Checks if list of values is within lower and upper bounds (strictly
-    within bounds). All three arrays must have same length.
+    Checks if list of values is (strictly) within lower and upper bounds. 
+    All three arrays must have same length.
     '''
     is_within = []
     for i in range(len(values)):
         is_within.append(
-            (values[i] > lower_bounds[i]) & (
-                values[i] < upper_bounds[i]))
+            (values[i] >= lower_bounds[i]) & (
+                values[i] <= upper_bounds[i]))
 
     # return True if all elements are within bounds, otherwise False
     return(all(is_within))

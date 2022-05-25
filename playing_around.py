@@ -11,16 +11,16 @@ from model.plotting.plotting import *
 
 #o = run_model('mbh', 'quasar')
 
-o = run_model('mbh', 'quasar', fitting_method='mcmc', num_walker=10, min_chain_length=0, parallel = True,
-              prior_name='successive')
+#o = run_model('mbh', 'quasar', fitting_method='mcmc', num_walker=10, min_chain_length=0, parallel = True,
+#              prior_name='successive')
 
 #m = run_model('mstar','changing', fitting_method='mcmc',num_walker=10, autocorr_chain_multiple=1,
 #              redshift=[4,5], tolerance = 0.01, parallel=True, min_chain_length=20000, parameter_calc=False,
 #              autocorr_discard=True)
 #save_model('mstar', 'changing', num_walker=50)
 
-#mstar = load_model('mstar','changing')
-#muv   = load_model('Muv','changing')
+mstar = load_model('mstar','changing')
+muv   = load_model('Muv','changing')
 #lbol  = load_model('Lbol','quasar',prior_name='successive')
 
-Plot_best_fit_ndfs(o)
+#Plot_best_fit_ndfs(o)

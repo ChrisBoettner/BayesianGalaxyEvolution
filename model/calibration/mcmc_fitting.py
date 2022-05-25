@@ -291,7 +291,7 @@ def dist_from_hist_nd(model, dist, dist_bounds):
         pass
     
     # create histogram
-    hist_nd, edges = np.histogramdd(dist, bins=10000, range=dist_bounds)
+    hist_nd, edges = np.histogramdd(dist, bins=500, range=dist_bounds)
     # make empty spots have 0.1% of actual prob, so that these are not
     # completely ignored
     if np.any(hist_nd == 0):
@@ -332,7 +332,7 @@ def dist_from_hist_1d(model, dist, dist_bounds):
         lower_bound = dist_bounds[i][0]
         upper_bound = dist_bounds[i][1]
         hist, edge = np.histogram(dist[:, i], range=(lower_bound, upper_bound),
-                                  bins=10000)
+                                  bins=500)
         # make empty spots have 0.1% of actual prob, so that these are not
         # completely ignored
         if np.any(hist == 0):

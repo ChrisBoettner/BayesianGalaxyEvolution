@@ -214,19 +214,20 @@ class ModelResult():
                 bounds=bounds_at_z))
 
             # create new prior from distribution of previous iteration
-            if self.prior_name == 'uniform':
-                prior, bounds = mcmc_fitting.uniform_prior(
-                    self, posterior_samp, bounds)
-            elif self.prior_name == 'marginal':
-                raise DeprecationWarning(
-                    'Marginal prior not really sensible anymore, I think.')
-                prior, bounds = mcmc_fitting.dist_from_hist_1d(
-                    self, posterior_samp, bounds)
-            elif self.prior_name == 'successive':
-                prior, bounds = mcmc_fitting.dist_from_hist_nd(
-                    self, posterior_samp, bounds)
-            else:
-                raise ValueError('Prior model not known.')
+            if self.fitting_method != 'loading':
+                if self.prior_name == 'uniform':
+                    prior, bounds = mcmc_fitting.uniform_prior(
+                        self, posterior_samp, bounds)
+                elif self.prior_name == 'marginal':
+                    raise DeprecationWarning(
+                        'Marginal prior not really sensible anymore, I think.')
+                    prior, bounds = mcmc_fitting.dist_from_hist_1d(
+                        self, posterior_samp, bounds)
+                elif self.prior_name == 'successive':
+                    prior, bounds = mcmc_fitting.dist_from_hist_nd(
+                        self, posterior_samp, bounds)
+                else:
+                    raise ValueError('Prior model not known.')
 
             # fit parameter/sample distribution
             if self.fitting_method == 'least_squares':
@@ -409,7 +410,7 @@ class ModelResult():
 
         Returns
         -------
-        ndf_sample : array
+        ndf : array
             Calculated number density functions.
 
         '''

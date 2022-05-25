@@ -20,11 +20,14 @@ from model.helper import make_list, pick_from_list, sort_by_density, t_to_z
 
 from pathlib import Path
 import numpy as np
+import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 from matplotlib import rc_file
 rc_file('model/plotting/settings.rc')
+
+################ MAIN FUNCTIONS AND CLASSES ###################################
 
 def get_list_of_plots():
     '''
@@ -59,11 +62,46 @@ class Plot(object):
 
     def _plot(self, ModelResult):
         return
+    
+    def to_print_mode(self, labelsize_scaling = 1, leftbottom_ticks=True,
+                      labels_off = False):
+        '''
+        Make plot ready for printing/post-processing. Turns off axis labels, 
+        changes tick label size. leftbottom_ticks can be used to turn off ticks
+        on top and right side.
+        '''
+        if self.fig is None:
+            raise AttributeError('call make_plot first to create figure.')
+        
+        new_labelsize = labelsize_scaling*mpl.rcParams['xtick.labelsize'] 
+        
+        self.quantity_name = 'presentations' # save in seperate folder
+         
+        if labels_off:
+            self.fig.supxlabel('')
+            self.fig.supylabel('')
+            axes = make_list(self.axes)
+            for ax in axes:
+                # Turn off axis label
+                ax.set_xlabel('')
+                ax.set_ylabel('')
+                
+                # Change tick label size
+                ax.tick_params(axis='both', labelsize=new_labelsize)
+                
+                # Turn off ticks on top/right
+                if leftbottom_ticks:
+                    ax.tick_params(top = False, right = False, labeltop = False,
+                                   labelright = False)
+        return
 
-    def save(self, file_format='pdf', file_name=None, path=None):
+    def save(self, file_format='pdf', file_name=None, path=None, 
+             print_mode=False):
         '''
         Save figure to file. Can change file format (e.g. \'pdf\' or \'png\'),
         file name (but default is set) and save path (but default is set).
+        Can enable print_mode, which turns off axis labels, makes background
+        transparent.
         '''
         if self.fig is None:
             raise AttributeError('call make_plot first to create figure.')
@@ -71,13 +109,22 @@ class Plot(object):
             file_name = self.default_filename
         if path is None:
             path = 'plots/' + self.quantity_name + '/'
+        
+        transparent = False
+        if print_mode:
+            self.to_print_mode()
+            file_name   = file_name + '_print'
+            path        = 'plots/' + self.quantity_name + '/print/'
+            transparent = True
 
         Path(path).mkdir(parents=True, exist_ok=True)
         file = file_name + '.' + file_format
 
-        self.fig.savefig(path + file)
+        self.fig.savefig(path + file, format=file_format, 
+                         transparent = transparent)
         return(self)
 
+################ PLOTS ########################################################
 
 class Plot_best_fit_ndfs(Plot):
     def __init__(self, ModelResults):
@@ -174,9 +221,9 @@ class Plot_marginal_pdfs(Plot):
         fig.subplots_adjust(hspace=0.2)
 
         # set plot limits
-        #limits = get_distribution_limits(ModelResults)
-        #for i, limit in enumerate(limits):
-        #    axes[i, 0]. set_xlim(*limit)
+        limits = get_distribution_limits(ModelResults)
+        for i, limit in enumerate(limits):
+            axes[i, 0]. set_xlim(*limit)
 
         # add axes labels
         param_labels =  ModelResults[0].quantity_options['param_y_labels']
@@ -242,7 +289,7 @@ class Plot_parameter_sample(Plot):
         # draw and plot parameter samples
         for z in ModelResult.redshift:
             # draw parameter sample
-            num = int(1e+4)
+            num = int(1e+3)
             parameter_sample = ModelResult.draw_parameter_sample(z, num)
 
             # estimate density using Gaussian KDE and use to assign color
@@ -253,15 +300,20 @@ class Plot_parameter_sample(Plot):
                                                      scale=0.03, size=num)
             # plot parameter sample
             for i in range(parameter_sample.shape[1]):
-                axes[i].scatter(x[::10], parameter_sample[:, i][::10],
-                                c=color[::10], s=0.1, cmap='Oranges')
+                axes[i].scatter(x, parameter_sample[:, i],
+                                c=color, s=0.1, cmap='Oranges')
 
         # add tick for every redshift
         axes[-1].set_xticks(ModelResult.redshift)
         axes[-1].set_xticklabels(ModelResult.redshift)
 
+        # set number for x ticks
+        for ax in axes.flatten():
+            ax.yaxis.set_major_locator(MaxNLocator(3))
+
         # second axis for redshift
         ax_z = axes[0].twiny()
+        axes = np.append(axes, ax_z)
         ax_z.set_xlim(axes[0].get_xlim())
 
         t_ticks = np.arange(1, 14, 1).astype(int)
@@ -601,3 +653,4 @@ class Plot_reference_comparison(Plot):
         # turn off unused axes
         turn_off_axes(axes)
         return(fig, axes)
+

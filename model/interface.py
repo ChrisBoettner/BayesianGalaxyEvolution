@@ -15,7 +15,7 @@ from model.quantity_options import get_quantity_specifics
 
 
 def load_model(quantity_name, feedback_name, data_subset=None,
-               prior_name=None, redshifts=None, **kwargs):
+               prior_name=None, redshift=None, **kwargs):
     '''
     Load saved (MCMC) model. Built for simplicity so that feedback_name is
     associated with specific prior, but can be changed if needed.
@@ -26,8 +26,8 @@ def load_model(quantity_name, feedback_name, data_subset=None,
     cutoff = get_quantity_specifics(quantity_name)['cutoff']
     groups, log_ndfs = load_data(quantity_name, cutoff, data_subset)
     log_hmfs = load_hmf_functions()
-    if redshifts is None: 
-        redshifts = list(log_ndfs.keys())
+    if redshift is None: 
+        redshift = list(log_ndfs.keys())
 
     if prior_name is None:
         if feedback_name == 'changing':
@@ -35,7 +35,7 @@ def load_model(quantity_name, feedback_name, data_subset=None,
         else:
             prior_name = 'uniform'
 
-    model = ModelResult(redshifts, log_ndfs, log_hmfs,
+    model = ModelResult(redshift, log_ndfs, log_hmfs,
                         quantity_name, feedback_name, prior_name,
                         groups=groups,
                         name_addon=data_subset,
@@ -80,8 +80,8 @@ def save_model(quantity_name, feedback_name, data_subset=None,
                         **kwargs)
     save_parameter(model, data_subset)
     end = timeit.default_timer()
-    print('DONE')
-    print(str((end - start) / 3600) + ' hours')
+    print('\nDONE')
+    print('Total Time: ' + str((end - start) / 3600) + ' hours')
     return(model)
 
 

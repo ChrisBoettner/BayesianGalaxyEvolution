@@ -85,8 +85,8 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range']           = np.linspace(7.32, 12.16, 100)
         options['subplot_grid']             = (4,3)
-        options['ndf_xlabel']               = r'log $M_*$ [$M_\odot$]'
-        options['ndf_ylabel']               = r'log $\phi(M_*)$ [cMpc$^{-3}$ dex$^{-1}$]'
+        options['ndf_xlabel']               = r'log $M_\star$ [$M_\odot$]'
+        options['ndf_ylabel']               = r'log $\phi(M_\star)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit']         = [-6, 3]
         options['param_y_labels']           = [r'$\log A$',
                                                r'$\gamma$',
@@ -96,7 +96,7 @@ def get_quantity_specifics(quantity_name):
         options['legend_columns']           = 1
         options['reference_table_header']   = [r'$z$',
                                                r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
-                                               r'$\log M_*^\mathrm{c}$ [$M_\odot$]',
+                                               r'$\log M_\star^\mathrm{c}$ [$M_\odot$]',
                                                r'$\alpha$']
         
     elif quantity_name == 'Muv':
@@ -213,7 +213,7 @@ def get_quantity_specifics(quantity_name):
         options['legend_columns']           = 1
         options['reference_table_header']   = [r'$z$',
                                                r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
-                                               r'$\log M_*^\mathrm{c}$ [$M_\odot$]',
+                                               r'$\log M_\star^\mathrm{c}$ [$M_\odot$]',
                                                r'$\gamma_1$',
                                                r'$\gamma_2$']
         

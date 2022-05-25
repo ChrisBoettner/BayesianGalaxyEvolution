@@ -114,10 +114,14 @@ class StellarBlackholeFeedback_free_m_c(object):
         higher values make result more accurate but also more expensive.
 
         '''
+        if alpha == beta == 0:
+            return(log_quantity - log_A + np.log10(2))
+        
         if self._current_parameter == [log_m_c, log_A, alpha, beta]:
             pass
         else:
             self._current_parameter = [log_m_c, log_A, alpha, beta]
+            
             # create lookup tables of halo mass and quantities
             log_m_h_lookup = self._make_m_h_space(log_m_c, alpha, beta, num)
             log_quantity_lookup = StellarBlackholeFeedback_free_m_c.\

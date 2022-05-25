@@ -131,6 +131,24 @@ def remove_double_labels(axes):
     by_label = dict(zip(labels_sorted, handles_sorted))
     return(by_label)
 
+################ FRAMES #######################################################
+
+
+def turn_off_frame(axes):
+    '''
+    Turn off top and right frame of all axes
+
+    '''
+    
+    axes = make_list(axes)
+    
+    for ax in axes:
+            # Hide the right and top spines
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+    return
+
+
 ################ AXES AND LIMITS ##############################################
 
 
