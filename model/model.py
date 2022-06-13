@@ -297,11 +297,12 @@ class ModelResult():
         fb_factor = self.feedback_model.at_z(z).calculate_dlogquantity_dlogmh(
             log_m_h, *parameter)
         log_fb_factor                 = np.empty_like(fb_factor)
-        log_fb_factor[fb_factor == 0] = np.inf
+        log_fb_factor[fb_factor == 0] = -np.inf
         log_fb_factor[fb_factor != 0] = np.log10(fb_factor[fb_factor!=0])
             
         # calculate modelled phi value
         log_phi = log_hmf - log_fb_factor
+        log_phi[np.isnan(log_phi)] = -np.nan
         return(log_phi)
 
     def draw_parameter_sample(self, z, num=1):

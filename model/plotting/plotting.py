@@ -355,7 +355,7 @@ class Plot_qhmr(Plot):
 
         # add axes labels
         fig.supxlabel('log $M_\\mathrm{h}$ [$M_\\odot$]')
-        fig.supylabel('log($M_*/M_\\mathrm{h}$)', x=0.01)
+        fig.supylabel('log($M_\star/M_\\mathrm{h}$)', x=0.01)
 
         # create custom color map
         cm = LinearSegmentedColormap.from_list("Custom", ['C2', 'C1'],
