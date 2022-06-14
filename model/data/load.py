@@ -32,8 +32,6 @@ def load_hmf_functions(source='ShethTormen'):
     hmf_functions = []
     for z in range(20):
         h = hmfs[str(z)]
-        lower_fill = h[0, 1]
-        upper_fill = h[-1, 1]
         hmf_functions.append(interp1d(*h.T, bounds_error=False,
                                       fill_value=(np.nan, np.nan)))
     # turn into dictonary

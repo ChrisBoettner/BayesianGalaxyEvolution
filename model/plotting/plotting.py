@@ -185,7 +185,7 @@ class Plot_best_fit_ndfs(Plot):
 
         # add legend
         if (len(ModelResults)==1) and \
-           (ModelResults[0].feedback_name == 'changing'):
+           (ModelResults[0].physics_name == 'changing'):
             separation_point = 2
         else:
             separation_point = len(ModelResults)

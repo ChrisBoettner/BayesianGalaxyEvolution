@@ -50,7 +50,7 @@ def plot_model_limit(axes, ModelResult, color):
     '''
     # for Lbol quasar model, lowest possible luminosity is equal to 
     # normalisation log_A
-    if ModelResult.feedback_name == 'quasar':           
+    if ModelResult.physics_name == 'quasar':           
         for z in ModelResult.redshift:
             c   = pick_from_list(color, z)
             lim = ModelResult.parameter.at_z(z)[0] 

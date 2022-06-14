@@ -8,17 +8,29 @@ Created on Tue Apr 12 17:46:44 2022
 import warnings
 
 import numpy as np
+from scipy.stats import gaussian_kde
+from scipy.integrate import nquad
 
 from progressbar import ProgressBar, FormatLabel, NullBar
 
 from model.helper import mag_to_lum, within_bounds, make_array, system_path
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics, get_bounds
-from model.feedback import feedback_model
+from model.physics import physics_model
 from model.calibration.parameter import load_parameter
 
 ################ MAIN CLASSES #################################################
-
+def choose_model(quantity_name):
+    '''
+    Choose appropriate model for quantity.
+    
+    '''
+    if quantity_name in ['mstar', 'Muv', 'mbh']:
+        return(ModelResult)
+    elif quantity_name == 'Lbol':
+        return(ModelResult_QLF)
+    else:
+        raise ValueError('quantity_name not known.')
 
 class ModelResult():
     '''
@@ -26,7 +38,7 @@ class ModelResult():
     '''
 
     def __init__(self, redshifts, log_ndfs, log_hmf_functions,
-                 quantity_name, feedback_name, prior_name,
+                 quantity_name, physics_name, prior_name,
                  fitting_method, saving_mode, name_addon=None,
                  groups=None, calibrate=True, paramter_calc = True,
                  progress=True, **kwargs):
@@ -48,9 +60,9 @@ class ModelResult():
             callable functions of form {z: hmf}.
         quantity_name : str
             Name of the quantity modelled. Must be 'Muv' or 'mstar'.
-        feedback_name : str
-            Name of feedback model. Must be 'none', 'stellar',
-            'stellar_feedback' or 'changing'. 'changing' uses 'stellar_blackhole'
+        physics_name : str
+            Name of physics model. Must be in implemented models in 
+            quantity_options. Model 'changing' uses 'stellar_blackhole'
             for z<4 and 'stellar' for z>4.
         prior_name : str
             Name of prior model. Must be 'uniform' or 'successive'.
@@ -92,7 +104,7 @@ class ModelResult():
         self.quantity_options = get_quantity_specifics(self.quantity_name)
         self.log_m_c = self.quantity_options['log_m_c']
         
-        self.feedback_name = feedback_name
+        self.physics_name = physics_name
         self.prior_name = prior_name
 
         self.fitting_method = fitting_method
@@ -102,7 +114,7 @@ class ModelResult():
         # location where files will be saved or loaded from
         self.directory = None
 
-        self.feedback_model = Redshift_dict({})
+        self.physics_model = Redshift_dict({})
         self.filename = Redshift_dict({})
         self.parameter = Redshift_dict({})
         self.distribution = Redshift_dict({})
@@ -111,6 +123,10 @@ class ModelResult():
         
         if calibrate:
             self.fit_model(self.redshift, **kwargs)
+        else:
+            for z in self.redshift:
+                self._add_physics_model(z)
+                
 
         if (saving_mode == 'loading'):
             try:
@@ -120,18 +136,15 @@ class ModelResult():
             except FileNotFoundError:
                 warnings.warn('Couldn\'t load best fit parameter')
 
-        # default plot parameter per feedback_model
-        if self.feedback_name == 'none':
+        # default plot parameter per physics_model
+        if self.physics_name == 'none':
             self._plot_parameter('black', 'o', '-', 'No Feedback')
-        elif self.feedback_name == 'stellar':
+        elif self.physics_name == 'stellar':
             self._plot_parameter('C1', 's', '--', 'Stellar Feedback')
-        elif self.feedback_name == 'stellar_blackhole':
+        elif self.physics_name == 'stellar_blackhole':
             self._plot_parameter(
                 'C2', 'v', '-.', 'Stellar + Black Hole Feedback')
-        elif self.feedback_name == 'quasar':
-            self._plot_parameter(
-                'C3', '^', ':', 'BH Growth Model')
-        elif self.feedback_name == 'changing':
+        elif self.physics_name == 'changing':
             feedback_change_z = self.quantity_options['feedback_change_z']
             max_z             = 10
             self._plot_parameter(
@@ -139,6 +152,12 @@ class ModelResult():
                 'o', '-',
                 ['Stellar + Black Hole Feedback'] * feedback_change_z \
                 + ['Stellar Feedback'] * (max_z+1-feedback_change_z))
+        elif self.physics_name == 'quasar':
+            self._plot_parameter(
+                'C3', '^', ':', 'BH Growth Model')
+        elif self.physics_name == 'eddington':
+            self._plot_parameter(
+                'C4', '^', ':', 'Bolometric Luminosity Model')
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -177,41 +196,22 @@ class ModelResult():
             # progress tracking
             if not custom_bar_flag:
                 model_details = self.quantity_options['ndf_name'] + ' - ' +\
-                               'feedback('+self.feedback_name + ') - ' +\
+                               'physics('+self.physics_name + ') - ' +\
                                 self.prior_name + ' prior: '
                 PBar.widgets[0] = model_details + f'z = {z}'
             self._z = z # temporary storage for current redshift
 
             # add saving paths and file name
             self.directory = system_path() + self.quantity_name + '/' \
-                            + self.feedback_name + '/'
+                            + self.physics_name + '/'
             filename = self.prior_name + '_z' + str(z)
             # if manual modification of saving path is wanted
             if self.name_addon:
                 filename = filename + ''.join(self.name_addon)
             self.filename.add_entry(z, filename)
       
-            # create feedback model
-            if self.feedback_name in ['none', 'stellar', 'stellar_blackhole',
-                                      'quasar']:
-                fb_name = self.feedback_name
-            elif self.feedback_name == 'changing':  # standard changing feedback
-                feedback_change_z = self.quantity_options['feedback_change_z']
-                if z < feedback_change_z:
-                    fb_name = 'stellar_blackhole'
-                elif z >= feedback_change_z:
-                    fb_name = 'stellar'
-            else:
-                raise ValueError('feedback_name not known.')
-
-            # get model parameter bounds
-            bounds_at_z = get_bounds(self)
-
-            self.feedback_model.add_entry(z, feedback_model(
-                fb_name,
-                self.log_m_c,
-                initial_guess=self.quantity_options['model_p0'],
-                bounds=bounds_at_z))
+            # add physics model
+            self._add_physics_model(z)
 
             # create new prior from distribution of previous iteration
             if self.fitting_method != 'loading':
@@ -255,7 +255,7 @@ class ModelResult():
     def calculate_log_abundance(self, log_quantity, z, parameter):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
-        multiplying HMF function with feedback model derivative for a given
+        multiplying HMF function with physics model derivative for a given
         redshift.
         
         IMPORTANT: Input units must be log m_star in units of solar masses for
@@ -283,18 +283,18 @@ class ModelResult():
             log_quantity = np.log10(mag_to_lum(log_quantity))
 
         # check that parameters are within bounds
-        if not within_bounds(parameter, *self.feedback_model.at_z(z).bounds):
+        if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
             return(1e+30)  # return inf (or huge value) if outside of bounds
 
         # calculate halo masses from stellar masses using model
-        log_m_h = self.feedback_model.at_z(z).calculate_log_halo_mass(
+        log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
             log_quantity, *parameter)
         
         ## calculate modelled number density function
         # calculate value of halo mass function
         log_hmf = self.log_hmfs.at_z(z)(log_m_h)
-        # calculate feedback effect (and deal with zero values)
-        fb_factor = self.feedback_model.at_z(z).calculate_dlogquantity_dlogmh(
+        # calculate physics/feedback effect (and deal with zero values)
+        fb_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
             log_m_h, *parameter)
         log_fb_factor                 = np.empty_like(fb_factor)
         log_fb_factor[fb_factor == 0] = -np.inf
@@ -302,12 +302,12 @@ class ModelResult():
             
         # calculate modelled phi value
         log_phi = log_hmf - log_fb_factor
-        log_phi[np.isnan(log_phi)] = -np.nan
+        log_phi[np.isnan(log_phi)] = np.nan
         return(log_phi)
 
     def draw_parameter_sample(self, z, num=1):
         '''
-        Get a sample from feedback parameter distribution at given redshift.
+        Get a sample from physics model parameter distribution at given redshift.
 
         Parameters
         ----------
@@ -349,7 +349,7 @@ class ModelResult():
 
         Returns
         -------
-        log_quantity_dist : list
+        log_quantity_dist : array
             Calculated distribution.
 
         '''
@@ -359,7 +359,7 @@ class ModelResult():
         log_quantity_dist = []
         for p in parameter_sample:
             log_quantity_dist.append(
-                self.feedback_model.at_z(z).calculate_log_quantity(
+                self.physics_model.at_z(z).calculate_log_quantity(
                     log_halo_mass, *p))
         return(np.array(log_quantity_dist))
 
@@ -381,7 +381,7 @@ class ModelResult():
 
         Returns
         -------
-        log_halo_mass_dist : list
+        log_halo_mass_dist : array
             Calculated distribution.
 
         '''
@@ -390,9 +390,40 @@ class ModelResult():
         log_halo_mass_dist = []
         for p in parameter_sample:
             log_halo_mass_dist.append(
-                self.feedback_model.at_z(z).calculate_log_halo_mass(
+                self.physics_model.at_z(z).calculate_log_halo_mass(
                     log_quantity, *p))
         return(np.array(log_halo_mass_dist))
+    
+    def calculate_abundance_distribution(self, log_quantity, z, num=int(1e+5)):
+        '''
+        At a given redshift, calculate distribution of phi for a given
+        observable quantity (mstar/Muv) value by drawing parameter sample and
+        calculating value for each one.
+
+        Parameters
+        ----------
+        log_quantity : float64
+            Input (log of) observable quantity. For mass function must be in
+            stellar masses, for luminosities must be in absolute magnitudes.
+        z : int
+            Redshift at which value is calculated.
+        num : int, optional
+            Number of samples drawn. The default is int(1e+5).
+
+        Returns
+        -------
+        log_abundance_dist : array
+            Calculated distribution.
+
+        '''
+        
+        parameter_sample = self.draw_parameter_sample(z, num=num)
+
+        log_abundance_dist = []
+        for p in parameter_sample:
+            log_abundance_dist.append(
+                self.calculate_log_abundance(log_quantity, z, p))
+        return(np.array(log_abundance_dist))
 
     def calculate_ndf(self, z, parameter, quantity_range=None):
         '''
@@ -449,6 +480,33 @@ class ModelResult():
             ndf_sample.append(np.array(ndf).T)
         return(ndf_sample)
     
+    def _add_physics_model(self, z):
+        '''
+        Add physics model to general model according to physics_name.
+
+        '''
+        ## create physics model
+        if self.physics_name in ['none', 'stellar', 'stellar_blackhole',
+                                  'quasar', 'eddington']:
+            fb_name = self.physics_name
+        elif self.physics_name == 'changing':  # standard changing feedback
+            feedback_change_z = self.quantity_options['feedback_change_z']
+            if z < feedback_change_z:
+                fb_name = 'stellar_blackhole'
+            elif z >= feedback_change_z:
+                fb_name = 'stellar'
+        else:
+            raise ValueError('physics_name not known.')
+        # get model parameter bounds
+        bounds_at_z = get_bounds(self)
+        # add model
+        self.physics_model.add_entry(z, physics_model(
+            fb_name,
+            self.log_m_c,
+            initial_guess=self.quantity_options['model_p0'],
+            bounds=bounds_at_z))
+        return
+        
     def _plot_parameter(self, color, marker, linestyle, label):
         '''
         Add style parameter for plot
@@ -474,6 +532,154 @@ class ModelResult():
         self.linestyle = linestyle
         self.label     = label
         return
+
+    
+class ModelResult_QLF(ModelResult):
+    '''
+    An adapated Model class used for calculating the Quasar Luminosity Function
+    (QLF). For this quantity, we need an adapted methodology that takes
+    input from the Active Black Hole Mass Function, so that things need to be
+    adapted.
+    IMPORTANT: For compatibility with the parent class, the 'physics_model'
+               will be overwritten with the name of the Eddington rate model.
+               Please call self.physics_model for and self.physics_name for
+               information on the Eddington model, and 
+               self.bh_model.physics_model and self.bh_model.physics_name for
+               the feedback/black hole growth model.
+    '''
+    def __init__(self, redshifts, log_ndfs, log_hmf_functions, quantity_name, 
+                 physics_name, prior_name, fitting_method, saving_mode, **kwargs):    
+        
+        # try to load black hole mass - halo mass model
+        from model.interface import load_model
+        try:
+            self.bh_model = load_model('mbh', 
+                                       physics_name, 
+                                       prior_name = prior_name,
+                                       redshift   = redshifts)
+        except:
+            raise Exception('To calculate the bolometric luminosity, a model '\
+                            'connecting halo and black hole masses is needed. '\
+                            'Please run and save such a model first. (Including '\
+                            'matching prior models, physics_models and redshifts)')
+                
+        # calculate black hole mass model parameter distribution estimates
+        self._calculate_mbh_parameter_pdf()
+        
+        # change physics model names
+        physics_name = 'eddington'
+        
+        # initalize model itself
+        super().__init__(redshifts, log_ndfs, log_hmf_functions, quantity_name, 
+                         physics_name, prior_name, fitting_method, saving_mode,
+                         **kwargs)
+        
+    def calculate_log_abundance(self, log_L, z, parameter):
+
+        log_L = make_array(log_L)
+
+        # check that parameters are within bounds
+        if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
+            return(1e+30)  # return inf (or huge value) if outside of bounds
+        
+        eddington_ratio_bounds = (0,1)
+        
+        phi = []
+        for L in log_L:
+            phi.append(nquad(self._abundance_model_function, 
+                       [eddington_ratio_bounds, *self.mbh_parameter_bounds.at_z(z)],
+                       args = (L, z, parameter)))
+        return(np.log10(phi))
+    
+    def calculate_quantity_distribution(self, log_black_hole_mass, 
+                                        z, num=int(1e+5)):
+        return()
+
+    def calculate_halo_mass_distribution(self, log_L, z, num=int(1e+5)):
+        return()
+    
+    def calculate_log_black_hole_mass(self, log_L, eddington_ratio):
+        '''
+        Calculate the black hole mass for an input bolometric luminosity and
+        Eddingtion ratio.
+
+        Parameters
+        ----------
+        log_L : float64
+            Input (log of) bolometric luminosity.
+        eddington_ratio : float64
+            Input Eddington ratio.
+
+        Returns
+        -------
+        log_mbh : float64
+            Corresponding black hole mass (in solar masses).
+            
+        '''
+        log_eddington_factor = 38.1     # Eddington luminosity
+        log_mbh = log_L - np.log10(eddington_ratio) - log_eddington_factor
+        return(log_mbh)
+    
+    def _abundance_model_function(self, eddington_ratio, mbh_nodel_parameter, 
+                                  log_L, z, parameter):
+        '''
+        Calculate contribution to ndf given all relevant parameter. Integrate
+        over this to get expected bolometric luminosity function
+
+        '''
+        #breakpoint()
+        mbh_nodel_parameter = make_array(mbh_nodel_parameter)
+        
+        # calculate value of phi for black hole mass given the parameter
+        log_mbh     = self.calculate_log_black_hole_mass(log_L, eddington_ratio)
+        log_phi_bh  = self.bh_model.calculate_log_abundance(log_mbh, z,
+                                                            mbh_nodel_parameter)
+        # calculate probability for eddington_ratio
+        erdf        = self.physics_model.at_z(z).calculate_erdf(eddington_ratio,
+                                                                *parameter)
+        # calculate probability for mbh model parameter
+        mbh_param_prob = self.mbh_parameter_pdf.at_z(z).pdf(mbh_nodel_parameter)
+        
+        # put it all together
+        func = np.power(10,log_phi_bh) * erdf * mbh_param_prob
+        return(func[0])
+    
+    def _calculate_mbh_parameter_pdf(self, thin=100):
+        '''
+        Create evaluable pdf estimates from mcmc sampling of mbh model (using
+        gaussian_kde) and stafe them to attribute self.mbh_parameter_dist (as
+        Redshift_dict). Also writes bounds of pdfs to self.mbh_parameter_bounds,
+        where bounds are defined by maximum and minimum value in sample.
+        Parameter 'thin' can be used to thin the sample before calculating
+        the kde.
+
+        '''
+        pdfs, pdf_bounds = {}, {}
+        
+        for z in self.bh_model.redshift:
+            distribution_sample = self.bh_model.distribution.at_z(z)
+            
+            # downsample distribution by choosing random index sample
+            sample_subset_idx   = np.random.choice(len(distribution_sample),
+                                                   len(distribution_sample)//thin,
+                                                   replace = False)
+            dist_subsample      = distribution_sample[sample_subset_idx]
+            
+            # calculate bounds
+            sample_mins         = np.amin(dist_subsample,axis=0)
+            sample_maxs         = np.amax(dist_subsample,axis=0)
+            pdf_bounds[z]       = list(zip(*[sample_mins,sample_maxs]))
+            
+            # calculate pdf estimate
+            pdf_estimate        = gaussian_kde(dist_subsample.T)
+            pdfs[z]             = pdf_estimate
+        
+        self.mbh_parameter_pdf     = Redshift_dict(pdfs)
+        self.mbh_parameter_bounds  = Redshift_dict(pdf_bounds)
+        return
+        
+        
+
 
 
 class Redshift_dict():

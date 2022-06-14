@@ -32,8 +32,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from model.analysis.calculations import calculate_best_fit_ndf
 
-lbol   = load_model('Lbol','quasar',prior_name='successive')
+#lbol   = load_model('Lbol','quasar',prior_name='successive')
 mbh    = load_model('mbh','quasar',prior_name='successive')
+#lbol = run_model('Lbol', 'none', redshift=np.arange(6), calibrate=False)
 
 ## BLACK HOLE MASS - LAMBDA RELATION (ABBUNDANCE MATCHING)
 # lfs = lbol.log_ndfs.dict
@@ -62,15 +63,18 @@ bhmf            = calculate_best_fit_ndf(mbh, 0)[0]
 
 
 print('Formulate everything in terms of log_lambda instead of lam, will make fitting much easier')
+print('keep P(lambda>1)=0, helps with low mass end problems + integration/normalisation issues and still gives double power law over sensible range')
 def erdf(lam, lambda_star, p):
-    #if lam>1:
-    #    return(0)
-    if lam<0:
+    if lam>1:
         return(0)
-    else:
-        print('You\'re evaluating hyp at 1 now, but need to do at at inf we you use full power law')
-        x_0 = 1/(hyp2f1(1,1/p,1+1/p,-(1/lambda_star)**p)) # normalise to 1
-        return(x_0/(1+(lam/lambda_star)**p))
+    def func(lam):    
+        if lam<0:
+            return(0)
+        else:
+            return(1/(1+(lam/lambda_star)**p))
+        
+    normalisation = 1/quad(func, 0, 1)[0] # you can calculate this analytically
+    return(normalisation*func(lam))
     
 def help_L(log_L, lam):
     log_mbh = log_L - np.log10(lam) - 38.1
@@ -78,7 +82,7 @@ def help_L(log_L, lam):
         print('whoops')
         log_mbh=0
     phi_bh  = np.power(10, mbh.calculate_log_abundance(log_mbh, 0, best_fit_params))
-    contribution = phi_bh*erdf(lam,0.01,2.5)/lam
+    contribution = phi_bh*erdf(lam,0.01,25.5)
     if np.any(phi_bh == 0) and np.any(log_mbh<3):
         print('outside of complete model range where values can be reliably calculated')
         print('have to find better condition for that though')
@@ -91,7 +95,7 @@ def phi_bol(log_L):
     phi = []
     for L in log_L:
         func = lambda l: help_L(L, l)
-        phi.append(quad(func,0,np.inf,limit=50)[0])
+        phi.append(quad(func,0,1,limit=500)[0])
     phi = np.log10(phi)
     return(np.array([log_L,phi]).T)
 

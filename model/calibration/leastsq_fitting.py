@@ -20,13 +20,13 @@ def lsq_fit(model, method='least_squares'):
     squares regression and a pre-defined cost function (which is not the usual
     one! See cost_function for details).
     '''
-    bounds = list(zip(*model.feedback_model.at_z(model._z).bounds))
+    bounds = list(zip(*model.physics_model.at_z(model._z).bounds))
     # fit lf model to data based on pre-defined cost function
     if method == 'least_squares':
         optimization_res = least_squares(
             cost_function,
-            model.feedback_model.at_z(model._z).initial_guess,
-            bounds=model.feedback_model.at_z(model._z).bounds,
+            model.physics_model.at_z(model._z).initial_guess,
+            bounds=model.physics_model.at_z(model._z).bounds,
             args=(
                 model,
                 'res'))
@@ -34,7 +34,7 @@ def lsq_fit(model, method='least_squares'):
     elif method == 'minimize':
         optimization_res = minimize(
             cost_function,
-            x0=model.feedback_model.at_z(model._z).initial_guess,
+            x0=model.physics_model.at_z(model._z).initial_guess,
             bounds=bounds,
             args=(
                 model,
@@ -79,7 +79,7 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     log_phi_obs = model.log_ndfs.at_z(z)[:, 1]
 
     # check if parameter are within bounds
-    if not within_bounds(params, *model.feedback_model.at_z(z).bounds):
+    if not within_bounds(params, *model.physics_model.at_z(z).bounds):
         return(1e+30)  # if outside of bound, return huge value to for cost func
 
     # calculate model ndf

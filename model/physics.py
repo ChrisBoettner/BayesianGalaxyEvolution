@@ -8,37 +8,44 @@ Created on Wed Apr 13 11:34:20 2022
 import numpy as np
 from scipy.interpolate import interp1d
 
+from model.eddington import ERDF
 from model.helper import make_array, invert_function
 
-def feedback_model(feedback_name, log_m_c, initial_guess, bounds,
+def physics_model(physics_name, log_m_c, initial_guess, bounds,
                    fixed_m_c=True):
     '''
-    Return feedback model that relates SMF and HMF, including model function,
+    Return physics model that relates SMF and HMF, including model function,
     model name, initial guess and physical parameter bounds for fitting,
     that related SMF and HMF.
     The model function parameters are left free and can be obtained via fitting.
     Three models implemented:
-        none    : no feedback adjustment
-        sn      : supernova feedback
-        both    : supernova and black hole feedback
+        none      : no feedback adjustment
+        sn        : supernova feedback
+        both      : supernova and black hole feedback
+        quasar    : black hole growth model
+        eddington  : eddigtion ratio distribution function model
     '''
-    if feedback_name not in ['none', 'stellar', 'stellar_blackhole', 'quasar']:
-       raise ValueError('feedback_name not known.')     
+    if physics_name not in ['none', 'stellar', 'stellar_blackhole', 'quasar',
+                            'eddington']:
+       raise ValueError('physics_name not known.')     
     
-    if feedback_name == 'none':
+    if physics_name == 'none':
             return(NoFeedback(log_m_c, initial_guess[:1],
-                                  bounds[:, :1]))
+                                  bounds[:, :1])) 
+    if physics_name == 'eddington':
+            return(Eddington_Rate_Distribution_Function(initial_guess,
+                                                        bounds))
                 
     if fixed_m_c:
-        if feedback_name == 'stellar':
-            feedback = StellarFeedback(log_m_c, initial_guess[:-1],
+        if physics_name == 'stellar':
+            physics = StellarFeedback(log_m_c, initial_guess[:-1],
                                        bounds[:, :-1])
-        elif feedback_name == 'stellar_blackhole':
-            feedback = StellarBlackholeFeedback(log_m_c, initial_guess,
+        elif physics_name == 'stellar_blackhole':
+            physics = StellarBlackholeFeedback(log_m_c, initial_guess,
                                                 bounds)
-        elif feedback_name == 'quasar':
-            feedback = QuasarFeedback(log_m_c, initial_guess,
-                                                bounds)
+        elif physics_name == 'quasar':
+            physics = QuasarGrowth(log_m_c, initial_guess,
+                                   bounds)
             
     else:
         # add log_m_c to initial guess and bounds
@@ -49,18 +56,18 @@ def feedback_model(feedback_name, log_m_c, initial_guess, bounds,
                                     log_m_c+log_m_c_range],
                                    axis=1)
         
-        if feedback_name == 'stellar':
-            feedback = StellarFeedback_free_m_c(log_m_c, 
+        if physics_name == 'stellar':
+            physics = StellarFeedback_free_m_c(log_m_c, 
                                                 initial_guess[:-1],
                                                 bounds[:, :-1])
-        elif feedback_name == 'stellar_blackhole':
-            feedback = StellarBlackholeFeedback_free_m_c(log_m_c,
+        elif physics_name == 'stellar_blackhole':
+            physics = StellarBlackholeFeedback_free_m_c(log_m_c,
                                                          initial_guess,
                                                          bounds)     
-        elif feedback_name == 'quasar':
-            feedback = QuasarFeedback_free_m_c(log_m_c, initial_guess,
-                                               bounds)
-    return(feedback)
+        elif physics_name == 'quasar':
+            physics = QuasarGrowth_free_m_c(log_m_c, initial_guess,
+                                            bounds)
+    return(physics)
 
 ################ MODEL WITH FREE CRITICAL MASS ################################
 
@@ -316,15 +323,14 @@ class StellarFeedback_free_m_c(StellarBlackholeFeedback_free_m_c):
                                                    alpha,
                                                    beta=0))
     
-    
-class QuasarFeedback_free_m_c(object):
+class QuasarGrowth_free_m_c(object):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
-        Feedback model for Black Hole growth with free m_c.
+        Black hole growth model for Black Hole growth with free m_c.
 
         '''
         self.name = 'quasar_free_m_c'
-        self.log_m_c = log_m_c               # critical mass for feedback
+        self.log_m_c = log_m_c               # critical mass for model
         self.initial_guess = initial_guess   # initial guess for least_squares 
                                              # fit
         self.bounds = bounds                 # parameter (A, gamma) bounds
@@ -396,7 +402,7 @@ class QuasarFeedback_free_m_c(object):
         log_m_h = self._check_overflow(log_m_h)
         
         ratio    = log_m_h - log_m_c  # m_h/m_c in log space
-        log_x    = gamma * ratio      # log of sn feedback contribution
+        log_x    = gamma * ratio
         return(10**log_x)
     
     def _check_overflow(self, log_m_h):
@@ -533,7 +539,7 @@ class NoFeedback(StellarBlackholeFeedback):
         return(np.full_like(log_m_h, 0))
     
     
-class QuasarFeedback(QuasarFeedback_free_m_c):
+class QuasarGrowth(QuasarGrowth_free_m_c):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
         Feedback model for Black Hole growth.
@@ -542,22 +548,73 @@ class QuasarFeedback(QuasarFeedback_free_m_c):
         super().__init__(log_m_c, initial_guess, bounds)
 
     def calculate_log_quantity(self, log_m_h, log_A, gamma):
-        return(QuasarFeedback_free_m_c.
+        return(QuasarGrowth_free_m_c.
                    calculate_log_quantity(self, log_m_h,
                                           log_m_c = self.log_m_c,
                                           log_A   = log_A,
                                           gamma   = gamma))
     
     def calculate_log_halo_mass(self, log_quantity, log_A, gamma):
-        return(QuasarFeedback_free_m_c.
+        return(QuasarGrowth_free_m_c.
                    calculate_log_halo_mass(self, log_quantity, 
                                            log_m_c = self.log_m_c,
                                            log_A = log_A,
                                            gamma = gamma))
 
     def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, gamma):
-        return(QuasarFeedback_free_m_c.
+        return(QuasarGrowth_free_m_c.
                    calculate_dlogquantity_dlogmh(self, log_m_h,
                                                  log_m_c = self.log_m_c,
                                                  log_A   = log_A,
                                                  gamma   = gamma))
+    
+################ EDDINGTON RATE DISTRIBUTION FUNCTION #########################
+
+
+class Eddington_Rate_Distribution_Function(object):
+    def __init__(self, initial_guess, bounds):
+        '''
+        Model for ERDF.
+        
+        '''
+        self.name = 'erdf'
+        self.initial_guess = initial_guess   # initial guess for least_squares 
+                                             # fit
+        self.bounds = bounds                 # parameter bounds
+        
+        # latest parameter used
+        self._current_parameter       = None
+        self.eddington_distribution   = None
+        
+    def calculate_erdf(self, eddington_ratio, eddington_star, rho):
+        '''
+        Calculate value of ERDF (probability of given eddington ratio), given
+        input log_eddingtion_ratio and parameter (log_eddington_star, rho).
+
+        '''
+        self._make_distribution(eddington_star, rho)
+        erdf = self.eddington_distribution.pdf(eddington_ratio)
+        return(erdf)
+    
+    def draw_eddington_ratio(self, eddington_star, rho, num=1):
+        '''
+        Draw random sample of Eddingtion ratio from distribution defined by
+        parameter (log_eddington_star, rho). Can draw num samples at once.
+
+        '''
+        self._make_distribution(eddington_star, rho)
+        eddington_ratio = self.eddington_distribution.rvs(num)
+        return(eddington_ratio)
+    
+    def _make_distribution(self, eddington_star, rho):
+        '''
+        Check if distribution function with the given parameter was already
+        created and stored, otherwise create it.
+
+        '''
+        if self._current_parameter == [eddington_star, rho]:
+            pass
+        else:
+            self._current_parameter     = [eddington_star, rho]
+            self.eddington_distribution = ERDF(eddington_star, rho)
+        return

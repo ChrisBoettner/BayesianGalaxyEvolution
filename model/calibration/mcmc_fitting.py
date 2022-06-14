@@ -98,7 +98,7 @@ def mcmc_fit(model, prior, saving_mode,
         raise ValueError('saving_mode not known.')
 
     # select initial walker positions near initial guess
-    initial_guess = np.array(model.feedback_model.at_z(model._z).initial_guess)
+    initial_guess = np.array(model.physics_model.at_z(model._z).initial_guess)
     ndim = len(initial_guess)
     nwalkers = num_walker
     walker_pos = initial_guess * (1 + 0.1 * np.random.rand(nwalkers, ndim))
@@ -204,7 +204,7 @@ def log_probability(params):
     '''
 
     # check if parameter are within bounds
-    if not within_bounds(params, *mod_global.feedback_model.at_z(
+    if not within_bounds(params, *mod_global.physics_model.at_z(
                         mod_global._z).bounds):
         return(-np.inf)
 
@@ -277,9 +277,9 @@ def dist_from_hist_nd(model, dist, dist_bounds):
     if dist.shape[1] == 1:
         return(dist_from_hist_1d(model, dist, dist_bounds))
 
-    param_num = len(model.feedback_model.at_z(model._z).initial_guess)
+    param_num = len(model.physics_model.at_z(model._z).initial_guess)
 
-    dist_bounds_new = list(zip(*model.feedback_model.at_z(model._z).bounds))
+    dist_bounds_new = list(zip(*model.physics_model.at_z(model._z).bounds))
     dist_bounds = dist_bounds_new
     
     # if new model has fewer parameter, marginalise over leftover parameter
@@ -322,8 +322,8 @@ def dist_from_hist_1d(model, dist, dist_bounds):
     hists = []
     edges = []
 
-    param_num = len(model.feedback_model.at_z(model._z).initial_guess)
-    dist_bounds_new = list(zip(*model.feedback_model.at_z(model._z).bounds))
+    param_num = len(model.physics_model.at_z(model._z).initial_guess)
+    dist_bounds_new = list(zip(*model.physics_model.at_z(model._z).bounds))
     if dist_bounds is None:  # if bounds are not provided, use the ones from model
         dist_bounds = dist_bounds_new
 
@@ -355,8 +355,8 @@ def uniform_prior(model, dist, dist_bounds):
     '''
     hists = []
     edges = []
-    param_num = len(model.feedback_model.at_z(model._z).initial_guess)
-    dist_bounds_new = list(zip(*model.feedback_model.at_z(model._z).bounds))
+    param_num = len(model.physics_model.at_z(model._z).initial_guess)
+    dist_bounds_new = list(zip(*model.physics_model.at_z(model._z).bounds))
     if dist_bounds is None:  # if bounds are not provided, use the ones from model
         dist_bounds = dist_bounds_new
 
@@ -384,7 +384,7 @@ def calculate_MAP_estimator(prior, model, method='annealing', bounds=None,
     '''
 
     if bounds is None:
-        bounds = list(zip(*model.feedback_model.at_z(model._z).bounds))
+        bounds = list(zip(*model.physics_model.at_z(model._z).bounds))
 
     def neg_log_prob(params):
         val = (log_prior(params, prior) + log_likelihood(params, model)) * (-1)

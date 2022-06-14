@@ -145,11 +145,11 @@ def get_quantity_specifics(quantity_name):
         options['feedback_change_z']        = np.nan
         # MODE
         options['model_param_num']          = 2
-        options['model_p0']                 = np.array([35, 1])
+        options['model_p0']                 = np.array([0.01, 2])
         # upper limit for A parameter in model chosen to be minimum observed
         # luminosity, if feedback model is 'quasar'
-        options['model_bounds']             = np.array([[30, 0], 
-                                                        [50, 5]])
+        options['model_bounds']             = np.array([[0, 1], 
+                                                        [1, 100]])
         options['fitting_space']            = 'log'
         options['relative_weights']         = True
         # REFERENCE FUNCTION  
@@ -231,7 +231,7 @@ def get_bounds(model, buffer = 0.01):
     # for Lbol quasar model, upper limit for log_A is lowest measured 
     # luminosity at that redshift. But model breaks down nearby already, so 
     # include some buffer
-    if model.feedback_name == 'quasar':
+    if model.physics_name == 'quasar':
         bounds[1,0] = np.amin(model.log_ndfs.at_z(model._z)[:,0]) +\
                       np.log10(1+buffer)  
     return(bounds)
@@ -244,7 +244,7 @@ def get_quantity_range(z, model, buffer = 0.01):
     
     # Lbol quasar model breaks down when log_quantity near log_A, adapt
     # ranges accordingly
-    if model.feedback_name == 'quasar':
+    if model.physics_name == 'quasar':
         buffer = 0.01 # choose for far log_quantity can be away from log_A
         lim    = model.parameter.at_z(z)[0] + np.log10(1+buffer) 
         

@@ -65,6 +65,10 @@ def within_bounds(values, lower_bounds, upper_bounds):
     Checks if list of values is (strictly) within lower and upper bounds. 
     All three arrays must have same length.
     '''
+    values, lower_bounds, upper_bounds = make_list(values),\
+                                         make_list(lower_bounds),\
+                                         make_list(upper_bounds)
+    
     is_within = []
     for i in range(len(values)):
         is_within.append(
