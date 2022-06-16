@@ -218,7 +218,7 @@ def get_quantity_specifics(quantity_name):
                                                r'$\gamma_2$']
         
     else:
-        raise ValueError('quantity_name not known.')
+        raise NameError('quantity_name not known.')
     return(options)
 
 

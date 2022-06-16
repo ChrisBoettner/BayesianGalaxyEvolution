@@ -26,14 +26,14 @@ def load_hmf_functions(source='ShethTormen'):
     elif source == 'Pratika':
         hmfs = np.load(path + 'HMF/HMF_Pratika.npz')
     else:
-        raise ValueError('HMF source not known.')
+        raise NameError('HMF source not known.')
 
     # create evaluatable function from data
     hmf_functions = []
     for z in range(20):
         h = hmfs[str(z)]
         hmf_functions.append(interp1d(*h.T, bounds_error=False,
-                                      fill_value=(np.nan, np.nan)))
+                                      fill_value='extrapolate'))
     # turn into dictonary
     hmf_functions = {z: hmf_functions[z] for z in range(20)}
     return(hmf_functions)
@@ -60,7 +60,7 @@ def load_data(quantity_name, cutoff, data_subset=None):
     elif quantity_name == 'mbh':
         groups, data = _load_bhmf_data(cutoff=cutoff, data_subset=data_subset)
     else:
-        raise ValueError('quantity_name not known.')
+        raise NameError('quantity_name not known.')
     return(groups, data)
 
 

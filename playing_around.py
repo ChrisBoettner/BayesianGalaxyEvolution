@@ -32,9 +32,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from model.analysis.calculations import calculate_best_fit_ndf
 
+print('You probably have to change black hole model, since low mass black holes should\
+      have considerable contribution to low luminosity model, but ours says they dont\
+      exist. see notebook')
+
 #lbol   = load_model('Lbol','quasar',prior_name='successive')
-mbh    = load_model('mbh','quasar',prior_name='successive')
-#lbol = run_model('Lbol', 'none', redshift=np.arange(6), calibrate=False)
+#mbh    = load_model('mbh','quasar',prior_name='successive')
+lbol = run_model('Lbol', 'quasar', prior_name='successive',
+                redshift=np.arange(6), calibrate=False)
 
 ## BLACK HOLE MASS - LAMBDA RELATION (ABBUNDANCE MATCHING)
 # lfs = lbol.log_ndfs.dict
@@ -54,55 +59,76 @@ mbh    = load_model('mbh','quasar',prior_name='successive')
 #     plt.plot(lum,m)
 
 ## MORE COMPLICATED EDD RATIO DIST
-from scipy.special import hyp2f1
-from scipy.integrate import quad
-from model.helper import make_list
+# #%%
+# from scipy.special import hyp2f1
+# from scipy.integrate import quad
+# from model.helper import make_list
 
-best_fit_params = mbh.parameter.at_z(0)
-bhmf            = calculate_best_fit_ndf(mbh, 0)[0]
+# import warnings
 
 
-print('Formulate everything in terms of log_lambda instead of lam, will make fitting much easier')
-print('keep P(lambda>1)=0, helps with low mass end problems + integration/normalisation issues and still gives double power law over sensible range')
-def erdf(lam, lambda_star, p):
-    if lam>1:
-        return(0)
-    def func(lam):    
-        if lam<0:
-            return(0)
-        else:
-            return(1/(1+(lam/lambda_star)**p))
+# best_fit_params = mbh.parameter.at_z(0)
+# bhmf            = calculate_best_fit_ndf(mbh, 0)[0]
+
+
+# print('Formulate everything in terms of log_lambda instead of lam, will make fitting much easier')
+# print('keep P(lambda>1)=0, helps with low mass end problems + integration/normalisation issues and still gives double power law over sensible range')
+# def erdf(lam, lambda_star, p):
+#     if lam>1:
+#         return(0)
+#     def func(lam):    
+#         if lam<0:
+#             return(0)
+#         else:
+#             return(1/(1+(lam/lambda_star)**p))
         
-    normalisation = 1/quad(func, 0, 1)[0] # you can calculate this analytically
-    return(normalisation*func(lam))
+#     normalisation = 1/quad(func, 0, 1)[0] # you can calculate this analytically
+#     return(normalisation*func(lam))
     
-def help_L(log_L, lam):
-    log_mbh = log_L - np.log10(lam) - 38.1
-    if log_mbh<0:
-        print('whoops')
-        log_mbh=0
-    phi_bh  = np.power(10, mbh.calculate_log_abundance(log_mbh, 0, best_fit_params))
-    contribution = phi_bh*erdf(lam,0.01,25.5)
-    if np.any(phi_bh == 0) and np.any(log_mbh<3):
-        print('outside of complete model range where values can be reliably calculated')
-        print('have to find better condition for that though')
-        print(log_L)
+# def help_L(log_L, lam):
+#     log_mbh = log_L - np.log10(lam) - 38.1
+#     if log_mbh<0:
+#         print('whoops')
+#         log_mbh=0
+#     log_phi_bh = mbh.calculate_log_abundance(log_mbh, 0, best_fit_params)
+#     contribution = np.power(10, log_phi_bh)*erdf(lam,0.01,25.5)
+#     if np.any(np.isnan(log_phi_bh)):
+#         print('outside of complete model range where values can be reliably calculated')
+#         print('have to find better condition for that though')
+#         print(log_L)
     
-    return(contribution)
+#     return(contribution)
     
-def phi_bol(log_L):
-    log_L = make_list(log_L)
-    phi = []
-    for L in log_L:
-        func = lambda l: help_L(L, l)
-        phi.append(quad(func,0,1,limit=500)[0])
-    phi = np.log10(phi)
-    return(np.array([log_L,phi]).T)
+# def phi_bol(log_L):
+#     log_L = make_list(log_L)
+#     phi, phi2 = [], []
+#     lam_sample = np.linspace(1e-10,1,100)
+#     for L in log_L:
+#         func = lambda l: help_L(L, l)
+#         func_vals =[]
+#         for la in lam_sample:
+#             func_vals.append(func(la)[0])
+#         #breakpoint()
+#         func_vals = np.array(func_vals)
+#         integral = np.sum(func_vals*(lam_sample[1]-lam_sample[0]))/len(lam_sample)
+#         phi.append(integral)
+#         with warnings.catch_warnings():
+#             warnings.simplefilter('error')
+#             try:
+#                int_alt = quad(func,0,1,limit=500)[0]
+#             except:
+#                 int_alt = np.nan
+#             phi2.append(int_alt)
+#     #breakpoint()
+#     phi = np.log10(phi)
+#     phi2 = np.log10(phi2)
+#     return(np.array([log_L,phi]).T, np.array([log_L,phi2]).T)
 
-log_L = np.linspace(40,60,100)
-p = phi_bol(log_L)
-print('probably has problems at low L bc phi becomes very large in linear space')
+# log_L = np.linspace(40,60,100)
+# p,p2 = phi_bol(log_L)
+# print('probably has problems at low L bc phi becomes very large in linear space')
 
-plt.figure()
-plt.plot(p[:,0],p[:,1])
-plt.plot(bhmf[:,0]+38.1, bhmf[:,1])
+# plt.figure()
+# plt.plot(p[:,0],p[:,1])
+# plt.plot(p2[:,0],p2[:,1])
+# plt.plot(bhmf[:,0]+38.1, bhmf[:,1])

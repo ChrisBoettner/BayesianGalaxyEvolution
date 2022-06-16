@@ -312,19 +312,20 @@ class Plot_parameter_sample(Plot):
             ax.yaxis.set_major_locator(MaxNLocator(3))
 
         # second axis for redshift
-        ax_z = axes[0].twiny()
-        axes = np.append(axes, ax_z)
-        ax_z.set_xlim(axes[0].get_xlim())
-
-        t_ticks = np.arange(1, 14, 1).astype(int)
-        t_ticks = np.append(t_ticks, 13.3)
-        t_label = np.append(
-            t_ticks[:-1].astype(int).astype(str), t_ticks[-1].astype(str))
-        t_loc = t_to_z(t_ticks)
-
-        ax_z.set_xticks(t_loc)
-        ax_z.set_xticklabels(t_label)
-        ax_z.set_xlabel('Lookback time [Gyr]')
+        if len(ModelResult.redshift)==11: # only include plots with z=0-10
+            ax_z = axes[0].twiny()
+            axes = np.append(axes, ax_z)
+            ax_z.set_xlim(axes[0].get_xlim())
+    
+            t_ticks = np.arange(1, 14, 1).astype(int)
+            t_ticks = np.append(t_ticks, 13.3)
+            t_label = np.append(
+                t_ticks[:-1].astype(int).astype(str), t_ticks[-1].astype(str))
+            t_loc = t_to_z(t_ticks)
+    
+            ax_z.set_xticks(t_loc)
+            ax_z.set_xticklabels(t_label)
+            ax_z.set_xlabel('Lookback time [Gyr]')
         return(fig, axes)
 
 
@@ -338,7 +339,7 @@ class Plot_qhmr(Plot):
 
     def _plot(self, ModelResult):
         if ModelResult.quantity_name != 'mstar':
-            raise ValueError('Quantity-halo mass relation plot currently\
+            raise NameError('Quantity-halo mass relation plot currently\
                               only supports mstar.')
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')

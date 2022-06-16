@@ -51,7 +51,7 @@ def lsq_fit(model, method='least_squares'):
                                  Ns=100,
                                  args=(model,))
     else:
-        raise ValueError('method not known.')
+        raise NameError('method not known.')
 
     par = optimization_res.x
     if not optimization_res.success:
@@ -98,7 +98,7 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     elif fitting_space == 'linear':
         res = 10**log_phi_obs - 10**log_phi_mod
     else:
-        raise ValueError('Fitting space not known.')
+        raise NameError('Fitting space not known.')
 
     # calculate weights
     if weighted:
@@ -115,7 +115,7 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     if out == 'cost':
         return(cost)  # otherwise return cost
     else:
-        raise ValueError('out not known.')
+        raise NameError('out not known.')
 
 
 ################ UNCERTAINTIES AND WEIGHTS ####################################

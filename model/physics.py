@@ -27,7 +27,7 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
     '''
     if physics_name not in ['none', 'stellar', 'stellar_blackhole', 'quasar',
                             'eddington']:
-       raise ValueError('physics_name not known.')     
+       raise NameError('physics_name not known.')     
     
     if physics_name == 'none':
             return(NoFeedback(log_m_c, initial_guess[:1],

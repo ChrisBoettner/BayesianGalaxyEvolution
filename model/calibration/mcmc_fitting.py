@@ -73,7 +73,7 @@ def mcmc_fit(model, prior, saving_mode,
     FileNotFoundError
         If mode is 'loading' and mcmc chain is supposed to be loaded from a 
         file that does not exist.
-    ValueError
+    NameError
         If saving_mode is not known.
     McmcConvergenceError
         If autocorrelation estimate does not converge in maximum chain length.
@@ -95,7 +95,7 @@ def mcmc_fit(model, prior, saving_mode,
             raise FileNotFoundError('mcmc data file does not exist.')
         savefile = emcee.backends.HDFBackend(filename)
     else:
-        raise ValueError('saving_mode not known.')
+        raise NameError('saving_mode not known.')
 
     # select initial walker positions near initial guess
     initial_guess = np.array(model.physics_model.at_z(model._z).initial_guess)
@@ -171,7 +171,7 @@ def mcmc_fit(model, prior, saving_mode,
         sampler = savefile
         tau = sampler.get_autocorr_time()   
     else:
-        raise ValueError('saving_mode not known.')
+        raise NameError('saving_mode not known.')
 
     # discard burn-in of mcmc walk
     posterior_samp = sampler.get_chain(
@@ -407,7 +407,7 @@ def calculate_MAP_estimator(prior, model, method='annealing', bounds=None,
                                  ranges=bounds,
                                  Ns=100)
     else:
-        raise ValueError('method not known.')
+        raise NameError('method not known.')
 
     par = optimization_res.x
     if not optimization_res.success:

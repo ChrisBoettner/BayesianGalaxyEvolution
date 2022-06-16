@@ -5,9 +5,10 @@ Created on Tue Jun 14 12:43:36 2022
 
 @author: chris
 """
-import numpy as np
 from scipy.stats import rv_continuous
 from scipy.special import hyp2f1
+
+#from model.helper import make_array
 
 class ERDF(rv_continuous):
     '''
@@ -16,28 +17,25 @@ class ERDF(rv_continuous):
     
     '''
     def __init__(self, eddington_star, rho):
-        super().__init__(a = 0, b = 1)       # domain of Eddington Ratio
-        
+        super().__init__(a = 0, b = 1)       # domain of Eddington Ratio,
+                                             # values outside of domain are
+                                             # 0
         # define parameters
         self.eddington_star = eddington_star
         self.rho            = rho
     
-        # normalisation: integrate unnormalized erdf from 0 to 1 (analytical
-        # result)
-        self.normalisation   = 1/hyp2f1(1, 1/self.rho, 1+1/self.rho,
-                                 -1/self.eddington_star**self.rho)
+        # normalisation: integrate unnormalized erdf from 0 to 
+        # upper bound of domain (analytical result)
+        self.normalisation   = 1/(self.b*hyp2f1(1, 1/self.rho, 1+1/self.rho,
+                                 -(self.b/self.eddington_star)**self.rho))
     
     def _pdf(self, eddington_ratio):
         '''
         Calculate pdf.
         
         '''
-        # assume no super-Eddington accretion
-        if (eddington_ratio<0) or (eddington_ratio>1):
-            erdf = 0
-        else:
-            x = (eddington_ratio/self.eddington_star)**self.rho
-            erdf = self.normalisation * 1/(1+x) 
+        x = (eddington_ratio/self.eddington_star)**self.rho
+        erdf = self.normalisation * 1/(1+x) 
         return(erdf)
     
     def _cdf(self, eddington_ratio):
@@ -45,13 +43,8 @@ class ERDF(rv_continuous):
         Calculate cdf.
         
         '''
-        if eddington_ratio<0:
-            cdf = 0
-        elif eddington_ratio>1:
-            cdf = 1
-        else:        
-            value = eddington_ratio * hyp2f1(1, 1/self.rho, 1+1/self.rho, 
-                                             -(eddington_ratio/
-                                               self.eddington_star)**self.rho)
-            cdf = self.normalisation * value
+        value = eddington_ratio * hyp2f1(1, 1/self.rho, 1+1/self.rho, 
+                                         -(eddington_ratio/
+                                           self.eddington_star)**self.rho)
+        cdf = self.normalisation * value
         return(cdf)
