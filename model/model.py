@@ -283,9 +283,8 @@ class ModelResult():
             log_quantity = np.log10(mag_to_lum(log_quantity))
 
         # check that parameters are within bounds
-        if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
-            # return inf (or huge value) if outside of bounds
-            return(np.full_like(log_quantity, 1e+30))  
+        assert within_bounds(parameter, *self.physics_model.at_z(z).bounds),\
+        'Parameter out of bounds.'
 
         # calculate halo masses from stellar masses using model
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
@@ -601,9 +600,8 @@ class ModelResult_QLF(ModelResult):
         log_L = make_array(log_L)
 
         # check that parameters are within bounds
-        if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
-            # return inf (or huge value) if outside of bounds
-            return(np.full_like(log_L, 1e+30))  
+        assert within_bounds(parameter, *self.physics_model.at_z(z).bounds),\
+        'Parameter out of bounds.' 
         
         # phi = []
         
