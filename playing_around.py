@@ -32,14 +32,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from model.analysis.calculations import calculate_best_fit_ndf
 
-print('You probably have to change black hole model, since low mass black holes should\
-      have considerable contribution to low luminosity model, but ours says they dont\
-      exist. see notebook')
+print('need to find a way to calculate the integrals faster')
+print('I think the original paper states that rho_1 needs to be positive and larger than'\
+      'the slope of the HMF to have an influence on the QLF slope, this means that the'\
+      'distribution diverges, can probably only solve that by setting a minimum eddington ratio')
+print('to calculate that cutoff, maybe take lowest luminosity in dataset and highest observed'\
+      'black hole mass (Wikipedia). in that way lower eddingtion ratios could not possible contribute to observed QLF')
+print('maybe need to fit in linear space, so that bright end points get proper weight')
 
 #lbol   = load_model('Lbol','quasar',prior_name='successive')
 #mbh    = load_model('mbh','quasar',prior_name='successive')
-lbol = run_model('Lbol', 'quasar', prior_name='successive',
-                redshift=np.arange(6), calibrate=False)
+lbol = run_model('Lbol', 'eddington', prior_name='successive', calibrate=False)
+#Plot_best_fit_ndfs(lbol)
 
 ## BLACK HOLE MASS - LAMBDA RELATION (ABBUNDANCE MATCHING)
 # lfs = lbol.log_ndfs.dict
@@ -59,7 +63,7 @@ lbol = run_model('Lbol', 'quasar', prior_name='successive',
 #     plt.plot(lum,m)
 
 ## MORE COMPLICATED EDD RATIO DIST
-# #%%
+#%%
 # from scipy.special import hyp2f1
 # from scipy.integrate import quad
 # from model.helper import make_list
@@ -77,10 +81,10 @@ lbol = run_model('Lbol', 'quasar', prior_name='successive',
 #     if lam>1:
 #         return(0)
 #     def func(lam):    
-#         if lam<0:
+#         if lam<lambda_star:
 #             return(0)
 #         else:
-#             return(1/(1+(lam/lambda_star)**p))
+#             return(1/((lam/lambda_star)**p))
         
 #     normalisation = 1/quad(func, 0, 1)[0] # you can calculate this analytically
 #     return(normalisation*func(lam))
@@ -115,7 +119,7 @@ lbol = run_model('Lbol', 'quasar', prior_name='successive',
 #         with warnings.catch_warnings():
 #             warnings.simplefilter('error')
 #             try:
-#                int_alt = quad(func,0,1,limit=500)[0]
+#                 int_alt = quad(func,0,1,limit=500)[0]
 #             except:
 #                 int_alt = np.nan
 #             phi2.append(int_alt)

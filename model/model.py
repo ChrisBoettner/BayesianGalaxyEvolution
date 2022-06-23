@@ -8,11 +8,12 @@ Created on Tue Apr 12 17:46:44 2022
 import warnings
 
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.integrate import quad, IntegrationWarning
 
 from progressbar import ProgressBar, FormatLabel, NullBar
 
-from model.helper import mag_to_lum, within_bounds, make_array, system_path
+from model.helper import mag_to_lum, within_bounds, make_array, system_path,\
+                         calculate_integral
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics, get_bounds
 from model.physics import physics_model
@@ -283,7 +284,8 @@ class ModelResult():
 
         # check that parameters are within bounds
         if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
-            return(1e+30)  # return inf (or huge value) if outside of bounds
+            # return inf (or huge value) if outside of bounds
+            return(np.full_like(log_quantity, 1e+30))  
 
         # calculate halo masses from stellar masses using model
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
@@ -581,71 +583,71 @@ class ModelResult_QLF(ModelResult):
                self.bh_model.physics_model and self.bh_model.physics_name for
                the feedback/black hole growth model.
     '''
-    def __init__(self, redshifts, log_ndfs, log_hmf_functions, quantity_name, 
-                 physics_name, prior_name, fitting_method, saving_mode, **kwargs):    
-        
-        # try to load black hole mass - halo mass model
-        from model.interface import load_model
-        try:
-            self.bh_model = load_model('mbh', 
-                                       physics_name, 
-                                       prior_name = prior_name,
-                                       redshift   = redshifts)
-        except:
-            raise Exception('To calculate the bolometric luminosity, a model '\
-                            'connecting halo and black hole masses is needed. '\
-                            'Please run and save such a model first. (Including '\
-                            'matching prior models, physics_models and redshifts)')     
-                
-        # change physics model names
-        physics_name = 'eddington'
+    def __init__(self, redshifts, log_ndfs, log_hmf_functions,
+                 quantity_name, physics_name, prior_name,
+                 fitting_method, saving_mode, name_addon=None,
+                 groups=None, calibrate=True, paramter_calc = True,
+                 progress=True, **kwargs):    
         
         # initalize model itself
-        super().__init__(redshifts, log_ndfs, log_hmf_functions, quantity_name, 
-                         physics_name, prior_name, fitting_method, saving_mode,
-                         **kwargs)
-        
-        # calculate approximate mean black hole mass function from bh_model
-        self._calculate_approximate_mean_bhmf()    
-        
+        super().__init__(redshifts, log_ndfs, log_hmf_functions,
+                         quantity_name, physics_name, prior_name,
+                         fitting_method, saving_mode, name_addon,
+                         groups, calibrate, paramter_calc,
+                         progress, **kwargs)
+              
     def calculate_log_abundance(self, log_L, z, parameter, num=100):
-
+        #breakpoint()
         log_L = make_array(log_L)
 
         # check that parameters are within bounds
         if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
-            return(1e+30)  # return inf (or huge value) if outside of bounds
+            # return inf (or huge value) if outside of bounds
+            return(np.full_like(log_L, 1e+30))  
         
-        eddington_ratio_bounds = (0,1)
+        # phi = []
         
-        phi = []
         # for L in log_L:
         #     print(L)
-        #     with warnings.catch_warnings():
-        #         warnings.simplefilter('error', category=IntegrationWarning)
-        #         try:
-        #            integral = quad(self.calculate_QLF_contribution, 
-        #                            eddington_ratio_bounds[0],
-        #                            eddington_ratio_bounds[1],
-        #                            args = (L, z, parameter, num))[0]
-        #         except IntegrationWarning:
-        #             print('whoops')
-        #             integral = np.nan
-        #     phi.append(integral)
+            
+        #     def func(log_eddington_ratio):
+        #         return(self.calculate_QLF_contribution(log_eddington_ratio,
+        #                                                L, z, parameter))
+            
+        #     phi.append(calculate_integral(func, [-100, 100]))
+            
+            
+            
+        phi = []
+        for L in log_L:
+            #print(L)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', category=IntegrationWarning)
+                #try:
+                integral = quad(self.calculate_QLF_contribution, 
+                                  -np.inf,
+                                    np.inf,
+                                args = (L, z, parameter), limit=500)[0]
+                #except IntegrationWarning:
+                #    print('whoops')
+                #    integral = np.nan
+            phi.append(integral)
+        phi = np.array(phi)
         
-        eddingtion_ratio_sample = np.random.uniform(eddington_ratio_bounds[0],
-                                                    eddington_ratio_bounds[1],
-                                                    size = num)
-        phi_contribution = []
-        for e in eddingtion_ratio_sample:
-            phi_contribution.append(self.calculate_QLF_contribution(e,
-                                                                    log_L,
-                                                                    z,
-                                                                    parameter,
-                                                                    num))
-        # sum all contributions for different eddington ratios
-        phi_contribution = np.array(phi_contribution)
-        phi              = np.sum(phi_contribution, axis=0)
+        # eddingtion_ratio_sample = np.sort(self.physics_model.at_z(z).draw_eddington_ratio(*parameter[1:], 10000))
+        # delta_edd = eddingtion_ratio_sample[1:]-eddingtion_ratio_sample[:-1]
+        
+        
+        # phi_contribution = []
+        # for i in range(len(eddingtion_ratio_sample)-1):
+        #     phi_contribution.append(self.calculate_QLF_contribution(eddingtion_ratio_sample[i]+delta_edd[i]/2,
+        #                                                             log_L,
+        #                                                             z,
+        #                                                             parameter))
+            
+        # # sum all contributions for different eddington ratios
+        # phi_contribution = np.array(phi_contribution)
+        # phi              = np.sum(delta_edd[:,np.newaxis]*phi_contribution, axis=0)
         
         # calculate log of calculated BH luminosity function, taking care of
         # zero values
@@ -661,32 +663,8 @@ class ModelResult_QLF(ModelResult):
     def calculate_halo_mass_distribution(self, log_L, z, num=int(1e+5)):
         return()
     
-    def calculate_log_black_hole_mass(self, log_L, eddington_ratio):
-        '''
-        Calculate the black hole mass for an input bolometric luminosity and
-        Eddingtion ratio.
-
-        Parameters
-        ----------
-        log_L : float64
-            Input (log of) bolometric luminosity.
-        eddington_ratio : float64
-            Input Eddington ratio.
-
-        Returns
-        -------
-        log_mbh : float64
-            Corresponding black hole mass (in solar masses).
-            
-        '''
-        log_eddington_factor = 38.1     # Eddington luminosity
-        log_mbh = log_L - np.log10(eddington_ratio) - log_eddington_factor
-        
-        return(log_mbh)
-    
-    def calculate_QLF_contribution(self, eddington_ratio, log_L, z, 
-                                         parameter, approximate_bhmf = True,
-                                         num = 500):
+    def calculate_QLF_contribution(self, log_eddington_ratio, log_L, z, 
+                                         parameter):
         '''
         Calculate the contribution to the bolometric luminosity function at
         luminosity log_L for a specific Eddingtion ratio (at redshift z and
@@ -698,74 +676,24 @@ class ModelResult_QLF(ModelResult):
         mean from a sample. The number of samples drawn can be adjusted using 
         the num parameter.
         '''
-        # calculate black hole mass for given log_L and eddingtion_ratio
-        log_mbh         = self.calculate_log_black_hole_mass(log_L, 
-                                                             eddington_ratio)
         
-        # calculate distribution of abundances for given black hole mass (in 
-        # linear space!)
-        if approximate_bhmf:
-            phi_bh_mean     = self.approximate_mean_bhmf.at_z(z)(log_mbh)
-        else:
-            log_phi_bh_dist = self.bh_model.calculate_abundance_distribution(log_mbh,
-                                                                             z,
-                                                                             num=num)
-            phi_bh_mean     = np.mean(np.power(10, log_phi_bh_dist),axis=0)
-  
+        # calculate halo mass for given log_L, parameter and eddingtion_ratio
+        log_m_h         = self.physics_model.at_z(z).calculate_log_halo_mass(
+                                                             log_L,
+                                                             parameter[0],
+                                                             log_eddington_ratio)
+        
+        # calculate value of HMF       
+        log_phi_hmf     = self.calculate_log_hmf(log_m_h, z)
+        
         # calculate probability for eddington_ratio
-        erdf        = self.physics_model.at_z(z).calculate_erdf(eddington_ratio,
-                                                                *parameter)
+        log_erdf        = self.physics_model.at_z(z).\
+                               calculate_log_erdf(log_eddington_ratio,
+                                                  *parameter[1:])
+                               
         # put it all together
-        QLF_contribution = phi_bh_mean * erdf
+        QLF_contribution = np.power(10, log_phi_hmf + log_erdf)
         return(QLF_contribution)
-    
-    def _calculate_approximate_mean_bhmf(self, num = int(2e+4)):
-        '''
-        Calculate approximation of the mean black hole mass function to be
-        used for other calculations by calculating mean value for a mbh-sample
-        space and interpolating inbetween. Save interp1d object (for every z)
-        to self.approximate_mean_bhmf.
-        IMPORTANT: What is returned here is phi_bh in linear space, not log
-                   space.
-                   
-        '''
-        # add progress bar
-        if self.progress:
-            PBar = ProgressBar(widgets=[FormatLabel('')])
-        else:
-            PBar = NullBar()
-            
-        
-        phi_bh_mean = {}
-        mbh_space   = np.linspace(0.1,14,1000)
-        
-        for z in PBar(self.bh_model.redshift):
-            if self.progress:
-                PBar.widgets[0] = f'Calculating approximate mean BHMFs: z = {z}'
-            
-            # calculate distribution of phi, convert to linear space and
-            # calculate mean
-            log_phi_bh_dist = self.bh_model.\
-                              calculate_abundance_distribution(mbh_space, z, 
-                                                               num=num)
-            phi_bh_dist       = np.power(10, log_phi_bh_dist)
-            phi_bh_mean_at_z  = np.mean(phi_bh_dist,axis=0)
-            
-            # for very low bh masses, only very few models have a phi value at 
-            # all (since there is a minimum bh mass that depends on the model
-            # parameter), which screws up the mean value calculation. To
-            # circumvent this, just set phi_bh_mean to 0 when majority of models
-            # don't have bhs of that mass
-            zero_dominated = (np.sum(phi_bh_dist == 0,axis=0) > num/2) 
-            phi_bh_mean_at_z[zero_dominated] = 0  
-            phi_bh_mean[z] = interp1d(mbh_space, phi_bh_mean_at_z, 
-                                      bounds_error = False, fill_value = 0)
-            
-            if self.progress and z==self.bh_model.redshift[-1]:
-                PBar.widgets[0] = 'Calculating approximate mean BHMF: DONE'
-                
-        self.approximate_mean_bhmf = Redshift_dict(phi_bh_mean)
-        return
             
 
 class Redshift_dict():

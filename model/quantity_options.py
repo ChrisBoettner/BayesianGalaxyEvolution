@@ -141,15 +141,15 @@ def get_quantity_specifics(quantity_name):
         options['quantity_name']            = 'Lbol'
         options['ndf_name']                 = 'QLF'
         options['cutoff']                   = -12
-        options['log_m_c']                  = 11.5
+        options['log_m_c']                  = np.nan
         options['feedback_change_z']        = np.nan
         # MODE
-        options['model_param_num']          = 2
-        options['model_p0']                 = np.array([0.01, 2])
+        options['model_param_num']          = 4
+        options['model_p0']                 = np.array([32, -2, 2, 1.4])
         # upper limit for A parameter in model chosen to be minimum observed
         # luminosity, if feedback model is 'quasar'
-        options['model_bounds']             = np.array([[0, 1], 
-                                                        [1, 100]])
+        options['model_bounds']             = np.array([[25, -10, 0, 0], 
+                                                        [35, 1, 10, 10]])
         options['fitting_space']            = 'log'
         options['relative_weights']         = True
         # REFERENCE FUNCTION  

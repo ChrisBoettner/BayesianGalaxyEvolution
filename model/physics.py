@@ -31,10 +31,9 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
     
     if physics_name == 'none':
             return(NoFeedback(log_m_c, initial_guess[:1],
-                                  bounds[:, :1])) 
+                                  bounds[:, :1]))
     if physics_name == 'eddington':
-            return(Eddington_Rate_Distribution_Function(initial_guess,
-                                                        bounds))
+        return(QuasarLuminosity(initial_guess, bounds))
                 
     if fixed_m_c:
         if physics_name == 'stellar':
@@ -46,6 +45,8 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
         elif physics_name == 'quasar':
             physics = QuasarGrowth(log_m_c, initial_guess,
                                    bounds)
+        elif physics_name == 'eddington':
+            physics = QuasarLuminosity(log_m_c, initial_guess, bounds)
             
     else:
         # add log_m_c to initial guess and bounds
@@ -326,10 +327,10 @@ class StellarFeedback_free_m_c(StellarBlackholeFeedback_free_m_c):
 class QuasarGrowth_free_m_c(object):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
-        Black hole growth model for Black Hole growth with free m_c.
+        Black hole growth model with free m_c.
 
         '''
-        self.name = 'quasar_free_m_c'
+        self.name = 'quasargrowth_free_m_c'
         self.log_m_c = log_m_c               # critical mass for model
         self.initial_guess = initial_guess   # initial guess for least_squares 
                                              # fit
@@ -418,6 +419,83 @@ class QuasarGrowth_free_m_c(object):
             else:
                 log_m_h[log_m_h>self._upper_m_h] = np.inf
         return(log_m_h)
+    
+class QuasarLuminosity(object):
+    def __init__(self, initial_guess, bounds):
+        '''
+        Black hole bolometric luminosity model with free e_star.
+        
+        '''
+        self.name = 'quasarluminosity_free_m_c'
+        self.initial_guess = initial_guess   # initial guess for least_squares 
+                                             # fit
+        self.bounds = bounds                 # parameter bounds
+        
+        # latest parameter used
+        self._current_parameter       = None
+        self.eddington_distribution   = None
+        
+    def calculate_log_luminosity(self, log_halo_mass, log_C, 
+                                 log_eddington_ratio):
+        '''
+        Calculate (log of) bolometric luminosity from input halo mass, 
+        model parameter and chosen log_eddington_ratio.
+        '''
+        return(log_halo_mass + log_C + log_eddington_ratio)
+        
+    def calculate_log_halo_mass(self, log_luminosity, log_C, 
+                                log_eddington_ratio):
+        '''
+        Calculate (log of) halo mass from input bolometric luminosity, 
+        model parameter and chosen log_eddington_ratio.
+        '''
+        return(log_luminosity - log_C - log_eddington_ratio)
+        
+    def calculate_log_erdf(self, log_eddington_ratio, log_eddington_star, 
+                           rho_1, rho_2):
+        '''
+        Calculate (log) value of ERDF (probability of given eddington ratio), 
+        given input log_eddingtion_ratio and parameter (log_eddington_star, 
+        rho_1, rho_2).
+
+        '''
+        self._make_distribution(log_eddington_star, rho_1, rho_2)
+        log_erdf = self.eddington_distribution.log_probability(log_eddington_ratio)
+        return(log_erdf)
+    
+    def calculate_mean_log_eddington_ratio(self, log_eddington_star, 
+                                           rho_1, rho_2):
+        '''
+        Calculate mean eddington ratio for the given parameter.
+
+        '''
+        self._make_distribution(log_eddington_star, rho_1, rho_2)
+        mean = self.eddington_distribution.mean()
+        return(mean)
+    
+    def draw_eddington_ratio(self, log_eddington_star, rho_1, rho_2, num=1):
+        '''
+        Draw random sample of Eddingtion ratio from distribution defined by
+        parameter (log_eddington_star, rho_1, rho_@). Can draw num samples at 
+        once.
+
+        '''
+        self._make_distribution(log_eddington_star, rho_1, rho_2)
+        log_eddington_ratio = self.eddington_distribution.rvs(size=num)
+        return(log_eddington_ratio)
+    
+    def _make_distribution(self, log_eddington_star, rho_1, rho_2):
+        '''
+        Check if distribution function with the given parameter was already
+        created and stored, otherwise create it.
+
+        '''
+        if self._current_parameter == [log_eddington_star, rho_1, rho_2]:
+            pass
+        else:
+            self._current_parameter     = [log_eddington_star, rho_1, rho_2]
+            self.eddington_distribution = ERDF(log_eddington_star, rho_1, rho_2)
+        return(self.eddington_distribution)
     
     
 ################ MODEL WITH FIXED CRITICAL MASS ###############################
@@ -542,7 +620,7 @@ class NoFeedback(StellarBlackholeFeedback):
 class QuasarGrowth(QuasarGrowth_free_m_c):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
-        Feedback model for Black Hole growth.
+        Black hole growth model.
 
         '''
         super().__init__(log_m_c, initial_guess, bounds)
@@ -567,54 +645,3 @@ class QuasarGrowth(QuasarGrowth_free_m_c):
                                                  log_m_c = self.log_m_c,
                                                  log_A   = log_A,
                                                  gamma   = gamma))
-    
-################ EDDINGTON RATE DISTRIBUTION FUNCTION #########################
-
-
-class Eddington_Rate_Distribution_Function(object):
-    def __init__(self, initial_guess, bounds):
-        '''
-        Model for ERDF.
-        
-        '''
-        self.name = 'erdf'
-        self.initial_guess = initial_guess   # initial guess for least_squares 
-                                             # fit
-        self.bounds = bounds                 # parameter bounds
-        
-        # latest parameter used
-        self._current_parameter       = None
-        self.eddington_distribution   = None
-        
-    def calculate_erdf(self, eddington_ratio, eddington_star, rho):
-        '''
-        Calculate value of ERDF (probability of given eddington ratio), given
-        input log_eddingtion_ratio and parameter (log_eddington_star, rho).
-
-        '''
-        self._make_distribution(eddington_star, rho)
-        erdf = self.eddington_distribution.pdf(eddington_ratio)
-        return(erdf)
-    
-    def draw_eddington_ratio(self, eddington_star, rho, num=1):
-        '''
-        Draw random sample of Eddingtion ratio from distribution defined by
-        parameter (log_eddington_star, rho). Can draw num samples at once.
-
-        '''
-        self._make_distribution(eddington_star, rho)
-        eddington_ratio = self.eddington_distribution.rvs(num)
-        return(eddington_ratio)
-    
-    def _make_distribution(self, eddington_star, rho):
-        '''
-        Check if distribution function with the given parameter was already
-        created and stored, otherwise create it.
-
-        '''
-        if self._current_parameter == [eddington_star, rho]:
-            pass
-        else:
-            self._current_parameter     = [eddington_star, rho]
-            self.eddington_distribution = ERDF(eddington_star, rho)
-        return
