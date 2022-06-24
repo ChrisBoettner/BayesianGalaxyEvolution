@@ -10,6 +10,7 @@ import numpy as np
 from scipy.optimize import least_squares, dual_annealing, brute, minimize
 
 from model.helper import within_bounds
+from model.quantity_options import update_bounds
 
 ################ MAIN FUNCTIONS ###############################################
 
@@ -79,6 +80,7 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     log_phi_obs = model.log_ndfs.at_z(z)[:, 1]
 
     # check if parameter are within bounds
+    update_bounds(model, params) # update first
     if not within_bounds(params, *model.physics_model.at_z(z).bounds):
         return(1e+30)  # if outside of bound, return huge value to for cost func
 

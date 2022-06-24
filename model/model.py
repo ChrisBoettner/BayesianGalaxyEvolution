@@ -8,12 +8,11 @@ Created on Tue Apr 12 17:46:44 2022
 import warnings
 
 import numpy as np
-from scipy.integrate import quad, IntegrationWarning
+from scipy.integrate import trapezoid
 
 from progressbar import ProgressBar, FormatLabel, NullBar
 
-from model.helper import mag_to_lum, within_bounds, make_array, system_path,\
-                         calculate_integral
+from model.helper import mag_to_lum, within_bounds, make_array, system_path
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics, get_bounds
 from model.physics import physics_model
@@ -99,6 +98,8 @@ class ModelResult():
         self.log_hmfs = Redshift_dict(log_hmf_functions)
         self.groups = groups
 
+        self.hmf_slope = -0.94 # approximate low mass slope of HMFs
+        
         self.quantity_name = quantity_name
         # load options related to the quantity 
         self.quantity_options = get_quantity_specifics(self.quantity_name)
@@ -533,7 +534,7 @@ class ModelResult():
         else:
             raise NameError('physics_name not known.')
         # get model parameter bounds
-        bounds_at_z = get_bounds(self)
+        bounds_at_z = get_bounds(z, self)
         # add model
         self.physics_model.add_entry(z, physics_model(
             fb_name,
@@ -605,6 +606,18 @@ class ModelResult_QLF(ModelResult):
         
         # phi = []
         
+        phi = []
+        for L in log_L:
+            eddington_ratio_space = self._make_log_eddington_ratio_space(L, z, 
+                                                                         parameter)
+            log_qlf_contribution  = self.calculate_log_QLF_contribution(eddington_ratio_space,
+                                                                        L,
+                                                                        z,
+                                                                        parameter)
+            
+            phi.append(trapezoid(np.power(10, log_qlf_contribution), 
+                       eddington_ratio_space)) 
+        
         # for L in log_L:
         #     print(L)
             
@@ -616,21 +629,21 @@ class ModelResult_QLF(ModelResult):
             
             
             
-        phi = []
-        for L in log_L:
-            #print(L)
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', category=IntegrationWarning)
-                #try:
-                integral = quad(self.calculate_QLF_contribution, 
-                                  -np.inf,
-                                    np.inf,
-                                args = (L, z, parameter), limit=500)[0]
-                #except IntegrationWarning:
-                #    print('whoops')
-                #    integral = np.nan
-            phi.append(integral)
-        phi = np.array(phi)
+        # phi = []
+        # for L in log_L:
+        #     #print(L)
+        #     with warnings.catch_warnings():
+        #         warnings.simplefilter('ignore', category=IntegrationWarning)
+        #         #try:
+        #         integral = quad(self.calculate_QLF_contribution, 
+        #                           -np.inf,
+        #                             np.inf,
+        #                         args = (L, z, parameter), limit=500)[0]
+        #         #except IntegrationWarning:
+        #         #    print('whoops')
+        #         #    integral = np.nan
+        #     phi.append(integral)
+        # phi = np.array(phi)
         
         # eddingtion_ratio_sample = np.sort(self.physics_model.at_z(z).draw_eddington_ratio(*parameter[1:], 10000))
         # delta_edd = eddingtion_ratio_sample[1:]-eddingtion_ratio_sample[:-1]
@@ -649,6 +662,7 @@ class ModelResult_QLF(ModelResult):
         
         # calculate log of calculated BH luminosity function, taking care of
         # zero values
+        phi     = np.array(phi)
         log_phi = np.empty_like(phi)
         log_phi[phi==0] = -np.inf
         log_phi[phi!=0] = np.log10(phi[phi!=0])
@@ -661,38 +675,116 @@ class ModelResult_QLF(ModelResult):
     def calculate_halo_mass_distribution(self, log_L, z, num=int(1e+5)):
         return()
     
-    def calculate_QLF_contribution(self, log_eddington_ratio, log_L, z, 
-                                         parameter):
+    def calculate_log_QLF_contribution(self, log_eddington_ratio, log_L, z, 
+                                       parameter):
         '''
-        Calculate the contribution to the bolometric luminosity function at
-        luminosity log_L for a specific Eddingtion ratio (at redshift z and
-        for given ERDF parameter). This is done by first calculating the 
-        mean of the black hole mass function at log_mbh(log_L, eddington_ratio)
-        via sampling from distribution and multiplying this value by the 
-        value of the ERDF. For the mean calculating, one can choose between
-        using the approximate mean bhmf or drawing samples and calculating the
-        mean from a sample. The number of samples drawn can be adjusted using 
-        the num parameter.
+        WRITE UP
         '''
         
-        # calculate halo mass for given log_L, parameter and eddingtion_ratio
-        log_m_h         = self.physics_model.at_z(z).calculate_log_halo_mass(
-                                                             log_L,
-                                                             parameter[0],
-                                                             log_eddington_ratio)
-        
-        # calculate value of HMF       
-        log_phi_hmf     = self.calculate_log_hmf(log_m_h, z)
+        if (parameter[3] <= -self.hmf_slope/parameter[1]):
+            raise ValueError('Slope of ERDF smaller than (slope of HMF/'\
+                              'eta). QLF integral will not converge.')
+
+        log_phi = self._calculate_phi_contribution(log_eddington_ratio, log_L, z, 
+                                                   parameter)
         
         # calculate probability for eddington_ratio
         log_erdf        = self.physics_model.at_z(z).\
                                calculate_log_erdf(log_eddington_ratio,
-                                                  *parameter[1:])
+                                                  *parameter[2:])
                                
         # put it all together
-        QLF_contribution = np.power(10, log_phi_hmf + log_erdf)
-        return(QLF_contribution)
+        log_qlf_contribution = log_phi + log_erdf
+        return(log_qlf_contribution)
+    
+    
+    def _calculate_phi_contribution(self, log_eddington_ratio, log_L, z, 
+                                    parameter):
+        '''
+        Calculate value of (HMF+feedback) function that will contribute to
+        QLF.
+        '''
+        
+        # calculate halo masses from stellar masses using model
+        log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
+            log_L, log_eddington_ratio, *parameter[:2])
+        
+        ## calculate value of bh phi (hmf + quasar growth model)
+        # calculate value of halo mass function
+        log_hmf = self.calculate_log_hmf(log_m_h, z)
+        # calculate physics/feedback effect (and deal with zero values)
+        fb_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
+                         log_m_h,log_eddington_ratio, *parameter[:2])
+        log_fb_factor                 = np.empty_like(fb_factor)
+        log_fb_factor[fb_factor == 0] = -np.inf
+        log_fb_factor[fb_factor != 0] = np.log10(fb_factor[fb_factor!=0])
+        # calculate modelled phi value
+        log_phi    = np.empty_like(log_m_h)
+        valid_mask = (log_m_h != -np.inf)
+        log_phi[valid_mask]  = log_hmf[valid_mask] - log_fb_factor[valid_mask]
+        log_phi[np.logical_not(valid_mask)]  = -np.inf
+        
+        log_phi[np.isnan(log_phi)]   = np.nan
+        return(log_phi)
+        
+    
+    def _make_log_eddington_ratio_space(self, log_L, z, parameter, 
+                                        log_cut=3, num=200):
+        '''
+        '''      
+        # calculate some initial points to locate approximate location of 
+        # maximum of QLF contribution
+        initial_eddington_space = np.linspace(-100,100,250)
+        initial_qlf_points = self.calculate_log_QLF_contribution(initial_eddington_space,
+                                                                 log_L,
+                                                                 z,
+                                                                 parameter)
+        
+        eddington_max_idx    = np.argmax(initial_qlf_points)
+        eddington_max        = initial_eddington_space[eddington_max_idx]
+        qlf_contribution_max = initial_qlf_points[eddington_max_idx]
+        
+        
+        ## calculate range of function that meaninfully contributes to integral
+        # high eddington ratio end is power law, so calculate approximate 
+        # power law slope (actually the inverse, since this is all we need)
+        slope_inverse = ((initial_eddington_space[-1]-initial_eddington_space[-2])/
+                         (initial_qlf_points[-1] - initial_qlf_points[-2]))
+        if (slope_inverse>0):
+            raise ValueError('Slope of large eddington_ratio end of QLF ' \
+                             'contribution is positive, integral will not '\
+                             'converge.')
+                              
+        # calculate upper eddington ratio where contribution to qlf is less than
+        # 10^log_cut that of the maximum value
+        rel_diff = np.inf
+        for i in range(101):
+            upper_eddington_limit = eddington_max-slope_inverse*(log_cut+i)
+            qlf_contribution      = self.calculate_log_QLF_contribution(
+                                          upper_eddington_limit,
+                                          log_L, z, parameter)
+            rel_diff = qlf_contribution_max - qlf_contribution
+            if rel_diff>log_cut:
+                break
             
+        # if loop completes, raise error
+        if i == 100:
+            raise StopIteration('Upper bound for relevant eddington_ratios '\
+                                'could not be found. QLF contribution might '\
+                                'converge very slowly.')
+        
+        # function drops off faster to the low eddington_ratio side 
+        # (exponentially) instead of logarithmically, so using the same
+        # spacing should lead to value at least as small
+        lower_eddington_limit = eddington_max+slope_inverse*(log_cut+i)
+        
+        # create space of eddington_ratios over relant range
+        eddington_space = np.linspace(lower_eddington_limit, 
+                                      upper_eddington_limit,
+                                      num)
+        
+        return(eddington_space)
+        
 
 class Redshift_dict():
     def __init__(self, input_dict):

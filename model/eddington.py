@@ -23,41 +23,40 @@ class ERDF(rv_continuous):
     Parameters
     ----------
     log_eddington_star : float
-        Characteristic value of the function, where the power law slope switches.
-    rho_1 : float
-        The first power law slope.
-    rho_2 : TYPE
-        The second power law slope.
+        Characteristic value of the function, where the power law starts to 
+        take effect.
+    rho : float
+        The power law slope.
     log_threshold : float, optional
-        The difference (in log space) between the power laws before 
-        approximation of one power law is used. The default is 10.
+        The value (in log space) of the power laws term before 
+        approximation of pure power law is used. The default is 10.
     a : float
         The lower end of the support of the distribution (in log space). Values 
-        of the pdf for Eddington ratios below this are zero. The default is -11.
+        of the pdf for Eddington ratios below this are zero. The default is 
+        -inf.
     b : float
         The upper end of the support of the distribution (in log space). Values 
-        of the pdf for Eddington ratios above this are zero. The default is inf.
+        of the pdf for Eddington ratios above this are zero. The default is 
+        inf.
         
     '''
     
-    def __init__(self, log_eddington_star, rho_1, rho_2, log_threshold=10,
-                 a = -11, b = np.inf):
+    def __init__(self, log_eddington_star, rho, log_threshold=10,
+                 a = -np.inf, b = np.inf):
         super().__init__(a = a, b = b) # domain of Eddington Ratio,
                                        # values outside of domain are
                                        # 0
         # define parameters
         self.log_eddington_star = log_eddington_star
-        self.rho_1              = rho_1
-        self.rho_2              = rho_2
+        self.rho                = rho
         
         self.log_threshold      = log_threshold
     
         # normalisation: integrate unnormalized erdf from 0 to 
         # upper bound of domain (analytical result)
         normalisation   = 1/calculate_limit(self._unnormalized_cdf, 
-                                           self.log_eddington_star+10)
+                                            self.log_eddington_star+5)
         self.log_normalisation = np.log10(normalisation)
-        #self.log_normalisation = 1
     
     def _pdf(self, log_eddington_ratio):
         '''
@@ -73,27 +72,21 @@ class ERDF(rv_continuous):
         calculate approximate value by ignoring one of the power laws.
         
         '''
-        
         # variable subsitution
-        x           = make_array(log_eddington_ratio - self.log_eddington_star)
-        exponent_1  = self.rho_1*x
-        exponent_2  = self.rho_2*x
+        x         = make_array(log_eddington_ratio - self.log_eddington_star)
+        exponent  = self.rho*x
         
-        log_erdf   = np.empty_like(x)
+        log_erdf  = np.empty_like(x)
         
-        # if one of the two power laws dominates strongly, use approximation
-        # to calculate value by ignoring the other value
-        flag_1 = ((exponent_1 - exponent_2) > self.log_threshold)
-        flag_2 = ((exponent_2 - exponent_1) > self.log_threshold)
-        log_erdf[flag_1] = self.log_normalisation - exponent_1[flag_1]
-        log_erdf[flag_2] = self.log_normalisation - exponent_2[flag_2]
+        # if value of power law term is very large, ignore the + 1 and 
+        # treat as if it was power law directly
+        power_law_mask            = (exponent > self.log_threshold)
+        log_erdf[power_law_mask]  = self.log_normalisation - exponent[power_law_mask]
         
         # otherwise calculate value properly
-        flag_3           = np.logical_not(flag_1+flag_2)
-        power_law_1      = np.power(10, self.rho_1*x[flag_3])
-        power_law_2      = np.power(10, self.rho_2*x[flag_3])
-        log_erdf[flag_3] = self.log_normalisation - np.log10(power_law_1
-                                                             + power_law_2)
+        inverse_mask           = np.logical_not(power_law_mask)
+        power_law              = np.power(10, self.rho*x[inverse_mask])
+        log_erdf[inverse_mask] = self.log_normalisation - np.log10(1 + power_law)
         
         if np.isscalar(log_eddington_ratio):
             return(log_erdf[0])
@@ -124,15 +117,12 @@ class ERDF(rv_continuous):
         
         '''
         # variable substitutions
-        x             = np.power(10, float(log_eddington_ratio 
-                                     - self.log_eddington_star))
-        exponent_diff = self.rho_1 - self.rho_2
-        q             = self.rho_2/exponent_diff
+        x = log_eddington_ratio - self.log_eddington_star
+        exponent = self.rho*x
         
-        # calculate components for final quantity
-        power_law    = x**(-self.rho_2)
-        hyper_geo    = hyp2f1(1, -q, 1-q, -x**(exponent_diff))
-        
-        return(-power_law*hyper_geo/(np.log(10)*self.rho_2))
+        # calculate hypergeometrix function for final quantity
+        hyper_geo    = hyp2f1(1, 1/self.rho, 1+1/self.rho, 
+                              -np.power(10, exponent))
+        return(np.power(10,log_eddington_ratio)*hyper_geo)
         
     

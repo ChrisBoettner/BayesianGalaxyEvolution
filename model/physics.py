@@ -33,7 +33,7 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
             return(NoFeedback(log_m_c, initial_guess[:1],
                                   bounds[:, :1]))
     if physics_name == 'eddington':
-        return(QuasarLuminosity(initial_guess, bounds))
+        return(QuasarLuminosity(log_m_c, initial_guess, bounds))
                 
     if fixed_m_c:
         if physics_name == 'stellar':
@@ -357,19 +357,24 @@ class QuasarGrowth_free_m_c(object):
         '''
         Calculate halo mass from input observable quantity and model parameter.
         '''
-        
-        x = np.power(10, log_quantity - log_A) - 1
-        
-        log_m_h  = np.empty_like(x)
-        
+        log_quantity = make_array(log_quantity)
+        ## variable substitution
+        log_x       = np.full_like(log_quantity, np.nan)
+        # check when the -1 can be ignored and calculate approximation
+        mask        = ((log_quantity - log_A)>10)
+        log_x[mask] = log_quantity[mask] - log_A
+        # if -1 cannot be ignored, calculate value properly
+        inv_mask = np.logical_not(mask)
         # deal with infinities and negative values, and regime where model
         # breaks down
-        inf_mask            = x<=0
-        log_m_h[inf_mask]   = -np.inf
+        _x       = np.power(10, log_quantity[inv_mask] - log_A) - 1
+        log_x[_x>=0] = np.log10(_x[_x>=0])
+        
         
         # calculate halo mass
-        valid_mask = np.logical_not(inf_mask)
-        log_m_h[valid_mask] = 1/gamma * np.log10(x[valid_mask]) + log_m_c
+        log_m_h                  = np.empty_like(log_x)
+        log_m_h[np.isnan(log_x)] = -np.inf
+        log_m_h[np.isfinite(log_x)] = 1/gamma * log_x[np.isfinite(log_x)] + log_m_c
         
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h) # deal with very large m_h
@@ -377,8 +382,7 @@ class QuasarGrowth_free_m_c(object):
     
     def calculate_dlogquantity_dlogmh(self, log_m_h, log_m_c, log_A, gamma):
         '''
-        Calculate d/d(log m_h) log_quantity. High mass end for beta near
-        one treated as special case, where value apporaches zero.
+        Calculate d/d(log m_h) log_quantity.
         '''
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h)
@@ -420,81 +424,93 @@ class QuasarGrowth_free_m_c(object):
                 log_m_h[log_m_h>self._upper_m_h] = np.inf
         return(log_m_h)
     
+    
 class QuasarLuminosity(object):
-    def __init__(self, initial_guess, bounds):
+    def __init__(self, log_m_c, initial_guess, bounds):
         '''
         Black hole bolometric luminosity model with free e_star.
         
         '''
-        self.name = 'quasarluminosity_free_m_c'
+        self.name = 'quasarluminosity'
         self.initial_guess = initial_guess   # initial guess for least_squares 
                                              # fit
         self.bounds = bounds                 # parameter bounds
+        
+        self.log_m_c = log_m_c
         
         # latest parameter used
         self._current_parameter       = None
         self.eddington_distribution   = None
         
-    def calculate_log_luminosity(self, log_halo_mass, log_C, 
-                                 log_eddington_ratio):
+    def calculate_log_quantity(self, log_m_h, log_eddington_ratio, log_C, 
+                               gamma):
         '''
         Calculate (log of) bolometric luminosity from input halo mass, 
         model parameter and chosen log_eddington_ratio.
         '''
-        return(log_halo_mass + log_C + log_eddington_ratio)
+        log_m_h = make_array(log_m_h)
+        return(log_eddington_ratio + log_C + gamma*(log_m_h - self.log_m_c))
         
-    def calculate_log_halo_mass(self, log_luminosity, log_C, 
-                                log_eddington_ratio):
+    def calculate_log_halo_mass(self, log_L, log_eddington_ratio, log_C, 
+                                 gamma):
         '''
         Calculate (log of) halo mass from input bolometric luminosity, 
         model parameter and chosen log_eddington_ratio.
         '''
-        return(log_luminosity - log_C - log_eddington_ratio)
+        log_L = make_array(log_L)
+        return((log_L-(log_eddington_ratio + log_C))/gamma + self.log_m_c)
+    
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_eddington_ratio, 
+                                      log_C, gamma):
+        '''
+        Calculate d/d(log m_h) log_quantity.
+        '''
+        return(np.full_like(log_m_h, gamma))
         
     def calculate_log_erdf(self, log_eddington_ratio, log_eddington_star, 
-                           rho_1, rho_2):
+                           rho):
         '''
         Calculate (log) value of ERDF (probability of given eddington ratio), 
         given input log_eddingtion_ratio and parameter (log_eddington_star, 
-        rho_1, rho_2).
+        rho).
 
         '''
-        self._make_distribution(log_eddington_star, rho_1, rho_2)
+        self._make_distribution(log_eddington_star, rho)
         log_erdf = self.eddington_distribution.log_probability(log_eddington_ratio)
         return(log_erdf)
     
     def calculate_mean_log_eddington_ratio(self, log_eddington_star, 
-                                           rho_1, rho_2):
+                                           rho):
         '''
         Calculate mean eddington ratio for the given parameter.
 
         '''
-        self._make_distribution(log_eddington_star, rho_1, rho_2)
+        self._make_distribution(log_eddington_star, rho)
         mean = self.eddington_distribution.mean()
         return(mean)
     
-    def draw_eddington_ratio(self, log_eddington_star, rho_1, rho_2, num=1):
+    def draw_eddington_ratio(self, log_eddington_star, rho, num=1):
         '''
         Draw random sample of Eddingtion ratio from distribution defined by
-        parameter (log_eddington_star, rho_1, rho_@). Can draw num samples at 
+        parameter (log_eddington_star, rho). Can draw num samples at 
         once.
 
         '''
-        self._make_distribution(log_eddington_star, rho_1, rho_2)
+        self._make_distribution(log_eddington_star, rho)
         log_eddington_ratio = self.eddington_distribution.rvs(size=num)
         return(log_eddington_ratio)
     
-    def _make_distribution(self, log_eddington_star, rho_1, rho_2):
+    def _make_distribution(self, log_eddington_star, rho):
         '''
         Check if distribution function with the given parameter was already
         created and stored, otherwise create it.
 
         '''
-        if self._current_parameter == [log_eddington_star, rho_1, rho_2]:
+        if self._current_parameter == [log_eddington_star, rho]:
             pass
         else:
-            self._current_parameter     = [log_eddington_star, rho_1, rho_2]
-            self.eddington_distribution = ERDF(log_eddington_star, rho_1, rho_2)
+            self._current_parameter     = [log_eddington_star, rho]
+            self.eddington_distribution = ERDF(log_eddington_star, rho)
         return(self.eddington_distribution)
     
     

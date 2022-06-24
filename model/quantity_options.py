@@ -141,15 +141,13 @@ def get_quantity_specifics(quantity_name):
         options['quantity_name']            = 'Lbol'
         options['ndf_name']                 = 'QLF'
         options['cutoff']                   = -12
-        options['log_m_c']                  = np.nan
+        options['log_m_c']                  = 11.5
         options['feedback_change_z']        = np.nan
         # MODE
         options['model_param_num']          = 4
-        options['model_p0']                 = np.array([32, -2, 2, 1.4])
-        # upper limit for A parameter in model chosen to be minimum observed
-        # luminosity, if feedback model is 'quasar'
-        options['model_bounds']             = np.array([[25, -10, 0, 0], 
-                                                        [35, 1, 10, 10]])
+        options['model_p0']                 = np.array([29, 2, -2, 1.9])
+        options['model_bounds']             = np.array([[20, 0, -10,  1], 
+                                                        [35, 20,  2, 10]])
         options['fitting_space']            = 'log'
         options['relative_weights']         = True
         # REFERENCE FUNCTION  
@@ -222,27 +220,44 @@ def get_quantity_specifics(quantity_name):
     return(options)
 
 
-def get_bounds(model, buffer = 0.01):
+def update_bounds(model, parameter):
     '''
-    Get model parameter bounds.
+    Calculate and update bounds for parameter where bounds depend on each other.
+    (For lbol model.)
+    '''
+    # for lbol model, the parameter rho (slope of ERDF) must be larger
+    # than the (slope of the HMF/eta). 
+    if model.physics_name == 'eddington':
+        eta = parameter[1]
+        bound = -model.hmf_slope/eta 
+        if bound >= 1:
+            model.physics_model.at_z(model._z).bounds[0,3] = bound
+        else :
+            # bound has to be at least 1 for ERDF to converge
+            model.physics_model.at_z(model._z).bounds[0,3] = 1
+    return()
+
+def get_bounds(z, model, buffer = 0.01):
+    '''
+    Get model parameter bounds at specific redshift. (For mbh model.)
     '''
     bounds = model.quantity_options['model_bounds']
-    
-    # for Lbol quasar model, upper limit for log_A is lowest measured 
+        
+    # for mbh quasar model, upper limit for log_A is lowest measured 
     # luminosity at that redshift. But model breaks down nearby already, so 
     # include some buffer
     if model.physics_name == 'quasar':
-        bounds[1,0] = np.amin(model.log_ndfs.at_z(model._z)[:,0]) +\
+        bounds[1,0] = np.amin(model.log_ndfs.at_z(z)[:,0]) +\
                       np.log10(1+buffer)  
     return(bounds)
 
 def get_quantity_range(z, model, buffer = 0.01):
     '''
-    Get model quantity range.
+    Get model quantity range. (For mbh model.)
     '''
     quantity_range = model.quantity_options['quantity_range']
     
-    # Lbol quasar model breaks down when log_quantity near log_A, adapt
+    # mbh quasar model breaks down when log_quantity near log_A, adapt
     # ranges accordingly
     if model.physics_name == 'quasar':
         buffer = 0.01 # choose for far log_quantity can be away from log_A

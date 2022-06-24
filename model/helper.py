@@ -115,7 +115,8 @@ def calculate_percentiles(data, axis=0):
     return([median, lower, upper])
 
 
-def calculate_limit(func, initial_value, rtol = 1e-5, max_evaluations = 1000):
+def calculate_limit(func, initial_value, rtol = 1e-4, 
+                    max_evaluations = int(1e+4)):
     '''
     Simple function to calculate the limit of an input function as
     x -> infinity . Start at x=initial value and increase value lineary.
@@ -137,36 +138,9 @@ def calculate_limit(func, initial_value, rtol = 1e-5, max_evaluations = 1000):
             return(value_new)
         else: 
             value_old = value_new
+            
     # raise error if convergence could not be achieved
     raise StopIteration('Limit could not be calculated within max_evaluations.')
-    return
-
-def calculate_integral(func, limits, rtol = 1e-5, max_evaluations = 1e+7):
-    '''
-    Simple function to calculate the limit of an input function as
-    x -> infinity . Start at x=initial value and increase value lineary.
-    Convergence is reached when relative change is <= rtol. An error is 
-    raised when maximum number of iterations is exceeded.
-    '''
-    
-    value_old = np.inf
-    num     = 1000
-    
-    while num <= max_evaluations:
-        x_space = np.linspace(limits[0], limits[1], num)
-        delta_x = x_space[1] - x_space[0]
-        
-        value_new = np.sum(func(x_space)*delta_x)
-    
-        if np.abs(value_new-value_old)/value_old < rtol:
-            return(value_new)
-        else:
-            value_old = value_new
-            num = num*10
-    
-    # raise error if convergence could not be achieved
-    raise StopIteration('Integral does not converge within number of max '\
-                        'number of evaluations.')
     return
 
 

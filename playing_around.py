@@ -32,18 +32,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from model.analysis.calculations import calculate_best_fit_ndf
 
-print('need to find a way to calculate the integrals faster')
-print('I think the original paper states that rho_1 needs to be positive and larger than'\
-      'the slope of the HMF to have an influence on the QLF slope, this means that the'\
-      'distribution diverges, can probably only solve that by setting a minimum eddington ratio')
-print('to calculate that cutoff, maybe take lowest luminosity in dataset and highest observed'\
-      'black hole mass (Wikipedia). in that way lower eddingtion ratios could not possible contribute to observed QLF'\
-       'but compare to your result from mbh model')
-print('maybe need to fit in linear space, so that bright end points get proper weight')
+import cProfile
 
 #lbol   = load_model('Lbol','quasar',prior_name='successive')
 #mbh    = load_model('mbh','quasar',prior_name='successive')
-lbol = run_model('Lbol', 'eddington', prior_name='successive', calibrate=False)
+lbol = run_model('Lbol', 'eddington', prior_name='successive')
 #Plot_best_fit_ndfs(lbol)
 
 ## BLACK HOLE MASS - LAMBDA RELATION (ABBUNDANCE MATCHING)
