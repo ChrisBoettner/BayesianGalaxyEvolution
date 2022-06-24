@@ -226,10 +226,10 @@ def update_bounds(model, parameter):
     (For lbol model.)
     '''
     # for lbol model, the parameter rho (slope of ERDF) must be larger
-    # than the (slope of the HMF/eta). 
+    # than the (slope of the HMF/eta)-1 to converge. 
     if model.physics_name == 'eddington':
         eta = parameter[1]
-        bound = -model.hmf_slope/eta 
+        bound = -model.hmf_slope/eta - 1
         if bound >= 1:
             model.physics_model.at_z(model._z).bounds[0,3] = bound
         else :
