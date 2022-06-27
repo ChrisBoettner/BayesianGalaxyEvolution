@@ -105,6 +105,10 @@ class ModelResult():
         self.quantity_options = get_quantity_specifics(self.quantity_name)
         self.log_m_c = self.quantity_options['log_m_c']
         
+        if physics_name not in self.quantity_options['physics_models']:
+            raise NotImplementedError('Physics model not implemented for this '
+                                      'quantity.')
+        
         self.physics_name = physics_name
         self.prior_name = prior_name
 
@@ -122,7 +126,8 @@ class ModelResult():
         
         self.progress = progress
         
-        if calibrate:
+        self.calibrate = calibrate
+        if self.calibrate:
             self.fit_model(self.redshift, **kwargs)
         else:
             for z in self.redshift:
@@ -156,9 +161,12 @@ class ModelResult():
         elif self.physics_name == 'quasar':
             self._plot_parameter(
                 'C3', '^', ':', 'BH Growth Model')
+        elif self.physics_name == 'eddington_free_ERDF':
+            self._plot_parameter(
+                'C4', '^', ':', 'Bolometric Luminosity Model (free ERDF)')
         elif self.physics_name == 'eddington':
             self._plot_parameter(
-                'C4', '^', ':', 'Bolometric Luminosity Model')
+                'C5', 'v', ':', 'Bolometric Luminosity Model')
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -191,7 +199,7 @@ class ModelResult():
         redshifts = make_array(redshifts)
         
         # run fits
-        parameters, distributions = {}, {}
+        distributions = {}
         posterior_samp, bounds = None, None
         for z in PBar(redshifts):
             # progress tracking
@@ -240,7 +248,7 @@ class ModelResult():
             else:
                 raise NameError('fitting_method not known.')
             
-            parameters[z]    = parameter
+            self.parameter.add_entry(z, parameter)
             distributions[z] = posterior_samp
             
             if (not custom_bar_flag) and (z==redshifts[-1]):
@@ -248,7 +256,6 @@ class ModelResult():
             
         # add distributions to model object after fitting is done, because
         # otherwise, large amount of data in model slows (parallel) mcmc run
-        self.parameter    = Redshift_dict(parameters)
         self.distribution = Redshift_dict(distributions)
         
         return
@@ -523,7 +530,7 @@ class ModelResult():
         '''
         ## create physics model
         if self.physics_name in ['none', 'stellar', 'stellar_blackhole',
-                                  'quasar', 'eddington']:
+                                  'quasar']:
             fb_name = self.physics_name
         elif self.physics_name == 'changing':  # standard changing feedback
             feedback_change_z = self.quantity_options['feedback_change_z']
@@ -590,7 +597,8 @@ class ModelResult_QLF(ModelResult):
                  progress=True, **kwargs):    
        
         # used for _make_space, so it doesn't have to be recreated every time
-        self._initial_eddington_space = np.linspace(-50,50,200)
+        self._initial_eddington_space = np.linspace(-50,50,100)
+        self._initial_erdf            = None
         
         # initalize model itself
         super().__init__(redshifts, log_ndfs, log_hmf_functions,
@@ -601,7 +609,6 @@ class ModelResult_QLF(ModelResult):
 
               
     def calculate_log_abundance(self, log_L, z, parameter, num=100):
-        #breakpoint()
         log_L = make_array(log_L)
 
         # check that parameters are within bounds
@@ -684,21 +691,22 @@ class ModelResult_QLF(ModelResult):
         '''
         WRITE UP
         '''
-        
-        if (parameter[3] <= -self.hmf_slope/parameter[1]):
-            raise ValueError('Slope of ERDF smaller than (slope of HMF/'\
-                              'eta). QLF integral will not converge.')
 
-        log_phi = self._calculate_phi_contribution(log_eddington_ratio, log_L, z, 
+        log_phi     = self._calculate_phi_contribution(log_eddington_ratio, log_L, z, 
                                                    parameter)
         
         # calculate probability for eddington_ratio
-        log_erdf        = self.physics_model.at_z(z).\
-                               calculate_log_erdf(log_eddington_ratio,
-                                                  *parameter[2:])
+        log_erdf    = self._calculate_ERDF_contribution(log_eddington_ratio,
+                                                        z, parameter)
                                
         # put it all together
         log_qlf_contribution = log_phi + log_erdf
+        
+        if (self.physics_model.at_z(z).parameter[1] 
+                <= -self.hmf_slope/parameter[1]):
+            raise ValueError('Slope of ERDF smaller than (slope of HMF/'\
+                              'eta). QLF integral will not converge.')
+        
         return(log_qlf_contribution)
     
     
@@ -732,10 +740,28 @@ class ModelResult_QLF(ModelResult):
         # deal with infinite masses 
         log_phi[np.isinf(log_m_h)]    =  - np.inf
         return(log_phi)
-        
+    
+    def _calculate_ERDF_contribution(self, log_eddington_ratio, z, 
+                                     parameter):
+        if self.physics_model.at_z(z).name == 'eddington':
+            if np.array_equal(log_eddington_ratio, self._initial_eddington_space):
+                return(self._initial_erdf)
+            else:
+                log_erdf = self.physics_model.at_z(z).\
+                                       calculate_log_erdf(log_eddington_ratio)
+            
+        elif self.physics_model.at_z(z).name == 'eddington_free_ERDF':
+            log_erdf        = self.physics_model.at_z(z).\
+                                   calculate_log_erdf(log_eddington_ratio,
+                                                      *parameter[2:])
+        else:
+            raise NameError('physics_name not known.')
+            
+        return(log_erdf)
+    
     
     def _make_log_eddington_ratio_space(self, log_L, z, parameter, 
-                                        log_cut=4, num=200):
+                                        log_cut=4, num=100):
         '''
         '''      
         # calculate some initial points to locate approximate location of 
@@ -811,6 +837,47 @@ class ModelResult_QLF(ModelResult):
                                               upper_limit,
                                               num)
         return(eddington_space)
+    
+    def _add_physics_model(self, z):
+        '''
+        Add physics model to general model according to physics_name. If 
+        physics model is eddington_free_ERDF, fit ERDF at every redshift.
+        If physics model is eddington, fit ERDF at first redshift and then
+        reuse these parameters.
+
+        '''
+        ## create physics model
+        if self.physics_name == 'eddington_free_ERDF':
+            fb_name = self.physics_name
+            eddington_erdf_params = None
+            
+        elif self.physics_name == 'eddington': 
+            if z == self.redshift[0]:
+                fb_name               = 'eddington_free_ERDF'
+                eddington_erdf_params = None
+            else:
+                fb_name = 'eddington'
+                if self.calibrate:
+                    eddington_erdf_params = self.parameter.at_z(self.redshift[0])[2:]
+                else: 
+                    eddington_erdf_params = None
+                
+        # get model parameter bounds
+        bounds_at_z = get_bounds(z, self)
+        # add model
+        self.physics_model.add_entry(z, physics_model(
+            fb_name,
+            self.log_m_c,
+            initial_guess=self.quantity_options['model_p0'],
+            bounds=bounds_at_z,
+            eddington_erdf_params = eddington_erdf_params))
+        
+        # calculate initial erdf (which is reused for fixed ERDF model)
+        if ((fb_name == 'eddington') and self.calibrate 
+            and (self._initial_erdf is None)) :
+                self._initial_erdf = self.physics_model.at_z(z).\
+                                     calculate_log_erdf(self._initial_eddington_space)
+        return
         
 
 class Redshift_dict():

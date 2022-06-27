@@ -12,29 +12,41 @@ from model.eddington import ERDF
 from model.helper import make_array, invert_function
 
 def physics_model(physics_name, log_m_c, initial_guess, bounds,
-                   fixed_m_c=True):
+                   fixed_m_c=True, eddington_erdf_params=None):
     '''
     Return physics model that relates SMF and HMF, including model function,
     model name, initial guess and physical parameter bounds for fitting,
     that related SMF and HMF.
     The model function parameters are left free and can be obtained via fitting.
     Three models implemented:
-        none      : no feedback adjustment
-        sn        : supernova feedback
-        both      : supernova and black hole feedback
-        quasar    : black hole growth model
-        eddington  : eddigtion ratio distribution function model
+        none                : no feedback adjustment
+        sn                  : supernova feedback
+        both                : supernova and black hole feedback
+        quasar              : black hole growth model
+        eddington_free_ERDF : bolometric luminosity model using free ERDF
+        eddington           : bolometric luminosity model using fixed ERDF
+                              (need erdf parameter as additional input)
     '''
     if physics_name not in ['none', 'stellar', 'stellar_blackhole', 'quasar',
-                            'eddington']:
+                            'eddington_free_ERDF', 'eddington']:
        raise NameError('physics_name not known.')     
     
     if physics_name == 'none':
             return(NoFeedback(log_m_c, initial_guess[:1],
                                   bounds[:, :1]))
+    
+    if physics_name == 'eddington_free_ERDF':
+        return(QuasarLuminosity_free_ERDF(log_m_c, initial_guess, bounds))
+    
     if physics_name == 'eddington':
-        return(QuasarLuminosity(log_m_c, initial_guess, bounds))
-                
+        if eddington_erdf_params is None:
+            raise ValueError('Eddington model with fixed ERDF needs ERDF '
+                             'parameter passed via eddington_erdf_params '
+                             'argument.')
+        return(QuasarLuminosity(log_m_c, initial_guess[:2], bounds[:,:2],
+               eddington_erdf_params))
+         
+       
     if fixed_m_c:
         if physics_name == 'stellar':
             physics = StellarFeedback(log_m_c, initial_guess[:-1],
@@ -45,8 +57,6 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
         elif physics_name == 'quasar':
             physics = QuasarGrowth(log_m_c, initial_guess,
                                    bounds)
-        elif physics_name == 'eddington':
-            physics = QuasarLuminosity(log_m_c, initial_guess, bounds)
             
     else:
         # add log_m_c to initial guess and bounds
@@ -425,13 +435,13 @@ class QuasarGrowth_free_m_c(object):
         return(log_m_h)
     
     
-class QuasarLuminosity(object):
+class QuasarLuminosity_free_ERDF(object):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
-        Black hole bolometric luminosity model with free e_star.
+        Black hole bolometric luminosity model with free ERDF.
         
         '''
-        self.name = 'quasarluminosity'
+        self.name = 'eddington_free_ERDF'
         self.initial_guess = initial_guess   # initial guess for least_squares 
                                              # fit
         self.bounds = bounds                 # parameter bounds
@@ -439,7 +449,7 @@ class QuasarLuminosity(object):
         self.log_m_c = log_m_c
         
         # latest parameter used
-        self._current_parameter       = None
+        self.parameter                = None
         self.eddington_distribution   = None
         
     def calculate_log_quantity(self, log_m_h, log_eddington_ratio, log_C, 
@@ -506,10 +516,10 @@ class QuasarLuminosity(object):
         created and stored, otherwise create it.
 
         '''
-        if self._current_parameter == [log_eddington_star, rho]:
+        if self.parameter == [log_eddington_star, rho]:
             pass
         else:
-            self._current_parameter     = [log_eddington_star, rho]
+            self.parameter              = [log_eddington_star, rho]
             self.eddington_distribution = ERDF(log_eddington_star, rho)
         return(self.eddington_distribution)
     
@@ -523,6 +533,7 @@ class StellarBlackholeFeedback(StellarBlackholeFeedback_free_m_c):
 
         '''
         super().__init__(log_m_c, initial_guess, bounds)
+        self.name = 'stellar_blackhole'
 
     def calculate_log_quantity(self, log_m_h, log_A, alpha, beta):
         return(StellarBlackholeFeedback_free_m_c.
@@ -661,3 +672,36 @@ class QuasarGrowth(QuasarGrowth_free_m_c):
                                                  log_m_c = self.log_m_c,
                                                  log_A   = log_A,
                                                  gamma   = gamma))
+    
+class QuasarLuminosity(QuasarLuminosity_free_ERDF):
+    def __init__(self, log_m_c, initial_guess, bounds, eddington_erdf_params):
+        '''
+        Black hole bolometric luminosity model with fixed ERDF.
+        
+        '''
+        self.name = 'eddington'
+        self.initial_guess = initial_guess   # initial guess for least_squares 
+                                             # fit
+        self.bounds = bounds                 # parameter bounds
+        
+        self.log_m_c = log_m_c
+        
+        # parameter used
+        self.parameter                = eddington_erdf_params
+        self.eddington_distribution   = ERDF(*self.parameter)
+               
+    def calculate_log_erdf(self, log_eddington_ratio):
+        log_erdf = self.eddington_distribution.log_probability(log_eddington_ratio)
+        return(log_erdf)
+    
+    def calculate_mean_log_eddington_ratio(self):
+        mean = self.eddington_distribution.mean()
+        return(mean)
+    
+    def draw_eddington_ratio(self, num=1):
+        log_eddington_ratio = self.eddington_distribution.rvs(size=num)
+        return(log_eddington_ratio)
+    
+    def _make_distribution(self, log_eddington_star, rho):
+        raise NotImplementedError('Cannot make new distribution for fixed ERDF'
+                                  ' model.')

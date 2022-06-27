@@ -66,6 +66,8 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name']            = 'mstar'
         options['ndf_name']                 = 'SMF'
+        options['physics_models']           = ['none,', 'stellar',
+                                               'stellar_blackhole', 'changing']
         options['cutoff']                   = -6
         options['log_m_c']                  = 12.3
         options['feedback_change_z']        = 5
@@ -103,6 +105,8 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name']            = 'Muv'
         options['ndf_name']                 = 'UVLF'
+        options['physics_models']           = ['none,', 'stellar',
+                                               'stellar_blackhole', 'changing']
         options['cutoff']                   = -6
         options['log_m_c']                  = 11.5
         options['feedback_change_z']        = 8
@@ -140,6 +144,8 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name']            = 'Lbol'
         options['ndf_name']                 = 'QLF'
+        options['physics_models']           = ['none,', 'eddington',
+                                               'eddington_free_ERDF']
         options['cutoff']                   = -12
         options['log_m_c']                  = 11.5
         options['feedback_change_z']        = np.nan
@@ -179,6 +185,7 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name']            = 'mbh'
         options['ndf_name']                 = 'BHMF'
+        options['physics_models']           = ['none,', 'quasar']
         options['cutoff']                   = -13
         options['log_m_c']                  = 11.5
         options['feedback_change_z']        = np.nan
@@ -227,7 +234,7 @@ def update_bounds(model, parameter):
     '''
     # for lbol model, the parameter rho (slope of ERDF) must be larger
     # than the (slope of the HMF/eta)-1 to converge. 
-    if model.physics_name == 'eddington':
+    if model.physics_model.at_z(model._z).name == 'eddington_free_ERDF':
         eta = parameter[1]
         bound = -model.hmf_slope/eta - 1
         if bound >= 1:
