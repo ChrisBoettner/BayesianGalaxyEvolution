@@ -291,23 +291,23 @@ class ModelResult():
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
             log_quantity, *parameter)
         
-        ## calculate modelled number density function
+        ## calculate value of bh phi (hmf + quasar growth model)  
+        
         # calculate value of halo mass function
-        log_hmf = self.calculate_log_hmf(log_m_h, z)
+        log_hmf   = self.calculate_log_hmf(log_m_h, z)
+        
         # calculate physics/feedback effect (and deal with zero values)
         fb_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
-            log_m_h, *parameter)
-        log_fb_factor                 = np.empty_like(fb_factor)
-        log_fb_factor[fb_factor == 0] = -np.inf
-        log_fb_factor[fb_factor != 0] = np.log10(fb_factor[fb_factor!=0])
+                         log_m_h, *parameter)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore',category=RuntimeWarning)
+            # log of 0 is -inf, suppress corresponding numpy warning 
+            log_fb_factor             = np.log10(fb_factor)
+            # calculate modelled phi value (ignore inf-inf warning)
+            log_phi                   = log_hmf - log_fb_factor
             
-        # calculate modelled phi value
-        log_phi    = np.empty_like(log_m_h)
-        valid_mask = (log_m_h != -np.inf)
-        log_phi[valid_mask]  = log_hmf[valid_mask] - log_fb_factor[valid_mask]
-        log_phi[np.logical_not(valid_mask)]  = -np.inf
-        
-        log_phi[np.isnan(log_phi)]   = np.nan
+        # deal with infinite masses 
+        log_phi[np.isinf(log_m_h)]    =  - np.inf
         return(log_phi)
 
     def draw_parameter_sample(self, z, num=1):
@@ -588,6 +588,9 @@ class ModelResult_QLF(ModelResult):
                  fitting_method, saving_mode, name_addon=None,
                  groups=None, calibrate=True, paramter_calc = True,
                  progress=True, **kwargs):    
+       
+        # used for _make_space, so it doesn't have to be recreated every time
+        self._initial_eddington_space = np.linspace(-50,50,200)
         
         # initalize model itself
         super().__init__(redshifts, log_ndfs, log_hmf_functions,
@@ -595,6 +598,7 @@ class ModelResult_QLF(ModelResult):
                          fitting_method, saving_mode, name_addon,
                          groups, calibrate, paramter_calc,
                          progress, **kwargs)
+
               
     def calculate_log_abundance(self, log_L, z, parameter, num=100):
         #breakpoint()
@@ -709,83 +713,103 @@ class ModelResult_QLF(ModelResult):
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
                        log_L, log_eddington_ratio, *parameter[:2])
         
-        ## calculate value of bh phi (hmf + quasar growth model)
+        ## calculate value of bh phi (hmf + quasar growth model)  
+        
         # calculate value of halo mass function
-        log_hmf = self.calculate_log_hmf(log_m_h, z)
-        # calculate physics/feedback effect (and deal with zero values)
+        log_hmf   = self.calculate_log_hmf(log_m_h, z)
+        
+        # calculate physics/feedback effect
         fb_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
                          log_m_h,log_eddington_ratio, *parameter[:2])
-        log_fb_factor                 = np.empty_like(fb_factor)
-        log_fb_factor[fb_factor == 0] = -np.inf
-        log_fb_factor[fb_factor != 0] = np.log10(fb_factor[fb_factor!=0])
-        # calculate modelled phi value
-        log_phi    = np.empty_like(log_m_h)
-        valid_mask = (log_m_h != -np.inf)
-        log_phi[valid_mask]  = log_hmf[valid_mask] - log_fb_factor[valid_mask]
-        log_phi[np.logical_not(valid_mask)]  = -np.inf
-        
-        log_phi[np.isnan(log_phi)]   = np.nan
+       
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore',category=RuntimeWarning)
+            # log of 0 is -inf, suppress corresponding numpy warning 
+            log_fb_factor             = np.log10(fb_factor)
+            # calculate modelled phi value (ignore inf-inf warning)
+            log_phi                   = log_hmf - log_fb_factor
+            
+        # deal with infinite masses 
+        log_phi[np.isinf(log_m_h)]    =  - np.inf
         return(log_phi)
         
     
     def _make_log_eddington_ratio_space(self, log_L, z, parameter, 
-                                        log_cut=3, num=200):
+                                        log_cut=4, num=200):
         '''
         '''      
         # calculate some initial points to locate approximate location of 
         # maximum of QLF contribution
-        initial_eddington_space = np.linspace(-50,50,100)
+        initial_eddington_space = np.copy(self._initial_eddington_space)
         initial_qlf_points = self.calculate_log_QLF_contribution(initial_eddington_space,
                                                                  log_L,
                                                                  z,
                                                                  parameter)
-        finite_mask             = np.isfinite(initial_qlf_points)
-        initial_eddington_space = initial_eddington_space[finite_mask]
-        initial_qlf_points      = initial_qlf_points[finite_mask]
         
-        eddington_max_idx    = np.argmax(initial_qlf_points)
-        eddington_max        = initial_eddington_space[eddington_max_idx]
-        qlf_contribution_max = initial_qlf_points[eddington_max_idx]
+        # find maximum of function
+        max_idx              = np.argmax(initial_qlf_points)
+        qlf_contribution_max = initial_qlf_points[max_idx]
         
+        # find places of negligable contribution
+        relative_diff         = np.abs(1 - initial_qlf_points/qlf_contribution_max)
+        relevant_contribution = np.logical_not(relative_diff>log_cut)
         
-        ## calculate range of function that meaninfully contributes to integral
-        # high eddington ratio end is power law, so calculate approximate 
-        # power law slope (actually the inverse, since this is all we need)
-        slope_inverse = ((initial_eddington_space[-1]-initial_eddington_space[-2])/
-                         (initial_qlf_points[-1] - initial_qlf_points[-2]))
-        if (slope_inverse>0):
-            raise ValueError('Slope of large eddington_ratio end of QLF ' \
-                             'contribution is positive, integral will not '\
-                             'converge.')
-                              
-        # calculate upper eddington ratio where contribution to qlf is less than
-        # 10^log_cut that of the maximum value
-        rel_diff = np.inf
-        for i in range(101):
-            upper_eddington_limit = eddington_max-slope_inverse*(log_cut+i)
-            qlf_contribution      = self.calculate_log_QLF_contribution(
-                                          upper_eddington_limit,
-                                          log_L, z, parameter)
-            rel_diff = qlf_contribution_max - qlf_contribution
-            if rel_diff>log_cut:
-                break
+        # calculate first estimate of relevant space
+        relevant_eddington_space = initial_eddington_space[relevant_contribution]
+        lower_limit              = relevant_eddington_space[0]
+        upper_limit              = relevant_eddington_space[-1]
+    
+        # check if relevant part of integral is within searched space
+        if (relevant_contribution[0]==False 
+            and relevant_contribution[-1]==False):
+            # pass if relevant space is within boundries
+            pass
+        else:
+            # estimate slope for large Eddington ratios
+            slope_inverse = ((initial_eddington_space[-1]
+                              -initial_eddington_space[-2])/
+                             (initial_qlf_points[-1] 
+                              -initial_qlf_points[-2]))
+            if (slope_inverse>0):
+                raise ValueError('Slope estimate of large eddington_ratio end ' 
+                                 'of QLF contribution is positive, integral '
+                                 'will not converge or relevant QLF '
+                                 'contribution is outside of initial Eddington '
+                                 'space.')
+        
+            if relevant_contribution[-1]==True:
+                rel_diff = np.inf
+                for i in range(101):
+                    upper_limit = upper_limit-slope_inverse*(log_cut+i)
+                    qlf_contribution      = self.calculate_log_QLF_contribution(
+                                              upper_limit,
+                                              log_L, z, parameter)
+                    rel_diff = np.abs(1 - qlf_contribution/qlf_contribution_max)
+                    if rel_diff>log_cut:
+                        break
+                    
+            if relevant_contribution[0]==True:
+                rel_diff = np.inf
+                for i in range(101):
+                    upper_limit = upper_limit+slope_inverse*(log_cut+i)
+                    qlf_contribution      = self.calculate_log_QLF_contribution(
+                                              lower_limit,
+                                              log_L, z, parameter)
+                    rel_diff = np.abs(1 - qlf_contribution/qlf_contribution_max)
+                    if rel_diff>log_cut:
+                        break
             
-        # if loop completes, raise error
-        if i == 100:
-            raise StopIteration('Upper bound for relevant eddington_ratios '\
-                                'could not be found. QLF contribution might '\
-                                'converge very slowly.')
+            # if loop completes, raise error
+            if i == 100:
+                raise StopIteration('Bounds for relevant eddington_ratios could'
+                                    'not be found. QLF contribution might '
+                                    'converge very slowly.')
         
-        # function drops off faster to the low eddington_ratio side 
-        # (exponentially) instead of logarithmically, so using the same
-        # spacing should lead to value at least as small
-        lower_eddington_limit = eddington_max+slope_inverse*(log_cut+i)
         
-        # create space of eddington_ratios over relant range
-        eddington_space = np.linspace(lower_eddington_limit, 
-                                      upper_eddington_limit,
-                                      num)
-        
+        # creat new space that contributes mainly to integral
+        eddington_space         = np.linspace(lower_limit, 
+                                              upper_limit,
+                                              num)
         return(eddington_space)
         
 

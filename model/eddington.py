@@ -41,7 +41,7 @@ class ERDF(rv_continuous):
         
     '''
     
-    def __init__(self, log_eddington_star, rho, log_threshold=10,
+    def __init__(self, log_eddington_star, rho, log_threshold=3,
                  a = -np.inf, b = np.inf):
         super().__init__(a = a, b = b) # domain of Eddington Ratio,
                                        # values outside of domain are
@@ -76,17 +76,23 @@ class ERDF(rv_continuous):
         x         = make_array(log_eddington_ratio - self.log_eddington_star)
         exponent  = self.rho*x
         
-        log_erdf  = np.empty_like(x)
-        
-        # if value of power law term is very large, ignore the + 1 and 
-        # treat as if it was power law directly
-        power_law_mask            = (exponent > self.log_threshold)
-        log_erdf[power_law_mask]  = self.log_normalisation - exponent[power_law_mask]
-        
-        # otherwise calculate value properly
-        inverse_mask           = np.logical_not(power_law_mask)
-        power_law              = np.power(10, self.rho*x[inverse_mask])
-        log_erdf[inverse_mask] = self.log_normalisation - np.log10(1 + power_law)
+        # check where approximation can be used
+        power_law_mask = (exponent > self.log_threshold)
+        if np.all(power_law_mask):
+            log_erdf  = self.log_normalisation - exponent
+            
+        else:
+            log_erdf  = np.empty_like(x)  
+            # if value of power law term is very large, ignore the + 1 and 
+            # treat as if it was power law directly
+            log_erdf[power_law_mask]  = (self.log_normalisation 
+                                         - exponent[power_law_mask])
+            
+            # otherwise calculate value properly
+            inverse_mask           = np.logical_not(power_law_mask)
+            power_law              = np.power(10, self.rho*x[inverse_mask])
+            log_erdf[inverse_mask] = (self.log_normalisation 
+                                      - np.log10(1 + power_law))
         
         if np.isscalar(log_eddington_ratio):
             return(log_erdf[0])

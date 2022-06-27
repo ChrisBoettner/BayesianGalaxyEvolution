@@ -36,12 +36,20 @@ import cProfile
 
 #lbol   = load_model('Lbol','quasar',prior_name='successive')
 #mbh    = load_model('mbh','quasar',prior_name='successive')
-def run():  
-    lbol = run_model('Lbol', 'eddington', prior_name='successive')
-    return(lbol)
-cProfile.run('run()')
+# def run():  
+#     lbol = run_model('Lbol', 'eddington', prior_name='successive')
+#     return(lbol)
+# cProfile.run('run()')
 
-#lbol = run_model('Lbol', 'eddington', prior_name='successive')
+print('fits look better if you fix ERDF to values at z=0, so do that')
+print('then you can run the calibration, but you should also finish up the rest of the model'
+      '(functions + doc strings)')
+
+print('value of C parameter are close to the 38.1 you get from eddington calculation,'
+      'kinda makes sense since the m^gamma model is similar to bh model (esp at high masses)'
+      'so you effectively put in the black hole mass as in the original calculation')
+
+lbol = run_model('Lbol', 'eddington', prior_name='successive', fitting_method='mcmc', num_walker=10)
 
 #Plot_best_fit_ndfs(lbol)
 

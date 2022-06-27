@@ -116,7 +116,7 @@ def calculate_percentiles(data, axis=0):
 
 
 def calculate_limit(func, initial_value, rtol = 1e-4, 
-                    max_evaluations = int(1e+4)):
+                    max_evaluations = int(1e+5)):
     '''
     Simple function to calculate the limit of an input function as
     x -> infinity . Start at x=initial value and increase value lineary.

@@ -36,16 +36,16 @@ def get_list_of_plots():
     return(Plot.__subclasses__())
 
 class Plot(object):
-    def __init__(self, ModelResult):
+    def __init__(self, ModelResult, **kwargs):
         ''' Empty Parent Class '''
         self.plot_limits = {'top': 0.93, 'bottom': 0.113,
                             'left': 0.075, 'right': 0.991,
                             'hspace': 0.0, 'wspace': 0.0}
 
-        self.make_plot(ModelResult)
+        self.make_plot(ModelResult, **kwargs)
         self.default_name = None
 
-    def make_plot(self, ModelResult):
+    def make_plot(self, ModelResult, **kwargs):
         ModelResult = make_list(ModelResult)
 
         self.quantity_name = ModelResult[0].quantity_name
@@ -54,7 +54,7 @@ class Plot(object):
         if len(ModelResult) == 1:
             ModelResult = ModelResult[0]
 
-        fig, axes = self._plot(ModelResult)
+        fig, axes = self._plot(ModelResult, **kwargs)
 
         self.fig = fig
         self.axes = axes
@@ -127,15 +127,17 @@ class Plot(object):
 ################ PLOTS ########################################################
 
 class Plot_best_fit_ndfs(Plot):
-    def __init__(self, ModelResults):
+    def __init__(self, ModelResults, **kwargs):
         '''
         Plot modelled number density functions and data for comparison. Input
         can be a single model object or a list of objects.
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument.
         '''
-        super().__init__(ModelResults)
+        super().__init__(ModelResults, **kwargs)
         self.default_filename = self.quantity_name + '_ndf_' + self.prior_name
 
-    def _plot(self, ModelResults):
+    def _plot(self, ModelResults, datapoints=True):
         # make list if input is scalar
         ModelResults = make_list(ModelResults)
 
@@ -166,7 +168,8 @@ class Plot_best_fit_ndfs(Plot):
             ax.minorticks_on()
 
         # plot group data points
-        plot_group_data(axes, ModelResults[0])
+        if datapoints:
+            plot_group_data(axes, ModelResults[0])
 
         # plot modelled number density functions
         for model in ModelResults:
@@ -198,12 +201,12 @@ class Plot_best_fit_ndfs(Plot):
 
 
 class Plot_marginal_pdfs(Plot):
-    def __init__(self, ModelResults):
+    def __init__(self, ModelResults, **kwargs):
         '''
         Plot marginal probability distributions for model parameter. Input
         can be a single model object or a list of objects.
         '''
-        super().__init__(ModelResults)
+        super().__init__(ModelResults, **kwargs)
         self.default_filename = self.quantity_name + '_pdf_' + self.prior_name
 
     def _plot(self, ModelResults):
@@ -262,11 +265,11 @@ class Plot_marginal_pdfs(Plot):
 
 
 class Plot_parameter_sample(Plot):
-    def __init__(self, ModelResult):
+    def __init__(self, ModelResult, **kwargs):
         '''
         Plot a sample of the model parameter distribution at every redshift.
         '''
-        super().__init__(ModelResult)
+        super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_parameter'
 
     def _plot(self, ModelResult):
@@ -330,11 +333,11 @@ class Plot_parameter_sample(Plot):
 
 
 class Plot_qhmr(Plot):
-    def __init__(self, ModelResult):
+    def __init__(self, ModelResult, **kwargs):
         '''
         Plot relation between observable quantity and halo mass.
         '''
-        super().__init__(ModelResult)
+        super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_qhmr'
 
     def _plot(self, ModelResult):
@@ -378,15 +381,17 @@ class Plot_qhmr(Plot):
 
 
 class Plot_ndf_sample(Plot):
-    def __init__(self, ModelResult):
+    def __init__(self, ModelResult, **kwargs):
         '''
         Plot sample of number density functions by randomly drawing from parameter
-        distribution and calculating ndfs.
+        distribution and calculating ndfs. 
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument.
         '''
-        super().__init__(ModelResult)
+        super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_ndf_sample'
 
-    def _plot(self, ModelResult):
+    def _plot(self, ModelResult, datapoints=True):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
@@ -429,7 +434,8 @@ class Plot_ndf_sample(Plot):
                              linewidth=linewidth, alpha=alpha)
 
         # plot group data points
-        plot_group_data(axes, ModelResult)
+        if datapoints:
+            plot_group_data(axes, ModelResult)
 
         # add redshift as text to subplots
         add_redshift_text(axes, ModelResult.redshift)
@@ -451,16 +457,18 @@ class Plot_ndf_sample(Plot):
 
 
 class Plot_reference_function_sample(Plot):
-    def __init__(self, ModelResult):
+    def __init__(self, ModelResult, **kwargs):
         '''
         Plot sample of reference functions fitted to number density functions
         by randomly drawing from parameter distribution, calculating ndfs and
         then fitting reference functions.
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument.
         '''
-        super().__init__(ModelResult)
+        super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_reference_sample'
 
-    def _plot(self, ModelResult):
+    def _plot(self, ModelResult, datapoints=True):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
@@ -502,7 +510,8 @@ class Plot_reference_function_sample(Plot):
                              **plot_parameter)
 
         # plot group data points
-        plot_group_data(axes, ModelResult)
+        if datapoints:
+            plot_group_data(axes, ModelResult)
 
         # add redshift as text to subplots
         add_redshift_text(axes, ModelResult.redshift)
@@ -523,16 +532,18 @@ class Plot_reference_function_sample(Plot):
         return(fig, axes)
 
 class Plot_reference_comparison(Plot):
-    def __init__(self, ModelResults):
+    def __init__(self, ModelResults, **kwargs):
         '''
         Plot sample of reference functions fitted to number density functions
         by randomly drawing from parameter distribution, calculating ndfs and
         then fitting reference functions.
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument.
         '''
-        super().__init__(ModelResults)
+        super().__init__(ModelResults, **kwargs)
         self.default_filename = self.quantity_name + '_reference_comparison'
         
-    def _plot(self, ModelResults):
+    def _plot(self, ModelResults, datapoints=True):
         # make list if input is scalar
         ModelResults = make_list(ModelResults)
 
@@ -587,7 +598,8 @@ class Plot_reference_comparison(Plot):
         quantity_range     = ModelResults[0].quantity_options['quantity_range']
         
         # plot data group points
-        plot_group_data(axes, ModelResults[0]) 
+        if datapoints:
+            plot_group_data(axes, ModelResults[0]) 
         
         # plot model ndfs and reference fits to ndfs
         for i, Model in enumerate(ModelResults):  

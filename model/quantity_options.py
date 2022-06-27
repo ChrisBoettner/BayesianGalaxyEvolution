@@ -145,9 +145,9 @@ def get_quantity_specifics(quantity_name):
         options['feedback_change_z']        = np.nan
         # MODE
         options['model_param_num']          = 4
-        options['model_p0']                 = np.array([29, 2, -2, 1.9])
-        options['model_bounds']             = np.array([[20, 0, -10,  1], 
-                                                        [35, 20,  2, 10]])
+        options['model_p0']                 = np.array([39,   2, -2, 1.9])
+        options['model_bounds']             = np.array([[35,  0, -4,   1], 
+                                                        [45, 10,  2,   3]])
         options['fitting_space']            = 'log'
         options['relative_weights']         = True
         # REFERENCE FUNCTION  
@@ -235,7 +235,7 @@ def update_bounds(model, parameter):
         else :
             # bound has to be at least 1 for ERDF to converge
             model.physics_model.at_z(model._z).bounds[0,3] = 1
-    return()
+    return
 
 def get_bounds(z, model, buffer = 0.01):
     '''
