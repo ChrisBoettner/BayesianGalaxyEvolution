@@ -98,7 +98,7 @@ class ModelResult():
         self.log_hmfs = Redshift_dict(log_hmf_functions)
         self.groups = groups
 
-        self.hmf_slope = -0.94 # approximate low mass slope of HMFs
+        self.hmf_slope = -0.9 # approximate low mass slope of HMFs
         
         self.quantity_name = quantity_name
         # load options related to the quantity 
@@ -707,7 +707,7 @@ class ModelResult_QLF(ModelResult):
         
         # calculate halo masses from stellar masses using model
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
-            log_L, log_eddington_ratio, *parameter[:2])
+                       log_L, log_eddington_ratio, *parameter[:2])
         
         ## calculate value of bh phi (hmf + quasar growth model)
         # calculate value of halo mass function
@@ -734,11 +734,14 @@ class ModelResult_QLF(ModelResult):
         '''      
         # calculate some initial points to locate approximate location of 
         # maximum of QLF contribution
-        initial_eddington_space = np.linspace(-100,100,250)
+        initial_eddington_space = np.linspace(-50,50,100)
         initial_qlf_points = self.calculate_log_QLF_contribution(initial_eddington_space,
                                                                  log_L,
                                                                  z,
                                                                  parameter)
+        finite_mask             = np.isfinite(initial_qlf_points)
+        initial_eddington_space = initial_eddington_space[finite_mask]
+        initial_qlf_points      = initial_qlf_points[finite_mask]
         
         eddington_max_idx    = np.argmax(initial_qlf_points)
         eddington_max        = initial_eddington_space[eddington_max_idx]

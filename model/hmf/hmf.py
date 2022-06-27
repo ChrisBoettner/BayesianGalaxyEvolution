@@ -60,7 +60,7 @@ def calculate_log_mass_nonlinear(redshift):
         
     
 
-def create_hmfs(Mmin=2, Mmax=21):
+def create_hmfs(Mmin=0.5, Mmax=21):
     '''
     Create Halo Mass Functions using hmf package. Currently build in such a way
     that HMFs get created for integer redshifts from 0 to 19. HMF model is

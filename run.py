@@ -15,7 +15,7 @@ from model.interface import save_model
               help='Physical quantity: \'Muv\', \'mstar\', \'Lbol\' or \'mbh\'')
 @click.option('--feedback_name', prompt='Feedback model',
               help='Feedback model: \'none\', \'stellar\', \'stellar_blackhole\,\
-                  \'changing\', \'quasar\' or custom')
+                  \'changing\', \'quasar\', \'eddington\' or custom')
 @click.option('--data_subset', default=None,
               help='List of data sets names (of form AuthorYear')
 @click.option('--prior_name', default=None,

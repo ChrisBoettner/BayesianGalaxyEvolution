@@ -36,7 +36,13 @@ import cProfile
 
 #lbol   = load_model('Lbol','quasar',prior_name='successive')
 #mbh    = load_model('mbh','quasar',prior_name='successive')
-lbol = run_model('Lbol', 'eddington', prior_name='successive')
+def run():  
+    lbol = run_model('Lbol', 'eddington', prior_name='successive')
+    return(lbol)
+cProfile.run('run()')
+
+#lbol = run_model('Lbol', 'eddington', prior_name='successive')
+
 #Plot_best_fit_ndfs(lbol)
 
 ## BLACK HOLE MASS - LAMBDA RELATION (ABBUNDANCE MATCHING)
