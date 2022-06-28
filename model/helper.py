@@ -66,9 +66,9 @@ def within_bounds(values, lower_bounds, upper_bounds):
     All three arrays must have same length.
     '''
     values, lower_bounds, upper_bounds = make_list(values),\
-                                         make_list(lower_bounds),\
-                                         make_list(upper_bounds)
-    
+        make_list(lower_bounds),\
+        make_list(upper_bounds)
+
     is_within = []
     for i in range(len(values)):
         is_within.append(
@@ -110,55 +110,56 @@ def calculate_percentiles(data, axis=0):
     data = make_array(data)  # turn into numpy array if not already
 
     median = np.percentile(data, 50, axis=axis)
-    lower  = np.percentile(data, 16, axis=axis)
-    upper  = np.percentile(data, 84, axis=axis)
+    lower = np.percentile(data, 16, axis=axis)
+    upper = np.percentile(data, 84, axis=axis)
     return([median, lower, upper])
 
 
-def calculate_limit(func, initial_value, rtol = 1e-4, 
-                    max_evaluations = int(1e+5)):
+def calculate_limit(func, initial_value, rtol=1e-4,
+                    max_evaluations=int(1e+5)):
     '''
     Simple function to calculate the limit of an input function as
     x -> infinity . Start at x=initial value and increase value lineary.
     Convergence is reached when relative change is <= rtol. An error is 
     raised when maximum number of iterations is exceeded.
     '''
-    
-    x         = initial_value
+
+    x = initial_value
     value_old = func(x)
-    
+
     # calculate limit
     for i in range(max_evaluations):
-        x     = x + initial_value/10
+        x = x + initial_value/10
         value_new = func(x)
-        
+
         if value_old == 0:
             value_old = value_new
         elif np.abs(value_new-value_old)/value_old < rtol:
             return(value_new)
-        else: 
+        else:
             value_old = value_new
-            
+
     # raise error if convergence could not be achieved
-    raise StopIteration('Limit could not be calculated within max_evaluations.')
+    raise StopIteration(
+        'Limit could not be calculated within max_evaluations.')
     return
 
 
-def fit_function(function, data, p0, uncertainties=None, 
-                 bounds = (-np.inf, np.inf)):
+def fit_function(function, data, p0, uncertainties=None,
+                 bounds=(-np.inf, np.inf)):
     '''
     Fit function to data. May include uncertainties and bounds.
 
     '''
     data = make_array(data)
     # remove infinites and nans
-    data = data[np.isfinite(data[:,1])]
+    data = data[np.isfinite(data[:, 1])]
     if len(data) == 0:
-        return(np.array([np.nan,np.nan,np.nan]))
-    
+        return(np.array([np.nan, np.nan, np.nan]))
+
     fit_parameter, _ = curve_fit(function, data[:, 0], data[:, 1],
                                  sigma=uncertainties, p0=p0,
-                                 bounds = bounds,
+                                 bounds=bounds,
                                  maxfev=int(1e+5))
     return(fit_parameter)
 
@@ -190,11 +191,11 @@ def custom_progressbar():
     ''' Define how progressbar should look like. '''
     from progressbar import ProgressBar, Counter, FormatLabel, Timer,\
         FileTransferSpeed
-        
-    widgets = [FormatLabel(''),' ||| ', Counter('Iteration: %(value)d'),
+
+    widgets = [FormatLabel(''), ' ||| ', Counter('Iteration: %(value)d'),
                ' ||| ',  Timer('%(elapsed)s'), ' ||| ',
-               FileTransferSpeed(unit='it'),' ||| ', FormatLabel('')]
-    
+               FileTransferSpeed(unit='it'), ' ||| ', FormatLabel('')]
+
     progressbar = ProgressBar(widgets=widgets)
     return(progressbar)
 
@@ -209,7 +210,7 @@ def catch_warnings(catch=True):
     else:
         warnings.filterwarnings('default')
     return()
-    
+
 ################ TYPE CHECKING ################################################
 
 

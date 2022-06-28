@@ -26,7 +26,7 @@ def load_model(quantity_name, physics_name, data_subset=None,
     cutoff = get_quantity_specifics(quantity_name)['cutoff']
     groups, log_ndfs = load_data(quantity_name, cutoff, data_subset)
     log_hmfs = load_hmf_functions()
-    if redshift is None: 
+    if redshift is None:
         redshift = list(log_ndfs.keys())
 
     if prior_name is None:
@@ -48,7 +48,7 @@ def load_model(quantity_name, physics_name, data_subset=None,
 
 
 def save_model(quantity_name, physics_name, data_subset=None,
-               prior_name=None, redshift=None, parameter_calc = True,
+               prior_name=None, redshift=None, parameter_calc=True,
                **kwargs):
     '''
     Run and save (MCMC) model. Built for simplicity so that physics_name is
@@ -60,7 +60,7 @@ def save_model(quantity_name, physics_name, data_subset=None,
     cutoff = get_quantity_specifics(quantity_name)['cutoff']
     groups, log_ndfs = load_data(quantity_name, cutoff, data_subset)
     log_hmfs = load_hmf_functions()
-    if redshift is None: 
+    if redshift is None:
         redshift = list(log_ndfs.keys())
 
     if prior_name is None:
@@ -71,7 +71,7 @@ def save_model(quantity_name, physics_name, data_subset=None,
 
     print(quantity_name, prior_name, physics_name)
     start = timeit.default_timer()
-    
+
     Model = choose_model(quantity_name)
     model = Model(redshift, log_ndfs, log_hmfs,
                   quantity_name, physics_name, prior_name,
