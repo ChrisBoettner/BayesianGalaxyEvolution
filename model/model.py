@@ -938,6 +938,7 @@ class ModelResult_QLF(ModelResult):
             # cutoff, successively increase upper bound using the slope
             # estimate (and approximation of power law at high eddington
             # ratios) until upper limit to relevant contribution is found
+            i,j = 0, 0
             if relevant_contribution[-1] == True:
                 rel_diff = np.inf
                 for i in range(101):
@@ -949,12 +950,11 @@ class ModelResult_QLF(ModelResult):
                                       qlf_contribution_max)
                     if rel_diff > log_cut:
                         break
-
             # if lower end still contributes, do the same (This should happen
             # much more rarely, if at all, since on this side it drops
             # exponentially. If it happens, it might be a sign that the
             # maximum of the distribution is at lower eddington ratios than
-            # initially searched for
+            # initially searched for)
             if relevant_contribution[0] == True:
                 rel_diff = np.inf
                 for j in range(101):

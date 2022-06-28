@@ -152,7 +152,7 @@ def get_quantity_specifics(quantity_name):
         options['feedback_change_z'] = np.nan
         # MODE
         options['model_param_num'] = 4
-        options['model_p0'] = np.array([39,   2, -2, 1.9])
+        options['model_p0'] = np.array([39,   5, -2, 1.9])
         options['model_bounds'] = np.array([[35,  0, -4,   1],
                                             [45, 10,  2,   3]])
         options['fitting_space'] = 'log'
@@ -232,24 +232,20 @@ def update_bounds(model, parameter):
     '''
     Calculate and update bounds for parameter where bounds depend on each other.
     (For lbol model.)
-    '''
-    bounds = model.physics_model.at_z(model._z).bounds
+    ''' 
+    bounds = np.copy(model.physics_model.at_z(model._z).bounds).astype(float)
     # for lbol model, the parameter rho (slope of ERDF) must be larger
-    # than the (slope of the HMF/eta)-1 to converge.
+    # than the 1+(slope of the HMF/eta) to converge.
     if model.physics_model.at_z(model._z).name == 'eddington_free_ERDF':
         eta = parameter[1]
-        rho_bound = np.abs(model.hmf_slope)/eta - 1
-        if rho_bound >= 1:
-            bounds[0, 3] = rho_bound
-        else:
-            # bound has to be at least 1 for ERDF to converge
-            bounds[0, 3] = 1
+        rho_bound = 1 + np.abs(model.hmf_slope)/eta
+        bounds[0, 3] = rho_bound
             
     # if physics model is eddington, the ERDF is fixed, so we adjust the 
     # bounds of the eta instead of the ERDF slope (rho)          
     elif model.physics_model.at_z(model._z).name == 'eddington':
         rho         = model.physics_model.at_z(model._z).parameter[1]
-        eta_bound   = np.abs(model.hmf_slope)/(1+rho)
+        eta_bound   = np.abs(model.hmf_slope)/(rho-1)
         bounds[0,1] = eta_bound     
     return(bounds)
 
