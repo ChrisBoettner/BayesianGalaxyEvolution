@@ -49,8 +49,7 @@ print('value of C parameter are close to the 38.1 you get from eddington calcula
       'kinda makes sense since the m^gamma model is similar to bh model (esp at high masses)'
       'so you effectively put in the black hole mass as in the original calculation')
 
-lbol = run_model('Lbol', 'eddington', prior_name='successive',
-                  num_walker=10, min_chain_length=0)
+lbol = run_model('Lbol', 'eddington', prior_name='successive')
 
 #Plot_best_fit_ndfs(lbol)
 
