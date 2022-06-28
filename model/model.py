@@ -731,8 +731,8 @@ class ModelResult_QLF(ModelResult):
 
         # check if parameter are sensible
         if (self.physics_model.at_z(z).parameter[1]
-            <= np.abs(self.hmf_slope)/parameter[1]):
-            raise ValueError('Slope of ERDF smaller than (slope of HMF/'
+            <= (1+np.abs(self.hmf_slope)/parameter[1])):
+            raise ValueError('Slope of ERDF smaller than 1+(slope of HMF/'
                              'eta). QLF integral will not converge.')
         return(log_qlf_contribution)
 
