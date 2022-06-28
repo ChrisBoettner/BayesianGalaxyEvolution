@@ -232,17 +232,18 @@ def update_bounds(model, parameter):
     Calculate and update bounds for parameter where bounds depend on each other.
     (For lbol model.)
     '''
+    bounds = model.physics_model.at_z(model._z).bounds
     # for lbol model, the parameter rho (slope of ERDF) must be larger
     # than the (slope of the HMF/eta)-1 to converge. 
     if model.physics_model.at_z(model._z).name == 'eddington_free_ERDF':
-        eta = parameter[1]
-        bound = -model.hmf_slope/eta - 1
-        if bound >= 1:
-            model.physics_model.at_z(model._z).bounds[0,3] = bound
+        eta       = parameter[1]
+        rho_bound = -model.hmf_slope/eta - 1
+        if rho_bound >= 1:
+            bounds[0,3] = rho_bound
         else :
             # bound has to be at least 1 for ERDF to converge
-            model.physics_model.at_z(model._z).bounds[0,3] = 1
-    return
+            bounds[0,3] = 1
+    return(bounds)
 
 def get_bounds(z, model, buffer = 0.01):
     '''

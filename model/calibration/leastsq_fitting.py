@@ -80,8 +80,8 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     log_phi_obs = model.log_ndfs.at_z(z)[:, 1]
 
     # check if parameter are within bounds
-    update_bounds(model, params) # update first
-    if not within_bounds(params, *model.physics_model.at_z(z).bounds):
+    bounds = update_bounds(model, params) # update first
+    if not within_bounds(params, *bounds):
         return(1e+30)  # if outside of bound, return huge value to for cost func
 
     # calculate model ndf
