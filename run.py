@@ -13,8 +13,8 @@ from model.interface import save_model
 @click.command()
 @click.option('--quantity_name', prompt='Physical quantity',
               help='Physical quantity: \'Muv\', \'mstar\', \'Lbol\' or \'mbh\'')
-@click.option('--feedback_name', prompt='Feedback model',
-              help='Feedback model: \'none\', \'stellar\', \'stellar_blackhole\,\
+@click.option('--physics_name', prompt='Physics model',
+              help='Physics model: \'none\', \'stellar\', \'stellar_blackhole\,\
                   \'changing\', \'quasar\', \'eddington\', \'eddington_free_ERDF\' or custom')
 @click.option('--data_subset', default=None,
               help='List of data sets names (of form AuthorYear')
