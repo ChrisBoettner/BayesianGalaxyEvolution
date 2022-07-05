@@ -67,7 +67,7 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name'] = 'mstar'
         options['ndf_name'] = 'SMF'
-        options['physics_models'] = ['none,', 'stellar',
+        options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
         options['cutoff'] = -6
         options['log_m_c'] = 12.3
@@ -106,7 +106,7 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name'] = 'Muv'
         options['ndf_name'] = 'UVLF'
-        options['physics_models'] = ['none,', 'stellar',
+        options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
         options['cutoff'] = -6
         options['log_m_c'] = 11.5
@@ -141,52 +141,11 @@ def get_quantity_specifics(quantity_name):
                                              r'$\log \phi_*$ [cMpc$^{-1}$ mag$^{-1}$]',
                                              r'$\mathcal{M}_\mathrm{UV}^\mathrm{c}$',
                                              r'$\alpha$']
-    elif quantity_name == 'Lbol':
-        # GENERAL
-        options['quantity_name'] = 'Lbol'
-        options['ndf_name'] = 'QLF'
-        options['physics_models'] = ['none,', 'eddington',
-                                     'eddington_free_ERDF']
-        options['cutoff'] = -12
-        options['log_m_c'] = 11.5
-        options['feedback_change_z'] = np.nan
-        # MODE
-        options['model_param_num'] = 4
-        options['model_p0'] = np.array([39,   5, -2, 1.9])
-        options['model_bounds'] = np.array([[35,  0, -4,   1],
-                                            [45, 10,  2,   3]])
-        options['fitting_space'] = 'log'
-        options['relative_weights'] = True
-        # REFERENCE FUNCTION
-        options['reference_function_name'] = 'Double power law'
-        options['reference_function'] = log_double_power_law
-        options['reference_p0'] = [-4.5, 12, 0.2, 6]
-        options['reference_p0_bounds'] = [[-np.inf, 0, 0, 0],
-                                          [np.inf, np.inf, np.inf, np.inf]]
-        options['reference_param_num'] = 4
-        # PLOTS AND TABLES
-        options['quantity_range'] = np.linspace(39.1552, 50.91, 100)
-        options['subplot_grid'] = (4, 2)
-        options['ndf_xlabel'] = r'$L_\mathrm{bol}$'
-        options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
-        options['ndf_y_axis_limit'] = [-15, 3]
-        options['param_y_labels'] = [r'$\log A$' + '\n'
-                                     r'[ergs s$^{-1}$ $M_\odot^{-1}$]',
-                                     r'$\eta$']
-        options['ndf_legend_pos'] = 3
-        options['marker_alpha'] = 0.1
-        options['legend_columns'] = 1
-        options['reference_table_header'] = [r'$z$',
-                                             r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
-                                             r'$L_\mathrm{bol}^\mathrm{c}$ [$L_\odot$]',
-                                             r'$\gamma_1$',
-                                             r'$\gamma_2$']
-
     elif quantity_name == 'mbh':
         # GENERAL
         options['quantity_name'] = 'mbh'
         options['ndf_name'] = 'BHMF'
-        options['physics_models'] = ['none,', 'quasar']
+        options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
         options['log_m_c'] = 11.5
         options['feedback_change_z'] = np.nan
@@ -209,17 +168,59 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(6.87, 12.41, 100)
         options['subplot_grid'] = (3, 2)
-        options['ndf_xlabel'] = r'$m_\mathrm{BH}$'
+        options['ndf_xlabel'] = r'$m_\mathrm{BH}$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(m_\mathrm{BH})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15, 3]
-        options['param_y_labels'] = [r'$\log A$',
-                                     r'$\eta$']
+        options['param_y_labels'] = [r'$\log B$',
+                                     r'$\theta$']
         options['ndf_legend_pos'] = 3
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 1
         options['reference_table_header'] = [r'$z$',
                                              r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
                                              r'$\log M_\star^\mathrm{c}$ [$M_\odot$]',
+                                             r'$\gamma_1$',
+                                             r'$\gamma_2$']    
+    
+    elif quantity_name == 'Lbol':
+        # GENERAL
+        options['quantity_name'] = 'Lbol'
+        options['ndf_name'] = 'QLF'
+        options['physics_models'] = ['none', 'eddington',
+                                     'eddington_free_ERDF']
+        options['cutoff'] = -12
+        options['log_m_c'] = 11.5
+        options['feedback_change_z'] = np.nan
+        # MODE
+        options['model_param_num'] = 4
+        options['model_p0'] = np.array([39,   5, -2, 1.9])
+        options['model_bounds'] = np.array([[35,  0, -4,   1],
+                                            [45, 10,  2,   3]])
+        options['fitting_space'] = 'log'
+        options['relative_weights'] = True
+        # REFERENCE FUNCTION
+        options['reference_function_name'] = 'Double power law'
+        options['reference_function'] = log_double_power_law
+        options['reference_p0'] = [-4.5, 12, 0.2, 6]
+        options['reference_p0_bounds'] = [[-np.inf, 0, 0, 0],
+                                          [np.inf, np.inf, np.inf, np.inf]]
+        options['reference_param_num'] = 4
+        # PLOTS AND TABLES
+        options['quantity_range'] = np.linspace(39.1552, 50.91, 100)
+        options['subplot_grid'] = (4, 2)
+        options['ndf_xlabel'] = r'$L_\mathrm{bol}$ [erg s$^{-1}$]'
+        options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
+        options['ndf_y_axis_limit'] = [-15, 3]
+        options['param_y_labels'] = [r'$\log C$' + '\n' + r'[ergs s$^{-1}$ $M_\odot^{-1}$]',
+                                     r'$\eta$',
+                                     r'$ \log \lambda_\mathrm{c}$',
+                                     r'$\rho$']
+        options['ndf_legend_pos'] = 3
+        options['marker_alpha'] = 0.1
+        options['legend_columns'] = 1
+        options['reference_table_header'] = [r'$z$',
+                                             r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
+                                             r'$L_\mathrm{bol}^\mathrm{c}$ [$L_\odot$]',
                                              r'$\gamma_1$',
                                              r'$\gamma_2$']
 
@@ -238,7 +239,7 @@ def update_bounds(model, parameter):
     # than the 1+(slope of the HMF/eta) to converge.
     if model.physics_model.at_z(model._z).name == 'eddington_free_ERDF':
         eta = parameter[1]
-        rho_bound = 1 + np.abs(model.hmf_slope)/eta
+        rho_bound = 1 + model.hmf_slope/eta
         bounds[0, 3] = rho_bound
             
     # if physics model is eddington, the ERDF is fixed, so we adjust the 

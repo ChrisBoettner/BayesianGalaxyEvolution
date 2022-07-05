@@ -5,8 +5,8 @@ Created on Wed May  4 13:09:05 2022
 
 @author: chris
 """
-
-from model.interface import load_model
+import matplotlib.pyplot as plt
+from model.interface import load_model, run_model
 from model.plotting.plotting import *
 
 def make_plots(quantity, show = False, file_format='pdf'):
@@ -37,20 +37,35 @@ def make_plots(quantity, show = False, file_format='pdf'):
                   load_model(quantity,'stellar_blackhole')]
         Plot_best_fit_ndfs(models).save(file_format)
         Plot_marginal_pdfs(models).save(file_format)
-    elif quantity in ['Lbol', 'mbh']:
+        
+    elif quantity == 'Lbol':
+        # successive prior
+        model = load_model(quantity, 'eddington', prior_name='successive')
+        
+        # added for plotting
+        lbol_free = run_model(quantity, 'eddington_free_ERDF')
+        
+        Plot_best_fit_ndfs([model, lbol_free]).save(file_format)
+        Plot_marginal_pdfs(model).save(file_format)
+        Plot_parameter_sample(model).save(file_format)
+        Plot_qlf_contribution(model).save(file_format)
+        #Plot_reference_comparison(model).save(file_format)
+        del model
+        
+        
+    elif quantity == 'mbh':
         # successive prior
         model = load_model(quantity, 'quasar', prior_name='successive')
         
-        Plot_best_fit_ndfs(model).save(file_format)
+        # added for plotting
+        mbh_none = run_model(quantity, 'none')
+        
+        Plot_best_fit_ndfs([model, mbh_none]).save(file_format)
         Plot_marginal_pdfs(model).save(file_format)
         Plot_parameter_sample(model).save(file_format)
-        Plot_reference_comparison(model).save(file_format)
+        #Plot_reference_comparison(model).save(file_format)
         del model
         
-        # uniform priors
-        models = [load_model(quantity,'none'), load_model(quantity,'quasar')]
-        Plot_best_fit_ndfs(models).save(file_format)
-        Plot_marginal_pdfs(models).save(file_format)
     else:
         raise ValueError('quantity_name not known.')
         
@@ -60,6 +75,6 @@ def make_plots(quantity, show = False, file_format='pdf'):
     return
 
 if __name__ == '__main__':
-    quantities = ['mstar', 'Muv', 'Lbol']
+    quantities = ['mstar', 'Muv', 'mbh', 'Lbol']
     [make_plots(quantity) for quantity in quantities]
     

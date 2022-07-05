@@ -50,3 +50,4 @@ def calculate_best_fit_ndf(ModelResult, redshifts, quantity_range=None):
             quantity_range=quantity_range)
         best_fit_ndfs[z] = np.array([quantity, phi]).T
     return(best_fit_ndfs)
+

@@ -304,7 +304,7 @@ class Plot_parameter_sample(Plot):
             # plot parameter sample
             for i in range(parameter_sample.shape[1]):
                 axes[i].scatter(x, parameter_sample[:, i],
-                                c=color, s=0.1, cmap='Oranges')
+                                c=color, s=0.1, cmap='Greys')
 
         # add tick for every redshift
         axes[-1].set_xticks(ModelResult.redshift)
@@ -342,7 +342,7 @@ class Plot_qhmr(Plot):
 
     def _plot(self, ModelResult):
         if ModelResult.quantity_name != 'mstar':
-            raise NameError('Quantity-halo mass relation plot currently\
+            raise NotImplementedError('Quantity-halo mass relation plot currently\
                               only supports mstar.')
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
@@ -386,12 +386,12 @@ class Plot_ndf_sample(Plot):
         Plot sample of number density functions by randomly drawing from parameter
         distribution and calculating ndfs. 
         You can turn off the plotting of the data points using 'datapoints' 
-        argument.
+        argument and the best fit line using 'best_fit'.
         '''
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_ndf_sample'
 
-    def _plot(self, ModelResult, datapoints=True):
+    def _plot(self, ModelResult, best_fit=True, datapoints=True):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
@@ -432,6 +432,10 @@ class Plot_ndf_sample(Plot):
             for ndf in ndfs[z]:
                 axes[z].plot(ndf[:, 0], ndf[:, 1], color=color,
                              linewidth=linewidth, alpha=alpha)
+                
+        if best_fit:
+            plot_best_fit_ndf(axes, ModelResult)
+            plot_model_limit(axes, ModelResult, color=ModelResult.color)
 
         # plot group data points
         if datapoints:
@@ -585,7 +589,7 @@ class Plot_reference_comparison(Plot):
         plot_parameter_ndf_sample = {'linewidth':0.2,
                                      'alpha':0.4,
                                      'color':'grey'}
-        linestyle = ['-','--','-.']
+        linestyle = ['-','--',':']
 
         # quantity specific settings
         xlabel, ylabel, ncol  = ModelResults[0].quantity_options['ndf_xlabel'],\
@@ -667,3 +671,57 @@ class Plot_reference_comparison(Plot):
         turn_off_axes(axes)
         return(fig, axes)
 
+class Plot_qlf_contribution(Plot):
+    def __init__(self, ModelResult, **kwargs):
+        '''
+        Plot sample of reference functions fitted to number density functions
+        by randomly drawing from parameter distribution, calculating ndfs and
+        then fitting reference functions.
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument.
+        '''
+        super().__init__(ModelResult, **kwargs)
+        self.default_filename = self.quantity_name + '_qlf_contribution'
+        
+    def _plot(self, ModelResult):
+        
+        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF']:
+            return NotImplementedError('Only implemented for Eddington models.')
+
+        if ModelResult.parameter.is_None():
+            raise AttributeError(
+                'best fit parameter have not been calculated.')
+            
+
+        # calculate qlf contributions
+        z         = 0
+        parameter = ModelResult.parameter.at_z(z)
+        edd_space = np.linspace(-10,2,1000)
+        lum       = [36, 40, 44]
+        qlf_cont  = ModelResult.calculate_conditional_ERDF(lum, z, parameter,
+                                                           edd_space)
+                  
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1, sharex=True)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # line styles
+        linestyle = ['-','--',':']
+
+        # add axes labels
+        fig.supxlabel('log $\lambda$')
+        fig.supylabel('$P(\lambda|L_\mathrm{bol})$', x=0.01)
+
+        for i,l in enumerate(lum):
+            # plot median
+            ax.plot(qlf_cont[l][:,0], qlf_cont[l][:,1], 
+                    color='grey', linestyle=linestyle[i],
+                    label='$\log L_\mathrm{bol}$ = ' + str(l) + 
+                          ' erg s$^{-1}$')
+
+        # add legend and minor ticks
+        add_legend(ax, 0)
+        ax.minorticks_on()
+        return(fig, ax)
+    
+    
