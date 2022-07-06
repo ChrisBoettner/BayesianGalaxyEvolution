@@ -12,7 +12,7 @@ from model.helper import make_array
 
 ################ CALL FUNCTIONS ###############################################
 
-def get_log_mass_nonlinear(z):
+def get_log_mass_nonlinear(redshifts):
     '''
     Return (log of) turnover mass where the HMF switches from powerlaw-like 
     behaviour to exponential behaviour for input redshift. Convienience 
@@ -20,6 +20,7 @@ def get_log_mass_nonlinear(z):
     calculate_log_mass_nonlinear so that calculation does not need to be
     redone every time
     '''
+    redshifts = make_array(redshifts)
     masses = {0: 12.641732938023212,
               1: 11.19481037359994,
               2: 9.95792461057341,
@@ -40,7 +41,7 @@ def get_log_mass_nonlinear(z):
               17: 3.5176079649479837,
               18: 3.316975197110768,
               19: 3.126485380975656}
-    return(masses[z])
+    return([masses[z] for z in redshifts])
 
 ################ CREATION FUNCTIONS ###########################################
 

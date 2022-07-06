@@ -147,7 +147,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_name'] = 'BHMF'
         options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
-        options['log_m_c'] = 11.5
+        options['log_m_c'] = 12.3
         options['feedback_change_z'] = np.nan
         # MODE
         options['model_param_num'] = 2
@@ -189,7 +189,7 @@ def get_quantity_specifics(quantity_name):
         options['physics_models'] = ['none', 'eddington',
                                      'eddington_free_ERDF']
         options['cutoff'] = -12
-        options['log_m_c'] = 11.5
+        options['log_m_c'] = 12.3
         options['feedback_change_z'] = np.nan
         # MODE
         options['model_param_num'] = 4

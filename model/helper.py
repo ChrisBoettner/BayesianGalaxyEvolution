@@ -232,7 +232,7 @@ def make_array(variable):
     '''
     if isinstance(variable, np.ndarray):
         return(variable)
-    elif isinstance(variable, (list, pd.core.series.Series)):
+    elif isinstance(variable, (list, range, pd.core.series.Series)):
         return(np.array(variable))
     else:
         return(np.array([variable]))
