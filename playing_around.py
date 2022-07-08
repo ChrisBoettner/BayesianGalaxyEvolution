@@ -12,4 +12,4 @@ from model.plotting.plotting import *
 mbh= run_model('mbh','quasar')
 
 #mbh    = load_model('mbh','quasar', prior_name='successive')
-#lbol   = load_model('Lbol', 'eddington', prior_name='successive')
+lbol   = load_model('Lbol', 'eddington', prior_name='successive')
