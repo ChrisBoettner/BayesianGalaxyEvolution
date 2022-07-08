@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 
 from model.helper import make_list, calculate_percentiles, fit_function
-from model.quantity_options import get_quantity_range
 from model.calibration.leastsq_fitting import calculate_weights
 from model.analysis.calculations import calculate_best_fit_ndf
 
@@ -118,10 +117,10 @@ def calculate_best_fit_reference_parameter(ModelResult, redshift):
     reference, p0 = ModelResult.quantity_options['reference_function'],\
                     ModelResult.quantity_options['reference_p0']
     bounds        = ModelResult.quantity_options['reference_p0_bounds']
+    quantity_range = ModelResult.quantity_options['quantity_range']
     
     reference_parameter = {}
     for z in redshift:
-        quantity_range = get_quantity_range(z, ModelResult)
         ndf = calculate_best_fit_ndf(ModelResult, z, quantity_range)[z]
 
         cutoff = ModelResult.quantity_options['cutoff']
@@ -202,12 +201,12 @@ def get_reference_parameter_distribution(ModelResult, redshift, num=100):
     function, p0 = ModelResult.quantity_options['reference_function'],\
                    ModelResult.quantity_options['reference_p0']
     bounds        = ModelResult.quantity_options['reference_p0_bounds']
+    quantity_range = ModelResult.quantity_options['quantity_range']
 
     # calculate distributions
     reference_parameter_distribution = {}
     for z in redshift:
         parameter_at_z = []
-        quantity_range = get_quantity_range(z, ModelResult)
         ndf_sample = ModelResult.get_ndf_sample(z, num=num,
                                                 quantity_range=quantity_range)
 

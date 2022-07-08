@@ -151,11 +151,11 @@ def get_quantity_specifics(quantity_name):
         options['feedback_change_z'] = np.nan
         # MODE
         options['model_param_num'] = 2
-        options['model_p0'] = np.array([5, 1])
+        options['model_p0'] = np.array([5, 5])
         # upper limit for A parameter in model chosen to be minimum observed
-        # luminosity, if feedback model is 'quasar'
-        options['model_bounds'] = np.array([[-9.9, 0],
-                                            [100, 20]])
+        # black hole mass
+        options['model_bounds'] = np.array([[-5,   2],
+                                            [ 10,  10]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         # REFERENCE FUNCTION
@@ -194,8 +194,8 @@ def get_quantity_specifics(quantity_name):
         # MODE
         options['model_param_num'] = 4
         options['model_p0'] = np.array([39,   5, -2, 1.9])
-        options['model_bounds'] = np.array([[35,  0, -4,   1],
-                                            [45, 10,  2,   3]])
+        options['model_bounds'] = np.array([[-5,  0, -4,   1],
+                                            [ 7,  5,  2,   3]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         # REFERENCE FUNCTION
@@ -249,34 +249,3 @@ def update_bounds(model, parameter):
         eta_bound   = np.abs(model.hmf_slope)/(rho-1)
         bounds[0,1] = eta_bound     
     return(bounds)
-
-
-def get_bounds(z, model, buffer=0.01):
-    '''
-    Get model parameter bounds at specific redshift. (For mbh model.)
-    '''
-    bounds = model.quantity_options['model_bounds']
-
-    # for mbh quasar model, upper limit for log_A is lowest measured
-    # luminosity at that redshift. But model breaks down nearby already, so
-    # include some buffer
-    if model.physics_name == 'quasar':
-        bounds[1, 0] = np.amin(model.log_ndfs.at_z(z)[:, 0]) +\
-            np.log10(1+buffer)
-    return(bounds)
-
-
-def get_quantity_range(z, model, buffer=0.01):
-    '''
-    Get model quantity range. (For mbh model.)
-    '''
-    quantity_range = model.quantity_options['quantity_range']
-
-    # mbh quasar model breaks down when log_quantity near log_A, adapt
-    # ranges accordingly
-    if model.physics_name == 'quasar':
-        buffer = 0.01  # choose for far log_quantity can be away from log_A
-        lim = model.parameter.at_z(z)[0] + np.log10(1+buffer)
-
-        quantity_range = quantity_range[quantity_range > lim]
-    return(quantity_range)

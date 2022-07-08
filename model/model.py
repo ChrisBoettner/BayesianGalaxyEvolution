@@ -14,7 +14,7 @@ from progressbar import ProgressBar, FormatLabel, NullBar
 
 from model.helper import mag_to_lum, within_bounds, make_array, system_path
 from model.calibration import mcmc_fitting, leastsq_fitting
-from model.quantity_options import get_quantity_specifics, get_bounds
+from model.quantity_options import get_quantity_specifics
 from model.physics import physics_model
 from model.calibration.parameter import load_parameter
 
@@ -556,14 +556,12 @@ class ModelResult():
                 ph_name = 'stellar'
         else:
             raise NameError('physics_name not known.')
-        # get model parameter bounds
-        bounds_at_z = get_bounds(z, self)
         # add model
         self.physics_model.add_entry(z, physics_model(
             ph_name,
             self.log_m_c,
             initial_guess=self.quantity_options['model_p0'],
-            bounds=bounds_at_z))
+            bounds=self.quantity_options['model_bounds']))
         return
 
     def _plot_parameter(self, color, marker, linestyle, label):
@@ -1068,15 +1066,13 @@ class ModelResult_QLF(ModelResult):
                                                     self.redshift[0])[2:]
                 else:
                     eddington_erdf_params = None
-
-        # get model parameter bounds
-        bounds_at_z = get_bounds(z, self)
+                    
         # add model
         self.physics_model.add_entry(z, physics_model(
             ph_name,
             self.log_m_c,
             initial_guess=self.quantity_options['model_p0'],
-            bounds=bounds_at_z,
+            bounds=self.quantity_options['model_bounds'],
             eddington_erdf_params=eddington_erdf_params))
 
         # calculate initial erdf (which is reused for fixed ERDF model)

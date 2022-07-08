@@ -268,7 +268,7 @@ def dist_from_hist_nd(model, dist, dist_bounds):
     bounds for the histogram, to be used on the next iteration.
 
     IMPORTANT: If number of parameters of model are fewer than the columns in
-               dist, we marginalise over the later columns of dist.
+               dist, we marginalise over the LATER columns of dist.
 
     IMPORTANT: If sample distribution is None type, assume uniform distribution.
     '''
@@ -291,7 +291,12 @@ def dist_from_hist_nd(model, dist, dist_bounds):
         pass
     
     # create histogram
-    hist_nd, edges = np.histogramdd(dist, bins=500, range=dist_bounds)
+    try:
+        hist_nd, edges = np.histogramdd(dist, bins=500, range=dist_bounds)
+    except MemoryError:
+        # if histogram with 500 bins uses too much Memory, reduce number of
+        # bins
+        hist_nd, edges = np.histogramdd(dist, bins=200, range=dist_bounds)
     # make empty spots have 0.1% of actual prob, so that these are not
     # completely ignored
     if np.any(hist_nd == 0):

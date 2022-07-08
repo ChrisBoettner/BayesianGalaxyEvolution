@@ -228,7 +228,7 @@ class StellarBlackholeFeedback_free_m_c(object):
         '''
         log_m_h = self._check_overflow(log_m_h)
 
-        ratio = log_m_h - log_m_c       # m_h/m_c in log space
+        ratio = log_m_h - log_m_c         # m_h/m_c in log space
         log_stellar = - alpha * ratio     # log of sn feedback contribution
         if beta == 0:
             log_black_hole = np.full_like(log_stellar, 0)
@@ -264,7 +264,7 @@ class StellarBlackholeFeedback_free_m_c(object):
                 log_m_h[log_m_h > self._upper_m_h] = np.inf
         return(log_m_h)
 
-    def _make_m_h_space(self, log_m_c, alpha, beta, num, epsilon=0.001):
+    def _make_m_h_space(self, log_m_c, alpha, beta, num, log_epsilon=-3):
         '''
         Create array of m_h points arranged so that the points are dense where
         q(m_h) changes quickly and sparse where they aren't.
@@ -279,15 +279,15 @@ class StellarBlackholeFeedback_free_m_c(object):
         # this is log_m_lim = -1/(alpha+beta) * log(epsilon) + log_m_c
 
         # mass where bh feedback strongly dominating
-        log_m_bh = -1/(alpha+beta) * np.log10(epsilon) + log_m_c
+        log_m_bh = -1/(alpha+beta) * log_epsilon + log_m_c
         # mass where sn feedback strongly dominating
-        log_m_sn = 1/(alpha+beta) * np.log10(epsilon) + log_m_c
+        log_m_sn = 1/(alpha+beta)  * log_epsilon + log_m_c
 
         # create high density space
         dense_log_m_h = np.linspace(log_m_sn, log_m_bh, int(num*0.8))
         # create low density spaces
         sparse_log_m_lower = np.linspace(log_m_sn/2, log_m_sn, int(num*0.1))
-        sparse_log_m_upper = np.linspace(log_m_bh, 2*log_m_sn, int(num*0.1))
+        sparse_log_m_upper = np.linspace(log_m_bh, 2*log_m_bh, int(num*0.1))
 
         log_m_h_table = np.sort(np.concatenate([dense_log_m_h,
                                                 sparse_log_m_lower,
@@ -338,23 +338,15 @@ class StellarFeedback_free_m_c(StellarBlackholeFeedback_free_m_c):
                                                beta=0))
 
 
-class QuasarGrowth_free_m_c(object):
+class QuasarGrowth_free_m_c(StellarBlackholeFeedback_free_m_c):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
         Black hole growth model with free m_c.
 
         '''
+        super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'quasargrowth_free_m_c'
-        self.log_m_c = log_m_c               # critical mass for model
-        self.initial_guess = initial_guess   # initial guess for least_squares
-        # fit
-        self.bounds = bounds                 # parameter (A, gamma) bounds
-
-        # max halo mass (just used to avoid overflows)
-        self._upper_m_h = 50
-        # latest parameter used
-        self._current_parameter = None
-        self.log_m_h_function = None
+        self.eta  = 2
 
     def calculate_log_quantity(self, log_m_h, log_m_c, log_A, theta):
         '''
@@ -363,36 +355,36 @@ class QuasarGrowth_free_m_c(object):
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h)
 
-        x = self._variable_substitution(log_m_h, log_m_c, theta)
-        log_quantity = log_A + np.log10(1 + x)
+        low, high = self._variable_substitution(log_m_h, log_m_c, theta)
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=RuntimeWarning)
+            # ignore warning associated with log(0)
+            log_quantity = log_A + np.log10(low + high)
         return(log_quantity)
 
-    def calculate_log_halo_mass(self, log_quantity, log_m_c, log_A, theta):
+    def calculate_log_halo_mass(self, log_quantity, log_m_c, log_A, theta,
+                                num=500):
         '''
         Calculate halo mass from input observable quantity and model parameter.
         '''
-        log_quantity = make_array(log_quantity)
-        # variable substitution
-        log_x = np.full_like(log_quantity, np.nan)
-        # check when the -1 can be ignored and calculate approximation
-        mask = ((log_quantity - log_A) > 10)
-        log_x[mask] = log_quantity[mask] - log_A
-        # if -1 cannot be ignored, calculate value properly
-        inv_mask = np.logical_not(mask)
-        # deal with infinities and negative values, and regime where model
-        # breaks down
-        x = np.power(10, log_quantity[inv_mask] - log_A) - 1
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)
-            # ignore warnings when x<0, deal with nans later
-            log_x[inv_mask] = np.log10(x)
-        
-        # calculate halo mass
-        log_m_h                     =  np.empty_like(log_x)
-        log_m_h[np.isnan(log_x)]    = -np.inf
-        log_m_h[np.isfinite(log_x)] = (1/theta * log_x[np.isfinite(log_x)] 
-                                       + log_m_c)
+        if self._current_parameter == [log_m_c, log_A, theta]:
+            pass
+        else:
+            self._current_parameter = [log_m_c, log_A, theta]
+            # create lookup tables of halo mass and quantities
+            log_m_h_lookup = self._make_m_h_space(log_m_c, theta, num)
+            log_quantity_lookup = QuasarGrowth_free_m_c.calculate_log_quantity(
+                                                self, log_m_h_lookup, log_m_c, 
+                                                log_A, theta)
 
+            # use lookup table to create callable spline
+            self.log_m_h_function = interp1d(log_quantity_lookup,
+                                             log_m_h_lookup,
+                                             bounds_error=False,
+                                             fill_value=([-np.inf], [np.inf]))
+
+        log_m_h = self.log_m_h_function(log_quantity)
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h)  # deal with very large m_h
         return(log_m_h)
@@ -404,7 +396,7 @@ class QuasarGrowth_free_m_c(object):
         log_m_h = make_array(log_m_h)
         log_m_h = self._check_overflow(log_m_h)
 
-        x = self._variable_substitution(log_m_h, log_m_c, theta)
+        low, high = self._variable_substitution(log_m_h, log_m_c, theta)
 
         # deal with values where model breaks down
         first_derivative = np.empty_like(log_m_h)
@@ -412,9 +404,11 @@ class QuasarGrowth_free_m_c(object):
         first_derivative[mask] = np.inf  # so that phi will be = 0
 
         # calculate first derivative
-        first_derivative[np.logical_not(mask)] = (1/(1 +
-                                                    1/x[np.logical_not(mask)])
-                                                    * theta)
+        num   = (self.eta * low[np.logical_not(mask)] 
+                 + theta * high[np.logical_not(mask)])
+        denom = low[np.logical_not(mask)] + high[np.logical_not(mask)]
+        
+        first_derivative[np.logical_not(mask)] = num/denom
         return(first_derivative)
 
     def _variable_substitution(self, log_m_h, log_m_c, theta):
@@ -424,23 +418,35 @@ class QuasarGrowth_free_m_c(object):
         log_m_h = self._check_overflow(log_m_h)
 
         ratio = log_m_h - log_m_c  # m_h/m_c in log space
-        log_x = theta * ratio
-        return(10**log_x)
+        if self.eta == 0:
+            log_low = np.full_like(log_m_h, 0)
+        else:
+            log_low  = self.eta * ratio
+        log_high = theta * ratio
+        return(10**log_low,10**log_high)
 
-    def _check_overflow(self, log_m_h):
+    def _make_m_h_space(self, log_m_c, theta, num, log_epsilon=-3):
         '''
-        Control for overflows by checking if halo mass exceeds upper limit.
-        Also deal with Nans.
-        '''
-        if np.isnan(log_m_h).any():
-            return(np.full_like(log_m_h, np.nan))
-        if np.any(log_m_h > self._upper_m_h):
-            if np.isscalar(log_m_h):
-                log_m_h = np.inf
-            else:
-                log_m_h[log_m_h > self._upper_m_h] = np.inf
-        return(log_m_h)
+        Create array of m_h points arranged so that the points are dense where
+        q(m_h) changes quickly and sparse where they aren't.
 
+        '''
+        # mass where bh feedback strongly dominating
+        log_m_low =   1/(self.eta-theta) * log_epsilon + log_m_c
+        # mass where sn feedback strongly dominating
+        log_m_high = -1/(self.eta-theta) * log_epsilon + log_m_c
+
+        # create high density space
+        dense_log_m_h = np.linspace(log_m_low, log_m_high, int(num*0.8))
+        # create low density spaces
+        sparse_log_m_lower = np.linspace(log_m_low/2, log_m_low, int(num*0.1))
+        sparse_log_m_upper = np.linspace(log_m_high, 
+                                         2*log_m_high, int(num*0.1))
+
+        log_m_h_table = np.sort(np.concatenate([dense_log_m_h,
+                                                sparse_log_m_lower,
+                                                sparse_log_m_upper]))
+        return(np.unique(log_m_h_table))
 
 class QuasarLuminosity_free_ERDF(object):
     def __init__(self, log_m_c, initial_guess, bounds):
