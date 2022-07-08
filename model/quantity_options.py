@@ -195,7 +195,7 @@ def get_quantity_specifics(quantity_name):
         options['model_param_num'] = 4
         options['model_p0'] = np.array([39,   5, -2, 1.9])
         options['model_bounds'] = np.array([[38,  0,  -4,   1],
-                                            [50,  10,  2,   5]])
+                                            [50,  10,  4,  10]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         # REFERENCE FUNCTION
