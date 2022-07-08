@@ -303,9 +303,6 @@ def dist_from_hist_nd(model, dist, dist_bounds):
         hist_nd = hist_nd.astype(float)
         hist_nd[hist_nd == 0] = 0.001 * np.sum(hist_nd) / np.sum(hist_nd == 0)
     # normalize
-    import warnings
-    warnings.filterwarnings('error')
-    
     hist_nd = hist_nd / np.sum(hist_nd)
     return([[hist_nd], edges], dist_bounds_new)
 
