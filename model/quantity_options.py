@@ -212,7 +212,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15, 3]
         options['param_y_labels'] = [r'$\log C$' + '\n' + r'[ergs s$^{-1}$ $M_\odot^{-1}$]',
-                                     r'$\eta$',
+                                     r'$\theta$',
                                      r'$ \log \lambda_\mathrm{c}$',
                                      r'$\rho$']
         options['ndf_legend_pos'] = 3

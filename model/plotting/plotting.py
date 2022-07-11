@@ -13,8 +13,7 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 add_redshift_text, add_legend,\
                                                 add_separated_legend,\
                                                 turn_off_axes,\
-                                                get_distribution_limits,\
-                                                plot_model_limit
+                                                get_distribution_limits
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z
 
 
@@ -174,7 +173,6 @@ class Plot_best_fit_ndfs(Plot):
         # plot modelled number density functions
         for model in ModelResults:
             plot_best_fit_ndf(axes, model)
-            plot_model_limit(axes, model, color=model.color)
 
         # add redshift as text to subplots
         add_redshift_text(axes, ModelResults[0].redshift)
@@ -435,7 +433,6 @@ class Plot_ndf_sample(Plot):
                 
         if best_fit:
             plot_best_fit_ndf(axes, ModelResult)
-            plot_model_limit(axes, ModelResult, color=ModelResult.color)
 
         # plot group data points
         if datapoints:
@@ -709,15 +706,15 @@ class Plot_conditional_ERDF(Plot):
         linestyle = ['-','--',':', '-.']
 
         # add axes labels
-        fig.supxlabel('log $\lambda$')
-        fig.supylabel('$P(\lambda|L_\mathrm{bol})$', x=0.01)
+        fig.supxlabel(r'log $\lambda$')
+        fig.supylabel(r'$\xi (\lambda|L_\mathrm{bol})$', x=0.01)
 
         for i,l in enumerate(lum):
             # plot median
             ax.plot(qlf_cont[l][:,0], qlf_cont[l][:,1], 
                     color='grey', linestyle=linestyle[i],
-                    label='$\log L_\mathrm{bol}$ = ' + str(l) + 
-                          ' erg s$^{-1}$')
+                    label=r'$\log L_\mathrm{bol}$ = ' + str(l) + 
+                          r' erg s$^{-1}$')
             
         # add limits
         ax.set_ylim([0,0.6])

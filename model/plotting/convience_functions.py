@@ -44,19 +44,6 @@ def plot_best_fit_ndf(axes, ModelResult):
                      color=color)
     return(ndfs)
 
-def plot_model_limit(axes, ModelResult, color):
-    '''
-    Plot vertical line, where model breaks down.
-    '''
-    # for Lbol quasar model, lowest possible luminosity is equal to 
-    # normalisation log_A
-    if ModelResult.physics_name == 'quasar':           
-        for z in ModelResult.redshift:
-            c   = pick_from_list(color, z)
-            lim = ModelResult.parameter.at_z(z)[0] 
-            axes[z].axvline(lim, color=c)
-    return
-
 ################ ADD TEXT TO PLOT #############################################
 
 
