@@ -346,107 +346,30 @@ class QuasarGrowth_free_m_c(StellarBlackholeFeedback_free_m_c):
         '''
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'quasargrowth_free_m_c'
-        self.eta  = 2
 
-    def calculate_log_quantity(self, log_m_h, log_m_c, log_A, theta):
+    def calculate_log_quantity(self, log_m_h, log_m_c, log_B, eta):
         '''
-        Calculate observable quantity from input halo mass and model parameter.
+        Calculate (log of) bolometric luminosity from input halo mass, 
+        model parameter and chosen log_eddington_ratio.
         '''
         log_m_h = make_array(log_m_h)
-        log_m_h = self._check_overflow(log_m_h)
+        return(log_B + eta*(log_m_h - log_m_c))
 
-        low, high = self._variable_substitution(log_m_h, log_m_c, theta)
-        
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)
-            # ignore warning associated with log(0)
-            log_quantity = log_A + np.log10(low + high)
-        return(log_quantity)
-
-    def calculate_log_halo_mass(self, log_quantity, log_m_c, log_A, theta,
-                                num=500):
+    def calculate_log_halo_mass(self, log_quantity, log_m_c, log_B,
+                                eta):
         '''
-        Calculate halo mass from input observable quantity and model parameter.
+        Calculate (log of) halo mass from input bolometric luminosity, 
+        model parameter and chosen log_eddington_ratio.
         '''
-        if self._current_parameter == [log_m_c, log_A, theta]:
-            pass
-        else:
-            self._current_parameter = [log_m_c, log_A, theta]
-            # create lookup tables of halo mass and quantities
-            log_m_h_lookup = self._make_m_h_space(log_m_c, theta, num)
-            log_quantity_lookup = QuasarGrowth_free_m_c.calculate_log_quantity(
-                                                self, log_m_h_lookup, log_m_c, 
-                                                log_A, theta)
+        log_quantity = make_array(log_quantity)
+        return((log_quantity-log_B)/eta + log_m_c)
 
-            # use lookup table to create callable spline
-            self.log_m_h_function = interp1d(log_quantity_lookup,
-                                             log_m_h_lookup,
-                                             bounds_error=False,
-                                             fill_value=([-np.inf], [np.inf]))
-
-        log_m_h = self.log_m_h_function(log_quantity)
-        log_m_h = make_array(log_m_h)
-        log_m_h = self._check_overflow(log_m_h)  # deal with very large m_h
-        return(log_m_h)
-
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_m_c, log_A, theta):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_m_c,
+                                      log_B, eta):
         '''
         Calculate d/d(log m_h) log_quantity.
         '''
-        log_m_h = make_array(log_m_h)
-        log_m_h = self._check_overflow(log_m_h)
-
-        low, high = self._variable_substitution(log_m_h, log_m_c, theta)
-
-        # deal with values where model breaks down
-        first_derivative = np.empty_like(log_m_h)
-        mask = log_m_h <= 0
-        first_derivative[mask] = np.inf  # so that phi will be = 0
-
-        # calculate first derivative
-        num   = (self.eta * low[np.logical_not(mask)] 
-                 + theta * high[np.logical_not(mask)])
-        denom = low[np.logical_not(mask)] + high[np.logical_not(mask)]
-        
-        first_derivative[np.logical_not(mask)] = num/denom
-        return(first_derivative)
-
-    def _variable_substitution(self, log_m_h, log_m_c, theta):
-        '''
-        Transform input quanitities to more easily handable quantities.
-        '''
-        log_m_h = self._check_overflow(log_m_h)
-
-        ratio = log_m_h - log_m_c  # m_h/m_c in log space
-        if self.eta == 0:
-            log_low = np.full_like(log_m_h, 0)
-        else:
-            log_low  = self.eta * ratio
-        log_high = theta * ratio
-        return(10**log_low,10**log_high)
-
-    def _make_m_h_space(self, log_m_c, theta, num, log_epsilon=-3):
-        '''
-        Create array of m_h points arranged so that the points are dense where
-        q(m_h) changes quickly and sparse where they aren't.
-
-        '''
-        # mass where bh feedback strongly dominating
-        log_m_low =   1/(self.eta-theta) * log_epsilon + log_m_c
-        # mass where sn feedback strongly dominating
-        log_m_high = -1/(self.eta-theta) * log_epsilon + log_m_c
-
-        # create high density space
-        dense_log_m_h = np.linspace(log_m_low, log_m_high, int(num*0.8))
-        # create low density spaces
-        sparse_log_m_lower = np.linspace(log_m_low/2, log_m_low, int(num*0.1))
-        sparse_log_m_upper = np.linspace(log_m_high, 
-                                         2*log_m_high, int(num*0.1))
-
-        log_m_h_table = np.sort(np.concatenate([dense_log_m_h,
-                                                sparse_log_m_lower,
-                                                sparse_log_m_upper]))
-        return(np.unique(log_m_h_table))
+        return(np.full_like(log_m_h, eta))
 
 class QuasarLuminosity_free_ERDF(object):
     def __init__(self, log_m_c, initial_guess, bounds):
@@ -666,26 +589,26 @@ class QuasarGrowth(QuasarGrowth_free_m_c):
         '''
         super().__init__(log_m_c, initial_guess, bounds)
 
-    def calculate_log_quantity(self, log_m_h, log_A, theta):
+    def calculate_log_quantity(self, log_m_h, log_B, eta):
         return(QuasarGrowth_free_m_c.
                calculate_log_quantity(self, log_m_h,
                                       log_m_c=self.log_m_c,
-                                      log_A=log_A,
-                                      theta=theta))
+                                      log_B=log_B,
+                                      eta=eta))
 
-    def calculate_log_halo_mass(self, log_quantity, log_A, theta):
+    def calculate_log_halo_mass(self, log_quantity, log_B, eta):
         return(QuasarGrowth_free_m_c.
                calculate_log_halo_mass(self, log_quantity,
                                        log_m_c=self.log_m_c,
-                                       log_A=log_A,
-                                       theta=theta))
+                                       log_B=log_B,
+                                       eta=eta))
 
-    def calculate_dlogquantity_dlogmh(self, log_m_h, log_A, theta):
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_B, eta):
         return(QuasarGrowth_free_m_c.
                calculate_dlogquantity_dlogmh(self, log_m_h,
                                              log_m_c=self.log_m_c,
-                                             log_A=log_A,
-                                             theta=theta))
+                                             log_B=log_B,
+                                             eta=eta))
 
 
 class QuasarLuminosity(QuasarLuminosity_free_ERDF):

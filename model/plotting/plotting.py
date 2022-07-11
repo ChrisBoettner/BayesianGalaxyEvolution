@@ -671,7 +671,7 @@ class Plot_reference_comparison(Plot):
         turn_off_axes(axes)
         return(fig, axes)
 
-class Plot_qlf_contribution(Plot):
+class Plot_conditional_ERDF(Plot):
     def __init__(self, ModelResult, **kwargs):
         '''
         Plot sample of reference functions fitted to number density functions
@@ -696,8 +696,8 @@ class Plot_qlf_contribution(Plot):
         # calculate qlf contributions
         z         = 0
         parameter = ModelResult.parameter.at_z(z)
-        edd_space = np.linspace(-10,2,1000)
-        lum       = [36, 40, 44]
+        edd_space = np.linspace(-10,9,1000)
+        lum       = [35, 40, 45, 50]
         qlf_cont  = ModelResult.calculate_conditional_ERDF(lum, z, parameter,
                                                            edd_space)
                   
@@ -706,7 +706,7 @@ class Plot_qlf_contribution(Plot):
         fig.subplots_adjust(**self.plot_limits)
         
         # line styles
-        linestyle = ['-','--',':']
+        linestyle = ['-','--',':', '-.']
 
         # add axes labels
         fig.supxlabel('log $\lambda$')
@@ -718,7 +718,10 @@ class Plot_qlf_contribution(Plot):
                     color='grey', linestyle=linestyle[i],
                     label='$\log L_\mathrm{bol}$ = ' + str(l) + 
                           ' erg s$^{-1}$')
-
+            
+        # add limits
+        ax.set_ylim([0,0.6])
+        
         # add legend and minor ticks
         add_legend(ax, 0)
         ax.minorticks_on()

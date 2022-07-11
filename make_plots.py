@@ -48,7 +48,7 @@ def make_plots(quantity, show = False, file_format='pdf'):
         Plot_best_fit_ndfs([model, lbol_free]).save(file_format)
         Plot_marginal_pdfs(model).save(file_format)
         Plot_parameter_sample(model).save(file_format)
-        Plot_qlf_contribution(model).save(file_format)
+        Plot_conditional_ERDF(model).save(file_format)
         #Plot_reference_comparison(model).save(file_format)
         del model
         

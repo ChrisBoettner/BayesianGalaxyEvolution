@@ -55,8 +55,11 @@ class ERDF(rv_continuous):
 
         # normalisation: integrate unnormalized erdf from 0 to
         # upper bound of domain (analytical result)
-        normalisation = 1/calculate_limit(self._unnormalized_cdf,
-                                          self.log_eddington_star+5)
+        if self.b == np.inf:
+            normalisation = 1/calculate_limit(self._unnormalized_cdf,
+                                              self.log_eddington_star+5)
+        else:    
+            normalisation = 1/self._unnormalized_cdf(b)
         self.log_normalisation = np.log10(normalisation)
 
     def _pdf(self, log_eddington_ratio):
@@ -93,6 +96,11 @@ class ERDF(rv_continuous):
             power_law = np.power(10, self.rho*x[inverse_mask])
             log_erdf[inverse_mask] = (self.log_normalisation
                                       - np.log10(1 + power_law))
+        
+        # set values oustide of domain to -np.inf
+        domain_mask = np.where(np.logical_or(log_eddington_ratio<self.a,
+                                             log_eddington_ratio>self.b))
+        log_erdf[domain_mask] = -np.inf
 
         if np.isscalar(log_eddington_ratio):
             return(log_erdf[0])
