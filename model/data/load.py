@@ -12,7 +12,6 @@ from model.helper import make_list
 ################ MAIN FUNCTIONS ###############################################
 path = 'model/data/'
 
-
 def load_hmf_functions(source='ShethTormen'):
     '''
     Load HMF data and transform it to callable function by interpolating
@@ -39,7 +38,7 @@ def load_hmf_functions(source='ShethTormen'):
     return(hmf_functions)
 
 
-def load_data(quantity_name, cutoff, data_subset=None):
+def load_ndf_data(quantity_name, cutoff, data_subset=None):
     '''
     Wrapper function to load datasets.
 
@@ -49,7 +48,7 @@ def load_data(quantity_name, cutoff, data_subset=None):
 
     IMPORTANT:  number densities (phi values) below threshold value are cut off
                 because they can't be measured reliably (default is 10^(-6) for
-                'mstar' and 'Muv', -np.inf for 'Lbol')
+                'mstar' and 'Muv', -np.inf for 'Lbol', 'mbh')
     '''
     if quantity_name == 'mstar':
         groups, data = _load_smf_data(cutoff=cutoff, data_subset=data_subset)
@@ -63,6 +62,26 @@ def load_data(quantity_name, cutoff, data_subset=None):
         raise NameError('quantity_name not known.')
     return(groups, data)
 
+def load_data_points(quantity_name):
+    '''
+    Load specific data sets for individual data that are not ndfs. 
+    Currently included are
+    
+    mstar_mbh : Stellar mass - Black hole mass relation
+       Returns numpy array of form [log_stellar_mass, log_bh_mass, index],
+       where index contains information about the data source,
+       0 : Baron2019
+       1 : Reines2015
+       2 : Bentz2018
+
+    '''
+    if quantity_name == 'mstar_mbh':
+        data = np.load(path + '/BHmass/mstar_mbh_Baron2019.npy')
+    else:
+        raise NameError('quantity_name not known.')
+    return(data)
+
+################ NUMBER DENSITY FUNCTION DATASETS #############################
 
 def _load_smf_data(cutoff, data_subset):
     '''
@@ -74,7 +93,8 @@ def _load_smf_data(cutoff, data_subset):
     # get z=0,1,2,3,4 for Davidson, z=1,2,3 for Ilbert
     davidson = dict(np.load(path + 'SMF/Davidson2017SMF.npz'))
     davidson = {i: davidson[j] for i, j in [['0', '1'],
-                                            ['1', '2'], ['2', '4'], ['3', '6'], ['4', '8']]}
+                                            ['1', '2'], ['2', '4'], 
+                                            ['3', '6'], ['4', '8']]}
     ilbert = dict(np.load(path + 'SMF/Ilbert2013SMF.npz'))
     ilbert = {i: ilbert[j] for i, j in [
         ['0', '0'], ['1', '2'], ['2', '4'], ['3', '6']]}

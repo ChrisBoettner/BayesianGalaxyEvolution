@@ -11,7 +11,7 @@ from model.helper import calculate_percentiles, make_list
 
 ################ MAIN FUNCTIONS ###############################################
 def calculate_q1_q2_relation(q1_model, q2_model, redshifts, 
-                             log_q1=np.linspace(8,13,100), num = 1000,
+                             log_q1=np.linspace(8,13,100), num = 500,
                              sigma=1):
     '''
     Calculates the distribution of an observable quantity q2 for a given

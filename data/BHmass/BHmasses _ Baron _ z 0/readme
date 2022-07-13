@@ -1,0 +1,10 @@
+Data gathered from Baron2019 paper
+https://github.com/dalya/BH_mass_estimation_typeII_AGN
+
+Collected for Data in Baron2019, Reines2015, Bentz2018
+
+Ever npy file contains data with rows [log_stellar_mass (in solar masses), log_bh_mass (in solar masses), index],
+index indicates the source of the data:
+0 : Baron2019
+1 : Reines2015
+2 : Bentz2018
