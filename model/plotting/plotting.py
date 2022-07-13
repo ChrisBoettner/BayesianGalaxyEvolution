@@ -346,10 +346,8 @@ class Plot_qhmr(Plot):
             raise AttributeError('distributions have not been calculated.')
 
         # calculate qhmr
-        log_m_halos = np.linspace(8, 14, 50)  # define halo mass range
         redshifts = ModelResult.redshift[::2]
-        qhmr = calculate_qhmr(ModelResult, log_m_halos,
-                              redshifts=redshifts)
+        qhmr = calculate_qhmr(ModelResult, redshifts=redshifts)
 
         # general plotting configuration
         fig, ax = plt.subplots(1, 1, sharex=True)
@@ -365,11 +363,11 @@ class Plot_qhmr(Plot):
 
         for z in redshifts:
             # plot median
-            ax.plot(log_m_halos, qhmr[z][:, 0], color=cm(z),
+            ax.plot(qhmr[z][:, 0], qhmr[z][:, 1], color=cm(z),
                     label='$z$ = ' + str(z))
 
             # plot 16th/84th percentiles
-            ax.fill_between(log_m_halos, qhmr[z][:, 1], qhmr[z][:, 2],
+            ax.fill_between(qhmr[z][:, 0], qhmr[z][:, 2], qhmr[z][:, 3],
                             alpha=0.2, color=cm(z))
 
         # add legend and minor ticks

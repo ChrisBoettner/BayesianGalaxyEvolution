@@ -103,16 +103,27 @@ def invert_function(func, fprime, fprime2, x0_func, y, args, **kwargs):
     return(x)
 
 
-def calculate_percentiles(data, axis=0):
+def calculate_percentiles(data, axis=0, sigma_equiv=1):
     '''
-    Returns median, 16th and 84th percentile of data.
+    Returns median, lower and upper percentile of data. The exact percentiles
+    are chosen using sigma_equiv, which is the corresponding probability for 
+    a gaussian distribution. 
+    sigma_equiv=1 -> 68%
+    sigma_equiv=2 -> 95%
+    sigma_equiv=3 -> 99.7%
     '''
+    sigmas = {1: (50, 16   , 84   ),
+              2: (50,  2.5 , 97.5 ),
+              3: (50,  0.15, 99.85)}
+    try:
+        sigma = sigmas[sigma_equiv]
+    except KeyError:
+        raise KeyError('sigma_equiv must be value list [1,2,3].')
+        
     data = make_array(data)  # turn into numpy array if not already
-
-    median = np.percentile(data, 50, axis=axis)
-    lower = np.percentile(data, 16, axis=axis)
-    upper = np.percentile(data, 84, axis=axis)
-    return([median, lower, upper])
+    # percentiles in order: median, lower, upper
+    percentiles = np.percentile(data, sigma, axis=axis)
+    return(percentiles)
 
 
 def calculate_limit(func, initial_value, rtol=1e-4,

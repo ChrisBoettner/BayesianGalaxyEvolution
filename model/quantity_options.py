@@ -154,8 +154,8 @@ def get_quantity_specifics(quantity_name):
         options['model_p0'] = np.array([5, 1])
         # upper limit for A parameter in model chosen to be minimum observed
         # black hole mass
-        options['model_bounds'] = np.array([[-5,  0],
-                                            [ 10, 5]])
+        options['model_bounds'] = np.array([[-10,  0],
+                                            [ 10,  5]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         # REFERENCE FUNCTION

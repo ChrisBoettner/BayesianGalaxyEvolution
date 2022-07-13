@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from model.interface import load_model, run_model
 from model.plotting.plotting import *
 
-def make_plots(quantity, show = False, file_format='pdf'):
+def save_plots(quantity, show = False, file_format='pdf'):
     '''
     Make and save all plots for a given quantity. 
     Choose if plots are displayed using show parameter. Default is False.
