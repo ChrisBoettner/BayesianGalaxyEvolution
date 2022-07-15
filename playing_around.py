@@ -13,7 +13,6 @@ mstar  = load_model('mstar','changing')
 mbh    = load_model('mbh','quasar', prior_name='successive')
 lbol   = load_model('Lbol', 'eddington', prior_name='successive')
 
-
 ## BLACK HOLE MASS STELLAR MASS RELATION
 #%%
 import numpy as np

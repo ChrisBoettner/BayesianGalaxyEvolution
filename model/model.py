@@ -373,7 +373,6 @@ class ModelResult():
             Calculated distribution.
 
         '''
-
         parameter_sample = self.draw_parameter_sample(z, num=num)
 
         log_quantity_dist = []
@@ -737,9 +736,54 @@ class ModelResult_QLF(ModelResult):
             raise ValueError('Slope of ERDF smaller than 1+(slope of HMF/'
                              'eta). QLF integral will not converge.')
         return(log_qlf_contribution)
+    
+    def calculate_quantity_distribution(self, log_halo_mass, z, 
+                                        log_eddington_ratio=None, 
+                                        num=int(1e+5)):
+        '''
+        At a given redshift, calculate distribution of observable quantity
+        (mstar/Muv) for a given halo mass by drawing parameter sample and
+        calculating value for each one. 
+        If log_eddington_ratio is None, draw from values from ERDF and combine
+        them with random parameter picks. If log_eddington_ratio is given, use
+        this fixed value and only sample the remaining parameter (log_C and 
+        eta).
 
-    def calculate_quantity_distribution(self, log_m_h,
-                                        z, num=int(1e+5)):
+        Parameters
+        ----------
+        log_halo_mass : float or list
+            Input (log) halo masses for which quantity distribution is 
+            caluclated.
+        z : int
+            Redshift at which value is calculated.
+        log_eddington_ratio : float
+            Fix (log) Eddington ratio. If value is None, draw sample 
+            randomly from ERDF.
+        num : int, optional
+            Number of samples drawn. The default is int(1e+5).
+
+        Returns
+        -------
+        log_quantity_dist : array
+            Calculated distribution.
+
+        '''
+        # if log_eddington_ratio not None:
+            # draw parameter sample
+            # calculate luminosity for every parameter pick and given eddington ratio
+        # if log_eddingon_ratio is None:
+            # draw parameter sample
+            # if physics_model- = 'eddington':
+                # draw eddington ratio sample
+                # combine eddington ratio sample with parameter sample (just add column)
+                # calculate luminosity for every draw
+            # if physics_model == 'eddington_free_ERDF':
+                # loop through parameter sample 
+                # for every pick, draw distribution of eddington ratios using ERDF parameter of pick
+                # (or to stay consistent: just draw one pick from ERDF with those parameters)
+                # calculate luminosities for that picks C, eta and the eddington ratios drawn
+                # repeat for all parameter samples
+                # combine all luminosities for each pick
         raise NotImplementedError('Not yet implemented. Proabably do this '
                                   'by calculating mean value for luminosity '
                                   '(with mean ERDF). So only scatter '

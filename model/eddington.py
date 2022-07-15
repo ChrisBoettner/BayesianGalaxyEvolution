@@ -45,13 +45,17 @@ class ERDF(rv_continuous):
     def __init__(self, log_eddington_star, rho, log_threshold=3,
                  a=-np.inf, b=np.inf):
         super().__init__(a=a, b=b)  # domain of Eddington Ratio,
-        # values outside of domain are
-        # 0
+                                    # values outside of domain are
+                                    # 0
         # define parameters
         self.log_eddington_star = log_eddington_star
         self.rho = rho
 
-        self.log_threshold = log_threshold
+        # threshold for approximation
+        self.log_threshold = log_threshold 
+       
+        # mean eddington ratio
+        self.log_mean_eddington_ratio = None 
 
         # normalisation: integrate unnormalized erdf from 0 to
         # upper bound of domain (analytical result)
@@ -137,3 +141,43 @@ class ERDF(rv_continuous):
         hyper_geo = hyp2f1(1, 1/self.rho, 1+1/self.rho,
                            -np.power(10, exponent))
         return(np.power(10, log_eddington_ratio)*hyper_geo)
+    
+    def mean(self):
+        '''
+        Calculate (log of) mean of ERDF for given parameter.
+        
+        '''
+        # if mean value not already calculated, do so
+        if self.log_mean_eddington_ratio is None:
+            if self.b == np.inf:
+                # integral only converges for rho>2
+                if self.rho <=2:
+                    raise ValueError('Slope rho<2 and upper limit infinite, \
+                                      distribution has no mean.')
+                else:
+                    mean_eddington_ratio = calculate_limit(
+                                                    self._mean_function,
+                                                    self.log_eddington_star+5)
+            else:
+                # if limit is smaller than infinity, evaluate function directly
+                mean_eddington_ratio = (self._mean_function(self.b)
+                                        -self._mean_function(self.a))
+            self.log_mean_eddington_ratio = np.log10(mean_eddington_ratio)
+        # if value already calculated, return value
+        else:
+            pass        
+        return(self.log_mean_eddington_ratio)
+    
+    def _mean_function(self, log_eddington_ratio):
+        '''
+        Calculate value of eddington_ratio*pdf (analytical solution).
+    
+        '''
+        # variable substitutions
+        x = log_eddington_ratio - self.log_eddington_star
+        exponent = self.rho*x
+    
+        # calculate hypergeometrix function for final quantity
+        hyper_geo = hyp2f1(1, 2/self.rho, 1+2/self.rho,
+                           -np.power(10, exponent))
+        return(0.5*np.power(10, 2*log_eddington_ratio)*hyper_geo)
