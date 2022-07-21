@@ -17,6 +17,7 @@ def get_quantity_specifics(quantity_name):
     different for the different physical quantites.
     In dictonary are:
         quantity_name           : Name of observable quantity.
+        quantity_name_tex       : Latex formatted name.
         ndf_name                : Name of associated number density function.
         cutoff                  : Lowest allowed value for phi in ndf.
         log_m_c                 : Value for critical mass 
@@ -66,6 +67,7 @@ def get_quantity_specifics(quantity_name):
     if quantity_name == 'mstar':
         # GENERAL
         options['quantity_name'] = 'mstar'
+        options['quantity_name_tex'] = r'$M_\star$'
         options['ndf_name'] = 'SMF'
         options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
@@ -105,6 +107,7 @@ def get_quantity_specifics(quantity_name):
     elif quantity_name == 'Muv':
         # GENERAL
         options['quantity_name'] = 'Muv'
+        options['quantity_name_tex'] = r'$\mathcal{M}_\mathrm{UV}$'
         options['ndf_name'] = 'UVLF'
         options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
@@ -144,6 +147,7 @@ def get_quantity_specifics(quantity_name):
     elif quantity_name == 'mbh':
         # GENERAL
         options['quantity_name'] = 'mbh'
+        options['quantity_name_tex'] = r'$M_\mathrm{BH}$'
         options['ndf_name'] = 'BHMF'
         options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
@@ -168,8 +172,8 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(6.87, 12.41, 100)
         options['subplot_grid'] = (3, 2)
-        options['ndf_xlabel'] = r'$m_\mathrm{BH}$ [$M_\odot$]'
-        options['ndf_ylabel'] = r'log $\phi(m_\mathrm{BH})$ [cMpc$^{-3}$ dex$^{-1}$]'
+        options['ndf_xlabel'] = r'log $M_\mathrm{BH}$ [$M_\odot$]'
+        options['ndf_ylabel'] = r'log $\phi(M_\mathrm{BH})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15, 3]
         options['param_y_labels'] = [r'$\log B$',
                                      r'$\theta$']
@@ -185,6 +189,7 @@ def get_quantity_specifics(quantity_name):
     elif quantity_name == 'Lbol':
         # GENERAL
         options['quantity_name'] = 'Lbol'
+        options['quantity_name_tex'] = r'$L_\mathrm{bol}$'
         options['ndf_name'] = 'QLF'
         options['physics_models'] = ['none', 'eddington',
                                      'eddington_free_ERDF']
@@ -208,7 +213,7 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(39.1552, 50.91, 100)
         options['subplot_grid'] = (4, 2)
-        options['ndf_xlabel'] = r'$L_\mathrm{bol}$ [erg s$^{-1}$]'
+        options['ndf_xlabel'] = r'log $L_\mathrm{bol}$ [erg s$^{-1}$]'
         options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15, 3]
         options['param_y_labels'] = [r'$\log C$' + '\n' + r'[ergs s$^{-1}$ $M_\odot^{-1}$]',

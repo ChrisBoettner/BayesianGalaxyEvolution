@@ -8,14 +8,16 @@ Created on Sun Apr 10 18:15:34 2022
 from model.analysis.reference_parametrization import get_reference_function_sample, \
                                                      calculate_best_fit_reference_parameter,\
                                                      calculate_reference_parameter_from_data    
-from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf
+from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf,\
+                                        calculate_q1_q2_relation
 from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
                                                 add_redshift_text, add_legend,\
                                                 add_separated_legend,\
                                                 turn_off_axes,\
-                                                get_distribution_limits
-from model.helper import make_list, pick_from_list, sort_by_density, t_to_z
-
+                                                get_distribution_limits,\
+                                                plot_data_points
+from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
+                         make_array
 
 from pathlib import Path
 import numpy as np
@@ -34,15 +36,22 @@ def get_list_of_plots():
     '''
     return(Plot.__subclasses__())
 
+def plot_limits():
+    '''
+    Default plot limits
+    '''
+    limits = {'top': 0.93, 'bottom': 0.113,
+              'left': 0.075, 'right': 0.991,
+              'hspace': 0.0, 'wspace': 0.0}
+    return(limits)
+
 class Plot(object):
     def __init__(self, ModelResult, **kwargs):
         ''' Empty Parent Class '''
-        self.plot_limits = {'top': 0.93, 'bottom': 0.113,
-                            'left': 0.075, 'right': 0.991,
-                            'hspace': 0.0, 'wspace': 0.0}
+        self.plot_limits = plot_limits()
 
         self.make_plot(ModelResult, **kwargs)
-        self.default_name = None
+        self.default_filename = None
 
     def make_plot(self, ModelResult, **kwargs):
         ModelResult = make_list(ModelResult)
@@ -338,24 +347,24 @@ class Plot_qhmr(Plot):
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_qhmr'
 
-    def _plot(self, ModelResult):
-        if ModelResult.quantity_name != 'mstar':
-            raise NotImplementedError('Quantity-halo mass relation plot currently\
-                              only supports mstar.')
-        if ModelResult.distribution.is_None():
-            raise AttributeError('distributions have not been calculated.')
+    def _plot(self, ModelResult, sigma=1):
+        if not np.isscalar(sigma):
+            raise ValueError('Sigma must be scalar.')
 
         # calculate qhmr
         redshifts = ModelResult.redshift[::2]
-        qhmr = calculate_qhmr(ModelResult, redshifts=redshifts)
+        qhmr = {}
+        for z in redshifts:
+            qhmr[z] = calculate_qhmr(ModelResult, z)
 
         # general plotting configuration
-        fig, ax = plt.subplots(1, 1, sharex=True)
+        fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
 
         # add axes labels
         fig.supxlabel('log $M_\\mathrm{h}$ [$M_\\odot$]')
-        fig.supylabel('log($M_\star/M_\\mathrm{h}$)', x=0.01)
+        fig.supylabel('log '+ModelResult.quantity_options['quantity_name_tex'],
+                      x=0.01)
 
         # create custom color map
         cm = LinearSegmentedColormap.from_list("Custom", ['C2', 'C1'],
@@ -626,7 +635,6 @@ class Plot_reference_comparison(Plot):
                              label = label,
                              linestyle = linestyle[i+1],
                              **plot_parameter_reference)
-            plot_model_limit(axes, Model, color=Model.color)
         
         # plot reference fits to data
         for z in ModelResults[0].redshift:
@@ -722,4 +730,97 @@ class Plot_conditional_ERDF(Plot):
         ax.minorticks_on()
         return(fig, ax)
     
+class Plot_q1_q2_relation(Plot):
+    def __init__(self, ModelResult1, ModelResult2, **kwargs):
+        '''
+        Plot relation between two observable quantities according to Model.
+        Works by using ModelResult1 to calculate halo mass distribution and
+        then ModelResult2 to calculate quantity distribution for these 
+        halo masses.
+        You can choose the redshift using z, the number of sigma equivalents
+        shown using sigma, the datapoints using datapoints and the
+        q1 range using quantity_range.
+        '''
+        self.plot_limits = plot_limits()
+        
+        self.make_plot(ModelResult1, ModelResult2, **kwargs)
+        self.default_filename = self.quantity_name + '_rel_' + self.prior_name
+
+    def make_plot(self, ModelResult1, ModelResult2, **kwargs):
+        # adapted for two model results
+        self.quantity_name = (ModelResult1.quantity_name 
+                              + '_' + ModelResult2.quantity_name)
+        self.prior_name = ModelResult1.prior_name
+        fig, axes = self._plot(ModelResult1, ModelResult2, **kwargs)
+        self.fig = fig
+        self.axes = axes
+        return
     
+    def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, 
+              datapoints=False, quantity_range=None):
+        
+        # sort sigma in reverse order (so plots don't overlap) and add
+        # percentile - sigma conversion
+        sigma = np.sort(make_array(sigma))[::-1]
+        sigma_equiv_table = {1: '68',
+                             2: '95',
+                             3: '99.7',
+                             4: '99.993',
+                             5: '99.99994'}
+        if not set(sigma).issubset(sigma_equiv_table.keys()):
+            raise ValueError('sigmas must be between 1 and 5 (inclusive).')
+        
+        # if no quantity_range is given, nuse default
+        if quantity_range is None:
+            log_q1 = ModelResult1.quantity_options['quantity_range']
+        
+        # calculate relation and sigmas for all given sigmas, save as array
+        mstar_mbh_rel = calculate_q1_q2_relation(ModelResult1,
+                                                 ModelResult2,
+                                                 z, log_q1, sigma=sigma)
+        
+        ## create mask where model is not constrained by data
+        # get minimum observed quantities
+        q1_min_obs = np.amin(np.concatenate(ModelResult1.\
+                                            log_ndfs.data)[:,0])  
+        q2_min_obs = np.amin(np.concatenate(ModelResult2.\
+                                            log_ndfs.data)[:,0]) 
+        # select points where we have data, use whatever quantity is
+        # more constraining
+        idx_1      = mstar_mbh_rel[sigma[0]][:,0]>q1_min_obs
+        idx_2      = mstar_mbh_rel[sigma[0]][:,1]>q2_min_obs
+        data_mask  = (idx_1*idx_2)
+
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+
+        # plot confidence intervals
+        colormap = mpl.cm.Greys 
+        for i, s in enumerate(sigma):
+             ax.fill_between(mstar_mbh_rel[s][:, 0],
+                             mstar_mbh_rel[s][:, 2], mstar_mbh_rel[s][:,3],
+                             color=colormap((i+1)/len(sigma)),
+                             label= sigma_equiv_table[s] + r'\% percentile')
+             if s == sigma[-1]:
+                 # plot medians
+                 ax.plot(mstar_mbh_rel[s][:,0][data_mask],
+                         mstar_mbh_rel[s][:,1][data_mask],
+                         label='constrained by data',
+                         color='lightgrey')
+                 ax.plot(mstar_mbh_rel[s][:,0][np.logical_not(data_mask)],
+                         mstar_mbh_rel[s][:,1][np.logical_not(data_mask)],
+                         '--',label='not constrained by data',
+                         color='lightgrey')
+                 
+        # add axis labels
+        ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])
+        ax.set_ylabel(ModelResult2.quantity_options['ndf_xlabel'])
+        
+        # add measured datapoints
+        if datapoints:
+            plot_data_points(ax, ModelResult1, ModelResult2)
+        
+        # add legend
+        ax.legend()
+        return(fig, ax)

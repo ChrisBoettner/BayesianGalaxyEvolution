@@ -5,8 +5,6 @@ Created on Wed Apr 13 11:34:20 2022
 
 @author: chris
 """
-import warnings
-
 import numpy as np
 from scipy.interpolate import interp1d
 

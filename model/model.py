@@ -354,7 +354,7 @@ class ModelResult():
     def calculate_quantity_distribution(self, log_halo_mass, z, num=int(1e+5)):
         '''
         At a given redshift, calculate distribution of observable quantity
-        (mstar/Muv) for a given halo mass by drawing parameter sample and
+        (mstar/Muv/mbh) for a given halo mass by drawing parameter sample and
         calculating value for each one.
 
         Parameters
@@ -385,7 +385,7 @@ class ModelResult():
     def calculate_halo_mass_distribution(self, log_quantity, z, num=int(1e+5)):
         '''
         At a given redshift, calculate distribution of halo mass for a given
-        observable quantity (mstar/Muv) by drawing parameter sample and
+        observable quantity (mstar/Muv/mbh) by drawing parameter sample and
         calculating value for each one (number of draws adaptable).
 
         Parameters
@@ -739,10 +739,10 @@ class ModelResult_QLF(ModelResult):
     
     def calculate_quantity_distribution(self, log_halo_mass, z, 
                                         log_eddington_ratio=None, 
-                                        num=int(1e+5)):
+                                        num=int(2e+3)):
         '''
         At a given redshift, calculate distribution of observable quantity
-        (mstar/Muv) for a given halo mass by drawing parameter sample and
+        (lbol) for a given halo mass by drawing parameter sample and
         calculating value for each one. 
         If log_eddington_ratio is None, draw from values from ERDF and combine
         them with random parameter picks. If log_eddington_ratio is given, use
@@ -768,34 +768,106 @@ class ModelResult_QLF(ModelResult):
             Calculated distribution.
 
         '''
-        # if log_eddington_ratio not None:
-            # draw parameter sample
-            # calculate luminosity for every parameter pick and given eddington ratio
-        # if log_eddingon_ratio is None:
-            # draw parameter sample
-            # if physics_model- = 'eddington':
-                # draw eddington ratio sample
-                # combine eddington ratio sample with parameter sample (just add column)
-                # calculate luminosity for every draw
-            # if physics_model == 'eddington_free_ERDF':
-                # loop through parameter sample 
-                # for every pick, draw distribution of eddington ratios using ERDF parameter of pick
-                # (or to stay consistent: just draw one pick from ERDF with those parameters)
-                # calculate luminosities for that picks C, eta and the eddington ratios drawn
-                # repeat for all parameter samples
-                # combine all luminosities for each pick
-        raise NotImplementedError('Not yet implemented. Proabably do this '
-                                  'by calculating mean value for luminosity '
-                                  '(with mean ERDF). So only scatter '
-                                  'due to parameter uncertainty not intrinsic '
-                                  'scatter ')
+        
+        # draw parameter sample and calculate Eddington ratios,
+        # if Eddington ratio is given: repeat that one
+        # if model has fixed Edd distribution: draw from that one
+        # if model has varying Edd distribution: draw one Edd ratio from each
+        # distribution per parameter
+        parameter_sample = self.draw_parameter_sample(z, num=num)
+        if log_eddington_ratio is not None:
+            log_edd_ratio = np.repeat(log_eddington_ratio, num)
+            parameter     = parameter_sample[:,:2] # for calculate_log_quantity
+                                                   # only first two parameter 
+                                                   # are used
+        else:
+            if self.physics_model.at_z(z).name == 'eddington':
+                log_edd_ratio = np.repeat(self.physics_model.at_z(z).\
+                                          draw_eddington_ratio(), num)
+                parameter     = parameter_sample # should only contain the two
+                                                 # parameter
+            elif self.physics_model.at_z(z).name == 'eddington_free_ERDF':
+                log_edd_ratio = np.array([])
+                for p in parameter_sample[:,2:]:
+                    log_edd_ratio = np.append(log_edd_ratio, 
+                                              self.physics_model.at_z(z).\
+                                                   draw_eddington_ratio(*p))
+                parameter     = parameter_sample[:,:2]
+            else:
+                raise NameError('physics_name not known.')
+        
+        # calculate quantity for each parameter - eddington ratio pair
+        log_quantity_dist = []        
+        for i in range(len(parameter_sample)):
+                log_quantity_dist.append(
+                    self.physics_model.at_z(z).calculate_log_quantity(
+                        log_halo_mass, log_edd_ratio[i], *parameter[i]))   
+        return(np.array(log_quantity_dist))
+    
+    def calculate_halo_mass_distribution(self, log_L, z,
+                                         log_eddington_ratio=None, 
+                                         num=int(2e+3)):
+        '''
+        At a given redshift, calculate distribution of halo mass for a given
+        observable quantity (lbol) by drawing parameter sample and
+        calculating value for each one (number of draws adaptable).
+        If log_eddington_ratio is None, draw from values from ERDF and combine
+        them with random parameter picks. If log_eddington_ratio is given, use
+        this fixed value and only sample the remaining parameter (log_C and 
+        eta).
+        Parameters
+        ----------
+        log_quantity : float
+            Input (log of) observable quantity. For mass function must be in
+            stellar masses, for luminosities must be in absolute magnitudes.
+        z : int
+            Redshift at which value is calculated.
+        log_eddington_ratio : float
+            Fix (log) Eddington ratio. If value is None, draw sample 
+            randomly from ERDF.
+        num : int, optional
+            Number of samples drawn. The default is int(1e+5).
 
-    def calculate_halo_mass_distribution(self, log_L, z, num=int(1e+5)):
-        raise NotImplementedError('Not yet implemented. Proabably do this '
-                                  'by calculating mean value for luminosity '
-                                  '(with mean ERDF). So only scatter '
-                                  'due to parameter uncertainty not intrinsic '
-                                  'scatter ')
+        Returns
+        -------
+        log_halo_mass_dist : array
+            Calculated distribution.
+
+        '''
+        # draw parameter sample and calculate Eddington ratios,
+        # if Eddington ratio is given: repeat that one
+        # if model has fixed Edd distribution: draw from that one
+        # if model has varying Edd distribution: draw one Edd ratio from each
+        # distribution per parameter
+        parameter_sample = self.draw_parameter_sample(z, num=num)
+        if log_eddington_ratio is not None:
+            log_edd_ratio = np.repeat(log_eddington_ratio, num)
+            parameter     = parameter_sample[:,:2] # for calculate_log_quantity
+                                                   # only first two parameter 
+                                                   # are used
+        else:
+            if self.physics_model.at_z(z).name == 'eddington':
+                log_edd_ratio = np.repeat(self.physics_model.at_z(z).\
+                                          draw_eddington_ratio(), num)
+                parameter     = parameter_sample # should only contain the two
+                                                 # parameter
+            elif self.physics_model.at_z(z).name == 'eddington_free_ERDF':
+                log_edd_ratio = np.array([])
+                for p in parameter_sample[:,2:]:
+                    log_edd_ratio = np.append(log_edd_ratio, 
+                                              self.physics_model.at_z(z).\
+                                                   draw_eddington_ratio(*p))
+                parameter     = parameter_sample[:,:2]
+            else:
+                raise NameError('physics_name not known.')
+        
+        # calculate quantity for each parameter - eddington ratio pair
+        log_quantity_dist = []        
+        for i in range(len(parameter_sample)):
+                log_quantity_dist.append(
+                    self.physics_model.at_z(z).calculate_log_halo_mass(
+                        log_L, log_edd_ratio[i], *parameter[i]))   
+        return(np.array(log_quantity_dist))
 
     def calculate_phi_contribution(self, log_eddington_ratio, log_L, z,
                                     parameter):

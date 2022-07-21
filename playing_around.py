@@ -19,10 +19,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from model.analysis.calculations import calculate_q1_q2_relation
 
-log_q1=np.linspace(9,13,100)
+log_q1=np.linspace(40,50,100)
 z=0
 
-mstar_mbh_rel = calculate_q1_q2_relation(mstar, mbh, z, log_q1)[z]
+mstar_mbh_rel = calculate_q1_q2_relation(lbol, mbh, z, log_q1)[z]
               
 data_mask = mstar_mbh_rel[:,1]>7 # for which we have actual data black hole data
 
@@ -32,8 +32,8 @@ plt.figure()
 # fill 
 from matplotlib import cm
 colormap = cm.Greys 
-mstar_mbh_rel_2 = calculate_q1_q2_relation(mstar, mbh, z, log_q1, sigma=2)[z]
-mstar_mbh_rel_3 = calculate_q1_q2_relation(mstar, mbh, z, log_q1, sigma=3)[z]
+mstar_mbh_rel_2 = calculate_q1_q2_relation(lbol, mbh, z, log_q1, sigma=2)[z]
+mstar_mbh_rel_3 = calculate_q1_q2_relation(lbol, mbh, z, log_q1, sigma=3)[z]
 plt.fill_between(mstar_mbh_rel_3[:, 0],
                  mstar_mbh_rel_3[:, 2], mstar_mbh_rel_3[:,3],
                  color=colormap(0.3), label=r'99.7\% percentiles')

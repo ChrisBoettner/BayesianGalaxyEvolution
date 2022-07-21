@@ -8,6 +8,7 @@ Created on Sun Apr 10 18:16:20 2022
 import numpy as np
 from matplotlib.lines import Line2D
 
+from model.data.load import load_data_points
 from model.helper import make_array, make_list, pick_from_list
 from model.analysis.calculations import calculate_best_fit_ndf
 
@@ -43,6 +44,41 @@ def plot_best_fit_ndf(axes, ModelResult):
                      label=label,
                      color=color)
     return(ndfs)
+
+
+def plot_data_points(ax, ModelResult1, ModelResult2=None):
+    '''
+    Plot additional dataset to compare to Model.
+    '''
+    
+    # figure out naming scheme, in order to look up if data is available
+    if ModelResult2 is None:
+        try:
+            name = ModelResult1.quantity_name
+            data = load_data_points(name)
+        except NameError:
+            raise NameError('Can\'t find data.')
+            
+    else:
+        try:
+            name = ModelResult1.quantity_name + '_' + ModelResult2.quantity_name
+            data = load_data_points(name)
+        except NameError:
+            try:
+                name = ModelResult2.quantity_name + '_' + ModelResult1.quantity_name
+                data = load_data_points(name)  
+            except:
+                raise NameError('Can\'t find data.')
+    
+    # so far we only have data for mstar_mbh, can be extended, inlucde labels
+    if name == 'mstar_mbh':
+        labels = ['Baron2019','Reines2015','Bentz2018']
+        for i in range(len(labels)):
+            data_i = data[data[:,2]==i]    
+            ax.scatter(data_i[:,0],data_i[:,1], 
+                       s=20, alpha = 0.5, label=labels[i])
+    return()
+    
 
 ################ ADD TEXT TO PLOT #############################################
 
