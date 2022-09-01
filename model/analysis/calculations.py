@@ -10,8 +10,7 @@ import numpy as np
 from model.helper import calculate_percentiles, make_list
 
 ################ MAIN FUNCTIONS ###############################################
-def calculate_q1_q2_relation(q1_model, q2_model, z, 
-                             log_q1=np.linspace(8,13,100), num = 2000,
+def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 500,
                              sigma=1):
     '''
     Calculates the distribution of an observable quantity q2 for a given
@@ -19,28 +18,28 @@ def calculate_q1_q2_relation(q1_model, q2_model, z,
     from q1, and then using this distribution of halo masses to calculate a 
     distribution of q2, using a respective model for each relation. The exact 
     range for the lower and upper percentile limit can be chosen using sigma
-    argument, seemodel.helper.calculate_percentiles for more infos; multiple
+    argument, see model.helper.calculate_percentiles for more infos; multiple
     values can be chosen. Returns dictonary of form (sigma:array) if sigma is 
     an array, where the array contains input quantity 1 value, median 
-    quantity 2 value and lower and upper percentile for every q1 value. 
+    quantity 2 value and lower and upper percentile for every q2 value. 
     If sigma is scalar, array is returned directly. 
     '''  
     if not np.isscalar(z):
         raise ValueError('Redshift must be scalar quantity.')
-    
+
     sigma     = make_list(sigma)
     log_q1    = make_list(log_q1)
     
     # calculate halo mass distribution for input quantity q1
     log_mh_dist = q1_model.calculate_halo_mass_distribution(
                   log_q1, z, num=num)
+
     # calculate quantity q2 distribution for every halo mass
     # (you get num halo masses for a q1 and then num q2 values 
     # for each halo mass, so for every q1 you get num^2 
     # q2 values, the array is reshaped accordingly)
     log_q2_dist = q2_model.calculate_quantity_distribution(
                   log_mh_dist, z, num=num).reshape(num**2,len(log_q1))
-    
     log_q1_q2_rel = {}
     for s in sigma:
         # calculate percentiles (median, lower, upper) and add input
@@ -49,9 +48,6 @@ def calculate_q1_q2_relation(q1_model, q2_model, z,
                                                    sigma_equiv=s)
         log_q1_q2_rel[s]   = np.array([log_q1, *log_q2_percentiles]).T
         
-    # if simga scalar, return array instead of dict
-    if len(sigma)==1:
-        log_q1_q2_rel = log_q1_q2_rel[s]
     return(log_q1_q2_rel)
 
 def calculate_qhmr(ModelResult, z, 

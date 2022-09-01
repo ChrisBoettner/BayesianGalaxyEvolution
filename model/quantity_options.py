@@ -88,7 +88,7 @@ def get_quantity_specifics(quantity_name):
         options['reference_p0_bounds'] = (- np.inf, np.inf)
         options['reference_param_num'] = 3
         # PLOTS AND TABLES
-        options['quantity_range'] = np.linspace(7.32, 12.16, 100)
+        options['quantity_range'] = np.linspace(7.02, 12.48, 100)
         options['subplot_grid'] = (4, 3)
         options['ndf_xlabel'] = r'log $M_\star$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\star)$ [cMpc$^{-3}$ dex$^{-1}$]'
@@ -98,7 +98,7 @@ def get_quantity_specifics(quantity_name):
                                      r'$\delta$']
         options['ndf_legend_pos'] = 9
         options['marker_alpha'] = 0.4
-        options['legend_columns'] = 1
+        options['legend_columns'] = 2
         options['reference_table_header'] = [r'$z$',
                                              r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
                                              r'$\log M_\star^\mathrm{c}$ [$M_\odot$]',
@@ -128,7 +128,7 @@ def get_quantity_specifics(quantity_name):
         options['reference_p0_bounds'] = (- np.inf, np.inf)
         options['reference_param_num'] = 3
         # PLOTS AND TABLES
-        options['quantity_range'] = np.linspace(-23.42, -12.46, 100)
+        options['quantity_range'] = np.linspace(-22.42, -14.46, 100)
         options['subplot_grid'] = (4, 3)
         options['ndf_xlabel'] = r'$\mathcal{M}_\mathrm{UV}$'
         options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ mag$^{-1}$]'
@@ -148,7 +148,7 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name'] = 'mbh'
         options['quantity_name_tex'] = r'$M_\mathrm{BH}$'
-        options['ndf_name'] = 'BHMF'
+        options['ndf_name'] = 'ABHMF'
         options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
         options['log_m_c'] = 12.3

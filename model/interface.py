@@ -38,10 +38,10 @@ def load_model(quantity_name, physics_name, data_subset=None,
     Model = choose_model(quantity_name)
     model = Model(redshift, log_ndfs, log_hmfs,
                   quantity_name, physics_name, prior_name,
-                  groups=groups,
-                  name_addon=data_subset,
                   fitting_method='mcmc',
                   saving_mode='loading',
+                  groups=groups,
+                  name_addon=data_subset,
                   parameter_calc=False,
                   **kwargs)
     return(model)
@@ -75,10 +75,10 @@ def save_model(quantity_name, physics_name, data_subset=None,
     Model = choose_model(quantity_name)
     model = Model(redshift, log_ndfs, log_hmfs,
                   quantity_name, physics_name, prior_name,
-                  groups=groups,
-                  name_addon=data_subset,
                   fitting_method='mcmc',
                   saving_mode='saving',
+                  groups=groups,
+                  name_addon=data_subset,
                   parameter_calc=parameter_calc,
                   **kwargs)
     save_parameter(model, data_subset)
@@ -120,10 +120,10 @@ def run_model(quantity_name, physics_name, fitting_method='least_squares',
     Model = choose_model(quantity_name)
     model = Model(redshift, log_ndfs, log_hmfs,
                   quantity_name, physics_name, prior_name,
-                  groups=groups,
                   fitting_method=fitting_method,
+                  saving_mode=saving_mode,
+                  groups=groups,
                   name_addon=data_subset,
                   parameter_calc=parameter_calc,
-                  saving_mode=saving_mode,
                   **kwargs)
     return(model)

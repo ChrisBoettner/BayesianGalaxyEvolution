@@ -12,7 +12,8 @@ from scipy.integrate import trapezoid
 
 from progressbar import ProgressBar, FormatLabel, NullBar
 
-from model.helper import mag_to_lum, within_bounds, make_array, system_path
+from model.helper import mag_to_lum, lum_to_mag, within_bounds, make_array, \
+                         system_path
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics
 from model.physics import physics_model
@@ -41,9 +42,9 @@ class ModelResult():
 
     def __init__(self, redshifts, log_ndfs, log_hmf_functions,
                  quantity_name, physics_name, prior_name,
-                 fitting_method, saving_mode, name_addon=None,
-                 groups=None, calibrate=True, paramter_calc=True,
-                 progress=True, **kwargs):
+                 fitting_method, saving_mode, ndf_fudge_factor=None,
+                 name_addon=None,groups=None, calibrate=True, 
+                 paramter_calc=True, progress=True, **kwargs):
         '''
         Main model object. Calibrate the model by fitting parameter to
         observational data.
@@ -73,6 +74,9 @@ class ModelResult():
         saving_mode : str
             Name of saving procedure. Must be 'saving', 'loading' or 'temp',
             where 'temp' means no saving.
+        ndf_fudge_factor : float, optional
+            Fudge factor that the ndfs are multiplied by  if wanted. The 
+            default is None.
         name_addon : str, optional
             Optional extension to filename for saving.
         groups : list, optional
@@ -100,7 +104,14 @@ class ModelResult():
         self.log_ndfs = Redshift_dict(log_ndfs)
         self.log_hmfs = Redshift_dict(log_hmf_functions)
         self.groups = groups
-
+        
+        if ndf_fudge_factor:
+            print('Careful: Number densities adjusted by a factor of '
+                  f'{ndf_fudge_factor}.')
+            for key in self.log_ndfs.dict.keys():
+                self.log_ndfs.dict[key][:,1] = (self.log_ndfs.dict[key][:,1] +
+                                                np.log10(ndf_fudge_factor))
+        
         self.hmf_slope = 0.9  # approximate low mass slope of HMFs (absolute value)
         
         # put in model parameter
@@ -167,13 +178,13 @@ class ModelResult():
                 + ['Stellar Feedback'] * (max_z+1-feedback_change_z))
         elif self.physics_name == 'quasar':
             self._plot_parameter(
-                'C3', '^', ':', 'BH Growth Model')
+                'C3', '^', '-', 'BH Growth Model')
         elif self.physics_name == 'eddington':
             self._plot_parameter(
-                'C4', 'v', ':', 'Bolometric Luminosity Model')
+                'C4', 'v', '-', 'Bolometric Luminosity Model')
         elif self.physics_name == 'eddington_free_ERDF':
             self._plot_parameter(
-                'C5', '^', '-.', 'Bolometric Luminosity Model (free ERDF)')
+                'C5', '^', '--', 'Bolometric Luminosity Model (free ERDF)')
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -293,9 +304,8 @@ class ModelResult():
 
         '''
         log_quantity = make_array(log_quantity)
-        if self.quantity_name == 'Muv':
-            # convert magnitude to luminosity
-            log_quantity = np.log10(mag_to_lum(log_quantity))
+        # conversion between magnitude and luminosity if needed
+        log_quantity = self.unit_conversion(log_quantity, 'mag_to_lum')
 
         # check that parameters are within bounds
         if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
@@ -380,6 +390,10 @@ class ModelResult():
             log_quantity_dist.append(
                 self.physics_model.at_z(z).calculate_log_quantity(
                     log_halo_mass, *p))
+            
+        # conversion between magnitude and luminosity if needed
+        log_quantity_dist = self.unit_conversion(log_quantity_dist,
+                                                 'lum_to_mag')
         return(np.array(log_quantity_dist))
 
     def calculate_halo_mass_distribution(self, log_quantity, z, num=int(1e+5)):
@@ -404,6 +418,9 @@ class ModelResult():
             Calculated distribution.
 
         '''
+        # conversion between magnitude and luminosity if needed
+        log_quantity = self.unit_conversion(log_quantity, 'mag_to_lum')
+        
         parameter_sample = self.draw_parameter_sample(z, num=num)
 
         log_halo_mass_dist = []
@@ -435,6 +452,8 @@ class ModelResult():
             Calculated distribution.
 
         '''
+        # conversion between magnitude and luminosity if needed
+        log_quantity = self.unit_conversion(log_quantity, 'mag_to_lum')
 
         parameter_sample = self.draw_parameter_sample(z, num=num)
 
@@ -528,6 +547,33 @@ class ModelResult():
                                      quantity_range=quantity_range)
             ndf_sample.append(np.array(ndf).T)
         return(ndf_sample)
+    
+    def unit_conversion(self, log_quantity, mode): 
+        '''
+        Perform necessary unit conversions. For Muv model, convert between 
+        (input) magnitudes and (internal) luminosities.
+
+        Parameters
+        ----------
+        log_quantity : float
+            Input (log of) observable quantity.
+
+        Returns
+        -------
+        log_quantity : float
+            Converted quantity (magnitude or luminosity).
+
+        '''
+        if self.quantity_name == 'Muv':
+            # convert magnitude to luminosity
+            if mode == 'mag_to_lum':
+                log_quantity = np.log10(mag_to_lum(log_quantity))
+            elif mode == 'lum_to_mag':
+                log_quantity = lum_to_mag(np.power(10,log_quantity))
+            else:
+                raise NameError('Unit conversion mode not known.')
+        return(log_quantity)
+
 
     def _add_physics_model(self, z):
         '''
@@ -603,9 +649,9 @@ class ModelResult_QLF(ModelResult):
 
     def __init__(self, redshifts, log_ndfs, log_hmf_functions,
                  quantity_name, physics_name, prior_name,
-                 fitting_method, saving_mode, name_addon=None,
-                 groups=None, calibrate=True, paramter_calc=True,
-                 progress=True, **kwargs):
+                 fitting_method, saving_mode, ndf_fudge_factor=None,
+                 name_addon=None, groups=None, calibrate=True, 
+                 paramter_calc=True, progress=True, **kwargs):
         '''
         Main model object for QLF. Calibrate the model by fitting parameter to
         observational data.
@@ -634,8 +680,8 @@ class ModelResult_QLF(ModelResult):
         # initalize model itself
         super().__init__(redshifts, log_ndfs, log_hmf_functions,
                          quantity_name, physics_name, prior_name,
-                         fitting_method, saving_mode, name_addon,
-                         groups, calibrate, paramter_calc,
+                         fitting_method, saving_mode, ndf_fudge_factor, 
+                         name_addon, groups, calibrate, paramter_calc,
                          progress, **kwargs)
 
     def calculate_log_abundance(self, log_L, z, parameter, num=100):

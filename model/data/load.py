@@ -238,7 +238,6 @@ def _load_bhmf_data(cutoff, data_subset):
     redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
     '''
-    # get z=0,1,2,3,4 for Davidson, z=1,2,3 for Ilbert
     zhang = dict(np.load(path + 'BHMF/Zhang2021BHMF.npz'))
     
     # TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER

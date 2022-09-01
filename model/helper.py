@@ -111,6 +111,9 @@ def calculate_percentiles(data, axis=0, sigma_equiv=1):
     sigma_equiv=1 -> 68%
     sigma_equiv=2 -> 95%
     sigma_equiv=3 -> 99.7%
+    
+    IMPORTANT: inf values are converted to NaN, and NaN are ignored in 
+               percentile calculation.
     '''
     sigmas = {1: (50, 16   , 84   ),
               2: (50,  2.5 , 97.5 ),
@@ -119,10 +122,12 @@ def calculate_percentiles(data, axis=0, sigma_equiv=1):
         sigma = sigmas[sigma_equiv]
     except KeyError:
         raise KeyError('sigma_equiv must be value list [1,2,3].')
-        
+
     data = make_array(data)  # turn into numpy array if not already
+    data[data==np.inf] = np.nan # ignore inf values
+    
     # percentiles in order: median, lower, upper
-    percentiles = np.percentile(data, sigma, axis=axis)
+    percentiles = np.nanpercentile(data, sigma, axis=axis)
     return(percentiles)
 
 

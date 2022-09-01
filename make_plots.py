@@ -24,12 +24,11 @@ def save_plots(quantity, show = False, file_format='pdf'):
         # successive prior
         model = load_model(quantity, 'changing')
         
-        Plot_best_fit_ndfs(model).save(file_format)
+        Plot_ndf_sample(model).save(file_format)
         Plot_marginal_pdfs(model).save(file_format)
         Plot_parameter_sample(model).save(file_format)
         if quantity == 'mstar':
             Plot_qhmr(model).save()
-        Plot_reference_comparison(model).save(file_format)
         del model
         
         # uniform priors
@@ -46,10 +45,10 @@ def save_plots(quantity, show = False, file_format='pdf'):
         lbol_free = run_model(quantity, 'eddington_free_ERDF')
         
         Plot_best_fit_ndfs([model, lbol_free]).save(file_format)
+        Plot_ndf_sample(model).save(file_format)
         Plot_marginal_pdfs(model).save(file_format)
         Plot_parameter_sample(model).save(file_format)
         Plot_conditional_ERDF(model).save(file_format)
-        #Plot_reference_comparison(model).save(file_format)
         del model
         
         
@@ -61,9 +60,9 @@ def save_plots(quantity, show = False, file_format='pdf'):
         mbh_none = run_model(quantity, 'none')
         
         Plot_best_fit_ndfs([model, mbh_none]).save(file_format)
+        Plot_ndf_sample(model).save(file_format)
         Plot_marginal_pdfs(model).save(file_format)
         Plot_parameter_sample(model).save(file_format)
-        #Plot_reference_comparison(model).save(file_format)
         del model
         
     else:
@@ -76,5 +75,5 @@ def save_plots(quantity, show = False, file_format='pdf'):
 
 if __name__ == '__main__':
     quantities = ['mstar', 'Muv', 'mbh', 'Lbol']
-    [make_plots(quantity) for quantity in quantities]
+    [save_plots(quantity) for quantity in quantities]
     

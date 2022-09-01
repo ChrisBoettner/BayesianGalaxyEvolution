@@ -5,6 +5,8 @@ Created on Sun Apr 10 18:15:34 2022
 
 @author: chris
 """
+
+from model.interface import run_model
 from model.analysis.reference_parametrization import get_reference_function_sample, \
                                                      calculate_best_fit_reference_parameter,\
                                                      calculate_reference_parameter_from_data    
@@ -15,7 +17,7 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 add_separated_legend,\
                                                 turn_off_axes,\
                                                 get_distribution_limits,\
-                                                plot_data_points
+                                                plot_data_points, CurvedText
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array
 
@@ -228,7 +230,7 @@ class Plot_marginal_pdfs(Plot):
                                  len(ModelResults[0].redshift),
                                  sharex='row', sharey='row')
         fig.subplots_adjust(**self.plot_limits)
-        fig.subplots_adjust(hspace=0.2)
+        fig.subplots_adjust(top=0.92, left=0.110, hspace=0.2)
 
         # set plot limits
         limits = get_distribution_limits(ModelResults)
@@ -236,11 +238,11 @@ class Plot_marginal_pdfs(Plot):
             axes[i, 0]. set_xlim(*limit)
 
         # add axes labels
+        fig.supxlabel('Parameter Value')
+        fig.supylabel('(Marginal) Probability Density', x=0.01)
         param_labels =  ModelResults[0].quantity_options['param_y_labels']
         for i, label in enumerate(param_labels):
             axes[i, 0].set_ylabel(label, multialignment='center')
-        fig.supxlabel('Parameter Value')
-        fig.supylabel('(Marginal) Probability Density', x=0.01)
         fig.align_ylabels(axes)
 
         # plot marginal probability distributions
@@ -263,7 +265,7 @@ class Plot_marginal_pdfs(Plot):
 
         # add legend
         add_legend(axes, (0, -1), sort=True,
-                   loc='upper right', bbox_to_anchor=(1.0, 1.2),
+                   loc='upper right', bbox_to_anchor=(1.0, 1.4),
                    ncol=3, fancybox=True)
 
         # turn off unused axes
@@ -336,6 +338,11 @@ class Plot_parameter_sample(Plot):
             ax_z.set_xticks(t_loc)
             ax_z.set_xticklabels(t_label)
             ax_z.set_xlabel('Lookback time [Gyr]')
+            
+        # fit everything back into frame
+        fig.tight_layout()
+        fig.subplots_adjust(hspace = 0)
+        
         return(fig, axes)
 
 
@@ -378,6 +385,9 @@ class Plot_qhmr(Plot):
             # plot 16th/84th percentiles
             ax.fill_between(qhmr[z][:, 0], qhmr[z][:, 2], qhmr[z][:, 3],
                             alpha=0.2, color=cm(z))
+            
+        # add axis limits
+        ax.set_xlim((qhmr[z][0,0], qhmr[z][-1,0]))
 
         # add legend and minor ticks
         add_legend(ax, 0)
@@ -413,8 +423,8 @@ class Plot_ndf_sample(Plot):
 
         # define plot parameter
         linewidth = 0.2
-        alpha = 0.2
-        color = 'grey'
+        alpha     = 0.23
+        color     = 'grey'
 
         # quantity specific settings
         xlabel, ylabel, ncol  = ModelResult.quantity_options['ndf_xlabel'],\
@@ -456,8 +466,12 @@ class Plot_ndf_sample(Plot):
                          quantity_range[-1]])
 
         # add legend
-        add_separated_legend(axes, separation_point=0, ncol=ncol,
-                             loc = legend_loc)
+        if ModelResult.physics_name == 'changing':
+            separation_point = 2
+        else:
+            separation_point = 1
+        add_separated_legend(axes, separation_point=separation_point,
+                             ncol=ncol, loc = legend_loc)
 
         # turn off unused axes
         turn_off_axes(axes)
@@ -739,7 +753,12 @@ class Plot_q1_q2_relation(Plot):
         halo masses.
         You can choose the redshift using z, the number of sigma equivalents
         shown using sigma, the datapoints using datapoints and the
-        q1 range using quantity_range.
+        q1 range using quantity_range. 
+        You can plot additional relations with manipulated number densities 
+        functions (see model for definition of fudge factor) by rerunning the 
+        model with the adjusted values. The scaled_ndf parameter needs to 
+        be of the form (model, scale factor), where the scale factor can be 
+        scalar of an array.
         '''
         self.plot_limits = plot_limits()
         
@@ -757,7 +776,8 @@ class Plot_q1_q2_relation(Plot):
         return
     
     def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, 
-              datapoints=False, quantity_range=None):
+              datapoints=False, scaled_ndf=None,
+              quantity_range=None):
         
         # sort sigma in reverse order (so plots don't overlap) and add
         # percentile - sigma conversion
@@ -773,11 +793,40 @@ class Plot_q1_q2_relation(Plot):
         # if no quantity_range is given, nuse default
         if quantity_range is None:
             log_q1 = ModelResult1.quantity_options['quantity_range']
+        else:
+            log_q1 = quantity_range
         
         # calculate relation and sigmas for all given sigmas, save as array
-        mstar_mbh_rel = calculate_q1_q2_relation(ModelResult1,
-                                                 ModelResult2,
-                                                 z, log_q1, sigma=sigma)
+        q1_q2_relation = calculate_q1_q2_relation(ModelResult1,
+                                                  ModelResult2,
+                                                  z, log_q1, sigma=sigma)
+
+        # calculate additional relations with ndf fudge factor
+        if scaled_ndf:
+            if scaled_ndf[0] not in [ModelResult1, ModelResult2]:
+                raise ValueError('Model for alternative ndf must be same as '
+                                 'one of the quantity models')
+            
+            ndf_fudge_factors = make_list(scaled_ndf[1])
+            alt_relations = {}
+            for fudge_factor in ndf_fudge_factors:
+                # calculate model with fudge factor
+                AltModel = run_model(scaled_ndf[0].quantity_name, 
+                                     scaled_ndf[0].physics_name,
+                                     fitting_method='mcmc',
+                                     redshift=z, num_walker=10,
+                                     min_chain_length=0,
+                                     ndf_fudge_factor=fudge_factor)
+
+                # calculate q1_q2 relation for alternative model
+                if AltModel.quantity_name == ModelResult1.quantity_name:
+                    alt_relations[fudge_factor] = calculate_q1_q2_relation(AltModel,
+                                                                           ModelResult2,
+                                                                           z, log_q1)[1]
+                elif AltModel.quantity_name == ModelResult2.quantity_name:
+                    alt_relations[fudge_factor] = calculate_q1_q2_relation(ModelResult1,
+                                                                           AltModel,
+                                                                           z, log_q1)[1]
         
         ## create mask where model is not constrained by data
         # get minimum observed quantities
@@ -787,9 +836,17 @@ class Plot_q1_q2_relation(Plot):
                                             log_ndfs.data)[:,0]) 
         # select points where we have data, use whatever quantity is
         # more constraining
-        idx_1      = mstar_mbh_rel[sigma[0]][:,0]>q1_min_obs
-        idx_2      = mstar_mbh_rel[sigma[0]][:,1]>q2_min_obs
+        idx_1      = q1_q2_relation[sigma[0]][:,0]>q1_min_obs
+        idx_2      = q1_q2_relation[sigma[0]][:,1]>q2_min_obs
         data_mask  = (idx_1*idx_2)
+
+        # split data mask into beginning and trailing true blocks
+        # so that you can plot these seperately
+        first_true                      = np.argmax(data_mask)
+        mask_beginning                  = np.copy(np.logical_not(data_mask))
+        mask_trail                      = np.copy(mask_beginning)
+        mask_beginning[(first_true+1):] = False
+        mask_trail[:(first_true+1)]     = False
 
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
@@ -798,21 +855,51 @@ class Plot_q1_q2_relation(Plot):
         # plot confidence intervals
         colormap = mpl.cm.Greys 
         for i, s in enumerate(sigma):
-             ax.fill_between(mstar_mbh_rel[s][:, 0],
-                             mstar_mbh_rel[s][:, 2], mstar_mbh_rel[s][:,3],
+             ax.fill_between(q1_q2_relation[s][:, 0],
+                             q1_q2_relation[s][:, 2], q1_q2_relation[s][:,3],
                              color=colormap((i+1)/len(sigma)),
                              label= sigma_equiv_table[s] + r'\% percentile')
              if s == sigma[-1]:
                  # plot medians
-                 ax.plot(mstar_mbh_rel[s][:,0][data_mask],
-                         mstar_mbh_rel[s][:,1][data_mask],
+                 ax.plot(q1_q2_relation[s][:,0][data_mask],
+                         q1_q2_relation[s][:,1][data_mask],
                          label='constrained by data',
                          color='lightgrey')
-                 ax.plot(mstar_mbh_rel[s][:,0][np.logical_not(data_mask)],
-                         mstar_mbh_rel[s][:,1][np.logical_not(data_mask)],
-                         '--',label='not constrained by data',
+                 ax.plot(q1_q2_relation[s][:,0][mask_beginning],
+                         q1_q2_relation[s][:,1][mask_beginning],
+                         ':',label='not constrained by data',
                          color='lightgrey')
-                 
+                 ax.plot(q1_q2_relation[s][:,0][mask_trail],
+                         q1_q2_relation[s][:,1][mask_trail],
+                         ':', color='lightgrey')
+             
+        # plot additional relations with fudge factor
+        if scaled_ndf:
+            for fudge_factor in ndf_fudge_factors:
+                ax.plot(alt_relations[fudge_factor][:,0],
+                        alt_relations[fudge_factor][:,1],
+                        color='grey')
+                              
+                # # add text
+                text = ( f'{fudge_factor}' + r'$\times$ ' + r'$\phi($' 
+                        + AltModel.quantity_options['quantity_name_tex']
+                        + r'$)$')
+                text = r'asdadafdfvsfvdxzdsv'
+                breakpoint()
+                CurvedText(
+                    x = alt_relations[fudge_factor][:,0],
+                    y = alt_relations[fudge_factor][:,1],
+                    text=text,#'this this is a very, very long text',
+                    va = 'bottom',
+                    axes = ax, ##calls ax.add_artist in __init__
+                    )  
+                # ax.text(alt_relations[fudge_factor][0,0]*1.05,
+                #         alt_relations[fudge_factor][0,1]*0.95, text)
+                
+
+        # add axis limits
+        ax.set_xlim((log_q1[0], log_q1[-1]))
+
         # add axis labels
         ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])
         ax.set_ylabel(ModelResult2.quantity_options['ndf_xlabel'])
