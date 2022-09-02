@@ -46,8 +46,7 @@ def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 500,
         # q1 to list: (q1 value, median q2 value, lower bound, upper bound)
         log_q2_percentiles = calculate_percentiles(log_q2_dist,
                                                    sigma_equiv=s)
-        log_q1_q2_rel[s]   = np.array([log_q1, *log_q2_percentiles]).T
-        
+        log_q1_q2_rel[s]   = np.array([log_q1, *log_q2_percentiles]).T    
     return(log_q1_q2_rel)
 
 def calculate_qhmr(ModelResult, z, 
@@ -81,6 +80,7 @@ def calculate_qhmr(ModelResult, z,
         log_q_percentiles    = calculate_percentiles(log_q_dist,
                                                      sigma_equiv=s)
         qhmr[s]              = np.array([log_m_halos, *log_q_percentiles]).T
+        
     # if simga scalar, return array instead of dict
     if len(sigma)==1:
         qhmr = qhmr[s]

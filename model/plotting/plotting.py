@@ -13,11 +13,13 @@ from model.analysis.reference_parametrization import get_reference_function_samp
 from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf,\
                                         calculate_q1_q2_relation
 from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
+                                                plot_data_with_confidence_intervals,\
                                                 add_redshift_text, add_legend,\
                                                 add_separated_legend,\
                                                 turn_off_axes,\
                                                 get_distribution_limits,\
                                                 plot_data_points, CurvedText
+                                                
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array
 
@@ -362,7 +364,7 @@ class Plot_qhmr(Plot):
         redshifts = ModelResult.redshift[::2]
         qhmr = {}
         for z in redshifts:
-            qhmr[z] = calculate_qhmr(ModelResult, z)
+            qhmr[z] = calculate_qhmr(ModelResult, z, sigma=sigma)
 
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
@@ -381,7 +383,6 @@ class Plot_qhmr(Plot):
             # plot median
             ax.plot(qhmr[z][:, 0], qhmr[z][:, 1], color=cm(z),
                     label='$z$ = ' + str(z))
-
             # plot 16th/84th percentiles
             ax.fill_between(qhmr[z][:, 0], qhmr[z][:, 2], qhmr[z][:, 3],
                             alpha=0.2, color=cm(z))
@@ -763,7 +764,8 @@ class Plot_q1_q2_relation(Plot):
         self.plot_limits = plot_limits()
         
         self.make_plot(ModelResult1, ModelResult2, **kwargs)
-        self.default_filename = self.quantity_name + '_rel_' + self.prior_name
+        self.default_filename = (self.quantity_name + '_relation_' 
+                                 + self.prior_name)
 
     def make_plot(self, ModelResult1, ModelResult2, **kwargs):
         # adapted for two model results
@@ -779,18 +781,10 @@ class Plot_q1_q2_relation(Plot):
               datapoints=False, scaled_ndf=None,
               quantity_range=None):
         
-        # sort sigma in reverse order (so plots don't overlap) and add
-        # percentile - sigma conversion
+        # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
-        sigma_equiv_table = {1: '68',
-                             2: '95',
-                             3: '99.7',
-                             4: '99.993',
-                             5: '99.99994'}
-        if not set(sigma).issubset(sigma_equiv_table.keys()):
-            raise ValueError('sigmas must be between 1 and 5 (inclusive).')
         
-        # if no quantity_range is given, nuse default
+        # if no quantity_range is given, use default
         if quantity_range is None:
             log_q1 = ModelResult1.quantity_options['quantity_range']
         else:
@@ -820,14 +814,19 @@ class Plot_q1_q2_relation(Plot):
 
                 # calculate q1_q2 relation for alternative model
                 if AltModel.quantity_name == ModelResult1.quantity_name:
-                    alt_relations[fudge_factor] = calculate_q1_q2_relation(AltModel,
-                                                                           ModelResult2,
-                                                                           z, log_q1)[1]
+                    alt_relations[fudge_factor] = calculate_q1_q2_relation(
+                                                                AltModel,
+                                                                ModelResult2,
+                                                                z, log_q1)[1]
                 elif AltModel.quantity_name == ModelResult2.quantity_name:
-                    alt_relations[fudge_factor] = calculate_q1_q2_relation(ModelResult1,
-                                                                           AltModel,
-                                                                           z, log_q1)[1]
-        
+                    alt_relations[fudge_factor] = calculate_q1_q2_relation(
+                                                                ModelResult1,
+                                                                AltModel,
+                                                                z, log_q1)[1]
+                else: 
+                    raise ValueError('AltModel quantity name does not match '
+                                     'either of the input ModelResults.')
+                    
         ## create mask where model is not constrained by data
         # get minimum observed quantities
         q1_min_obs = np.amin(np.concatenate(ModelResult1.\
@@ -852,26 +851,15 @@ class Plot_q1_q2_relation(Plot):
         fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
 
-        # plot confidence intervals
-        colormap = mpl.cm.Greys 
-        for i, s in enumerate(sigma):
-             ax.fill_between(q1_q2_relation[s][:, 0],
-                             q1_q2_relation[s][:, 2], q1_q2_relation[s][:,3],
-                             color=colormap((i+1)/len(sigma)),
-                             label= sigma_equiv_table[s] + r'\% percentile')
-             if s == sigma[-1]:
-                 # plot medians
-                 ax.plot(q1_q2_relation[s][:,0][data_mask],
-                         q1_q2_relation[s][:,1][data_mask],
-                         label='constrained by data',
-                         color='lightgrey')
-                 ax.plot(q1_q2_relation[s][:,0][mask_beginning],
-                         q1_q2_relation[s][:,1][mask_beginning],
-                         ':',label='not constrained by data',
-                         color='lightgrey')
-                 ax.plot(q1_q2_relation[s][:,0][mask_trail],
-                         q1_q2_relation[s][:,1][mask_trail],
-                         ':', color='lightgrey')
+
+        # get color in RGB
+        color = pick_from_list(ModelResult2.color, z)
+        
+        # plot values and confidence interval
+        plot_data_with_confidence_intervals(ax, q1_q2_relation, color,
+                                            data_masks=[data_mask, 
+                                                        mask_beginning,
+                                                        mask_trail])
              
         # plot additional relations with fudge factor
         if scaled_ndf:
@@ -880,21 +868,15 @@ class Plot_q1_q2_relation(Plot):
                         alt_relations[fudge_factor][:,1],
                         color='grey')
                               
-                # # add text
-                text = ( f'{fudge_factor}' + r'$\times$ ' + r'$\phi($' 
-                        + AltModel.quantity_options['quantity_name_tex']
-                        + r'$)$')
-                text = r'asdadafdfvsfvdxzdsv'
-                breakpoint()
-                CurvedText(
-                    x = alt_relations[fudge_factor][:,0],
-                    y = alt_relations[fudge_factor][:,1],
-                    text=text,#'this this is a very, very long text',
-                    va = 'bottom',
-                    axes = ax, ##calls ax.add_artist in __init__
-                    )  
-                # ax.text(alt_relations[fudge_factor][0,0]*1.05,
-                #         alt_relations[fudge_factor][0,1]*0.95, text)
+                # # add (curved) text
+                text = ( f'{fudge_factor}x ' 
+                        + AltModel.quantity_options['ndf_name'])
+                CurvedText(x = alt_relations[fudge_factor][:,0],
+                           y = alt_relations[fudge_factor][:,1],
+                           text=text,
+                           va = 'bottom',
+                           axes = ax,
+                           )  
                 
 
         # add axis limits

@@ -9,6 +9,7 @@ import math
 import numpy as np
 from matplotlib.lines import Line2D
 from matplotlib import text as mtext
+from matplotlib.colors import to_rgb
 
 from model.data.load import load_data_points
 from model.helper import make_array, make_list, pick_from_list
@@ -47,8 +48,70 @@ def plot_best_fit_ndf(axes, ModelResult):
                      color=color)
     return(ndfs)
 
+def plot_data_with_confidence_intervals(ax, data_percentile_dict, 
+                                        color, data_masks=None):
+    '''
+    Plot data with confidence intervals. 
+    The input data must be a dictonary, 
+    where the keys must be the sigma equvialent values (1-5) and each dict 
+    entry must contain an arry of the form (x, y, lower_y_bound, upper_y_bound)
+    as returned by calculate_qhmr and calculate_q1_q2_relation in 
+    model.calculations. 
+    The color must be speficified either as rgb or str.
+    Optional: Add data_masks for data that is or is not constrained by data,
+    must be an array containing 3 mask arrays [data_mask, mask_beginning, 
+    mask_trail].
+    '''
+    
+    # convert color to RGB
+    if type(color) is str:
+        color = to_rgb(color)
+    
+    ## get sigma equiv values and define sigma properties
+    sigma = list(data_percentile_dict.keys())
+    # conversion table between sigma equivalents and percentiles
+    sigma_equiv_table = {1: '68', 2: '95', 3: '99.7', 4: '99.993',
+                         5: '99.99994'}
+    # alpha values for different sigma equivalents
+    sigma_color_alphas = {1: 0.6, 2: 0.5, 3: 0.3, 4: 0.2, 5: 0.1}
+    if not set(sigma).issubset(sigma_equiv_table.keys()):
+        raise ValueError('sigmas must be between 1 and 5 (inclusive).')
+    
+    # set default data_masks if none are given
+    if data_masks is None:
+        data_mask      = np.arange(len(data_percentile_dict[sigma[0]]))
+        mask_beginning = []
+        mask_trail     = []
+    else:
+        if len(data_masks)!=3:
+            raise ValueError('data_masks must be array containing three '
+                             'mask arrays: data_mask, mask_beginning, '
+                             'mask_trail.')
+        data_mask, mask_beginning, mask_trail = data_masks
 
-def plot_data_points(ax, ModelResult1, ModelResult2=None):
+    # plot confidence intervals
+    for s in sigma:  
+         if s == sigma[-1]:
+             # plot medians
+             ax.plot(data_percentile_dict[s][:,0][data_mask],
+                     data_percentile_dict[s][:,1][data_mask],
+                     label='constrained by data',
+                     color=color)
+             ax.plot(data_percentile_dict[s][:,0][mask_beginning],
+                     data_percentile_dict[s][:,1][mask_beginning],
+                     ':',label='not constrained by data',
+                     color=color)
+             ax.plot(data_percentile_dict[s][:,0][mask_trail],
+                     data_percentile_dict[s][:,1][mask_trail],
+                     ':', color=color)
+         ax.fill_between(data_percentile_dict[s][:, 0],
+                         data_percentile_dict[s][:, 2], 
+                         data_percentile_dict[s][:, 3],
+                         color=blend_color(color, sigma_color_alphas[s]),
+                         label= sigma_equiv_table[s] + r'\% percentile')
+    return()
+
+def plot_data_points(ax, ModelResult1, ModelResult2=None, legend=True):
     '''
     Plot additional dataset to compare to Model.
     '''
@@ -68,30 +131,17 @@ def plot_data_points(ax, ModelResult1, ModelResult2=None):
         except:
             raise NameError('Can\'t find data.')
     
-    # so far we only have data for mstar_mbh, can be extended, inlucde labels
+    # so far we only have data for mstar_mbh, can be extended, include labels
     if name == 'mstar_mbh':
-        labels = ['Baron2019','Reines2015','Bentz2018']
-        for i in range(len(labels)):
-            data_i = data[data[:,2]==i]    
-            ax.scatter(data_i[:,0],data_i[:,1], 
-                       s=20, alpha = 0.5, label=labels[i])
+        ax.scatter(data[:,0], data[:,1], 
+                   s=35, alpha=0.5,  
+                   color='lightgrey',
+                   label='Baron2019 (Type 1 and Type 2)',
+                   marker='o')
     return()
     
 
-################ ADD TEXT TO PLOT #############################################
-
-
-def add_redshift_text(axes, redshifts):
-    ''' Add current redshift as text to upper plot corner. '''
-    for z in redshifts:
-        axes[z].text(0.97, 0.94, 'z=' + str(z),
-                     horizontalalignment='right',
-                     verticalalignment='top',
-                     transform=axes[z].transAxes)
-    return
-
-
-################ LEGEND STUFF #################################################
+################ LEGEND #######################################################
 
 
 def add_legend(axes, ind, sort=False, **kwargs):
@@ -194,8 +244,8 @@ def get_distribution_limits(ModelResults):
             distribution = Model.distribution.at_z(z)
             for i in range(distribution.shape[1]):
                 max_values.setdefault(i, -np.inf) # check if key already exists,
-                                                  # if not, create it and put value
-                                                  # to -infinity
+                                                  # if not, create it and put 
+                                                  # value to -infinity
                 min_values.setdefault(i, np.inf)  
                 
                 current_max = np.amax(distribution[:,i])
@@ -214,26 +264,27 @@ def get_distribution_limits(ModelResults):
     
 ################ COLORS #######################################################  
 
+def blend_color(color, alpha, bg_color=np.array([1,1,1])):
+    '''
+    Blend color with background color using alpha value. Color and background
+    color must be given as array of RGB values. Default background color is 
+    white.
+    '''
+    color    = make_array(color)
+    bg_color = make_array(bg_color)
+    return((1-alpha)*bg_color + alpha*color)
   
-def lighten_color(color, amount=1):
-    '''
-    Lightens the given color by multiplying (1-luminosity) by the given amount.
-    Input can be matplotlib color string, hex string, or RGB tuple.
-    Examples:
-    - lighten_color('g', 0.3)
-    - lighten_color('#F034A3', 0.6)
-    - lighten_color((.3,.55,.1), 0.5)
-    '''
-    import matplotlib.colors as mc
-    import colorsys
-    try:
-        c = mc.cnames[color]
-    except:
-        c = color
-    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
-    return(colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2]))
-
 ################ TEXT #########################################################
+
+
+def add_redshift_text(axes, redshifts):
+    ''' Add current redshift as text to upper plot corner. '''
+    for z in redshifts:
+        axes[z].text(0.97, 0.94, 'z=' + str(z),
+                     horizontalalignment='right',
+                     verticalalignment='top',
+                     transform=axes[z].transAxes)
+    return
 
 
 class CurvedText(mtext.Text):

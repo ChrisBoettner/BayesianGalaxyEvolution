@@ -148,7 +148,7 @@ def get_quantity_specifics(quantity_name):
         # GENERAL
         options['quantity_name'] = 'mbh'
         options['quantity_name_tex'] = r'$M_\mathrm{BH}$'
-        options['ndf_name'] = 'ABHMF'
+        options['ndf_name'] = 'BHMF'
         options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
         options['log_m_c'] = 12.3

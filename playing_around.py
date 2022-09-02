@@ -13,8 +13,3 @@ mstar  = load_model('mstar','changing')
 # muv    = load_model('Muv','changing')
 mbh    = load_model('mbh','quasar', prior_name='successive')
 # lbol   = load_model('Lbol', 'eddington', prior_name='successive')
-
-#mstar = run_model('mstar', 'changing', redshift=0, fitting_method='mcmc', 
-#                  num_walker=10, min_chain_length=5000)
-#mbh = run_model('mbh', 'quasar', redshift=0, fitting_method='mcmc', 
-#                num_walker=10, min_chain_length=5000)
