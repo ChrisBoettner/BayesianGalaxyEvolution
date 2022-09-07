@@ -18,7 +18,8 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 add_separated_legend,\
                                                 turn_off_axes,\
                                                 get_distribution_limits,\
-                                                plot_data_points, CurvedText
+                                                plot_data_points, CurvedText,\
+                                                plot_linear_relationship
                                                 
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array
@@ -752,14 +753,17 @@ class Plot_q1_q2_relation(Plot):
         Works by using ModelResult1 to calculate halo mass distribution and
         then ModelResult2 to calculate quantity distribution for these 
         halo masses.
-        You can choose the redshift using z, the number of sigma equivalents
-        shown using sigma, the datapoints using datapoints and the
-        q1 range using quantity_range. 
         You can plot additional relations with manipulated number densities 
         functions (see model for definition of fudge factor) by rerunning the 
         model with the adjusted values. The scaled_ndf parameter needs to 
         be of the form (model, scale factor), where the scale factor can be 
         scalar of an array.
+        You can choose the redshift using z, the number of sigma equivalents
+        shown using sigma, the datapoints using datapoints and the
+        q1 range using quantity_range. 
+        You can also add lines for linear relationships manually, just pass log
+        of slopes via log_slopes argument. Can take array of values. You can 
+        also add labels for these lines via log_slope_labels argument.
         '''
         self.plot_limits = plot_limits()
         
@@ -778,8 +782,8 @@ class Plot_q1_q2_relation(Plot):
         return
     
     def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, 
-              datapoints=False, scaled_ndf=None,
-              quantity_range=None):
+              datapoints=False, scaled_ndf=None, quantity_range=None,
+              log_slopes=None, log_slope_labels=None):
         
         # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
@@ -886,9 +890,14 @@ class Plot_q1_q2_relation(Plot):
         ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])
         ax.set_ylabel(ModelResult2.quantity_options['ndf_xlabel'])
         
+        ## add stuff to plot
         # add measured datapoints
         if datapoints:
             plot_data_points(ax, ModelResult1, ModelResult2)
+        # add lines for linear relation
+        if log_slopes is not None:
+            log_slopes = make_list(log_slopes)
+            plot_linear_relationship(ax, log_q1, log_slopes, log_slope_labels)        
         
         # add legend
         ax.legend()

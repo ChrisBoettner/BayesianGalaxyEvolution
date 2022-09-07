@@ -73,10 +73,14 @@ def load_data_points(quantity_name):
        0 : Baron2019
        1 : Reines2015
        2 : Bentz2018
-
+       
+    mbh_lbol : Black hole mass - Bolometric luminosity relation
+       Returns numpy array of form [log_bh_mass, log_l_bol]
     '''
     if quantity_name == 'mstar_mbh':
         data = np.load(path + '/BHmass/mstar_mbh_Baron2019.npy')
+    if quantity_name == 'mbh_Lbol':
+        data = np.load(path + '/BHmass/mbh_Lbol_Baron2019.npy')
     else:
         raise NameError('quantity_name not known.')
     return(data)

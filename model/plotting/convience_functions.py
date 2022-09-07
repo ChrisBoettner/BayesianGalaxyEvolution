@@ -138,6 +138,44 @@ def plot_data_points(ax, ModelResult1, ModelResult2=None, legend=True):
                    color='lightgrey',
                    label='Baron2019 (Type 1 and Type 2)',
                    marker='o')
+    
+    elif name == 'mbh_Lbol':
+        ax.scatter(data[:,0], data[:,1], 
+                   s=35, alpha=0.5,  
+                   color='lightgrey',
+                   label='Baron2019 (Type 1)',
+                   marker='o')
+        
+    return()
+    
+def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
+    '''
+    Add additional linear relations to plot. x values and slope must be given
+    in log, can deal with multiple slopes at once. Labels can be added manually,
+    must be list with same length as slopes.
+    '''
+    log_slope = make_list(log_slope)
+    
+    if labels:
+        labels = make_list(labels)
+        if len(labels)!=len(log_slope):
+            raise ValueError('List of labels must have same length as list of '
+                             ' slopes.')
+
+    # calculate linear relations (in log_space)
+    y_values = {}
+    for s in log_slope:
+        y_values[s] = s + log_x_range
+    # plot linear relations
+    for i, s in enumerate(log_slope):
+        ax.plot(log_x_range, y_values[s], alpha = 0.4, linestyle='--', 
+                color = 'grey')
+        if labels:
+            CurvedText(x    = log_x_range,
+                       y    = y_values[s],
+                       text = labels[i],
+                       va   = 'bottom',
+                       axes = ax)  
     return()
     
 

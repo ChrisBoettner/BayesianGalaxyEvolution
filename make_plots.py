@@ -68,7 +68,6 @@ def save_plots(quantity, show = False, file_format='pdf'):
     elif quantity == 'mstar_mbh':
         mstar  = load_model('mstar','changing')
         mbh    = load_model('mbh','quasar', prior_name='successive')
-
         Plot_q1_q2_relation(
                     mstar,mbh,datapoints=True,sigma=[1],
                     scaled_ndf=(mbh, [10,30,100]),
