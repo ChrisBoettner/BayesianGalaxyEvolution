@@ -1019,7 +1019,7 @@ class ModelResult_QLF(ModelResult):
         '''
         Calculates the conditional ERDF for the given (log) luminosity at the
         given redshift using the given parameter. Returns
-        dict of form log_L:[eddington ratio, value]. 
+        dict of form log_L:[log eddington ratio, probability]. 
         Eddington ratio space can be an given as optional argument, if None 
         it's created using make_log_eddington_ratio_space.
         
@@ -1060,7 +1060,7 @@ class ModelResult_QLF(ModelResult):
         return(qlf_contribution)
 
     def make_log_eddington_ratio_space(self, log_L, z, parameter,
-                                       log_cut=4, num=100):
+                                       log_cut=6, num=100):
         '''
         Only a small range of Eddington ratios contributes meaninfully to the
         QLF integral. This function estimates that ranges and creates a 
