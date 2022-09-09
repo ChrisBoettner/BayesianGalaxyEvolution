@@ -106,4 +106,35 @@ plt.legend()
 ks_result = kstest(np.sort(data[:,0]), m_bh_cdf)
 print('pvalue = ' + str(ks_result.pvalue))
 
+#%%
+# alternative approach summing all erdfs instead of using mean
+from scipy.interpolate import interp1d
 
+
+edd_space = np.linspace(-6, 31,10000)
+
+#calculate all erdfs
+bh_distributions     = lbol.calculate_conditional_ERDF(np.unique(data[:,1]),0,lbol.parameter.at_z(0),
+                                                eddington_ratio_space=edd_space,
+                                                black_hole_mass_distribution=True)
+
+# calculate number of occurences for every luminosity
+unique, counts = np.unique(data[:,1], return_counts=True)
+lum_occ = dict(zip(unique, counts))
+
+for l in bh_distributions.keys():
+    dist = bh_distributions[l] 
+    bh_distributions[l] = interp1d(dist[:,0], dist[:,1])
+    
+def prob(m_bh):
+    p=0
+    for l in bh_distributions.keys():
+        p = p + bh_distributions[l](m_bh)*lum_occ[l]
+    p = p/len(data[:,1])
+    return(p)
+    
+
+m_bh_x = np.linspace(6,10,100)
+ps     = [prob(m) for m in m_bh_x]
+
+plt.plot(m_bh_x, ps, label='sum of dists')
