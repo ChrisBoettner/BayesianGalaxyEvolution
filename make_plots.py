@@ -49,6 +49,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
         Plot_marginal_pdfs(model).save(file_format)
         Plot_parameter_sample(model).save(file_format)
         Plot_conditional_ERDF(model).save(file_format)
+        Plot_black_hole_mass_distribution(model).save(file_format)
         del model
         
         

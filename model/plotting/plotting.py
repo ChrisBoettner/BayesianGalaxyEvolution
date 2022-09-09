@@ -7,6 +7,7 @@ Created on Sun Apr 10 18:15:34 2022
 """
 
 from model.interface import run_model
+from model.data.load import load_data_points
 from model.analysis.reference_parametrization import get_reference_function_sample, \
                                                      calculate_best_fit_reference_parameter,\
                                                      calculate_reference_parameter_from_data    
@@ -26,6 +27,7 @@ from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
 
 from pathlib import Path
 import numpy as np
+from scipy.integrate import trapezoid
 import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap
@@ -689,62 +691,6 @@ class Plot_reference_comparison(Plot):
         # turn off unused axes
         turn_off_axes(axes)
         return(fig, axes)
-
-class Plot_conditional_ERDF(Plot):
-    def __init__(self, ModelResult, **kwargs):
-        '''
-        Plot sample of reference functions fitted to number density functions
-        by randomly drawing from parameter distribution, calculating ndfs and
-        then fitting reference functions.
-        You can turn off the plotting of the data points using 'datapoints' 
-        argument.
-        '''
-        super().__init__(ModelResult, **kwargs)
-        self.default_filename = self.quantity_name + '_qlf_contribution'
-        
-    def _plot(self, ModelResult):
-        
-        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF']:
-            return NotImplementedError('Only implemented for Eddington models.')
-
-        if ModelResult.parameter.is_None():
-            raise AttributeError(
-                'best fit parameter have not been calculated.')
-            
-
-        # calculate qlf contributions
-        z         = 0
-        parameter = ModelResult.parameter.at_z(z)
-        edd_space = np.linspace(-10,9,1000)
-        lum       = [35, 40, 45, 50]
-        qlf_cont  = ModelResult.calculate_conditional_ERDF(lum, z, parameter,
-                                                           edd_space)
-                  
-        # general plotting configuration
-        fig, ax = plt.subplots(1, 1, sharex=True)
-        fig.subplots_adjust(**self.plot_limits)
-        
-        # line styles
-        linestyle = ['-','--',':', '-.']
-
-        # add axes labels
-        fig.supxlabel(r'log $\lambda$')
-        fig.supylabel(r'$\xi (\lambda|L_\mathrm{bol})$', x=0.01)
-
-        for i,l in enumerate(lum):
-            # plot median
-            ax.plot(qlf_cont[l][:,0], qlf_cont[l][:,1], 
-                    color='grey', linestyle=linestyle[i],
-                    label=r'$\log L_\mathrm{bol}$ = ' + str(l) + 
-                          r' erg s$^{-1}$')
-            
-        # add limits
-        ax.set_ylim([0,0.6])
-        
-        # add legend and minor ticks
-        add_legend(ax, 0)
-        ax.minorticks_on()
-        return(fig, ax)
     
 class Plot_q1_q2_relation(Plot):
     def __init__(self, ModelResult1, ModelResult2, **kwargs):
@@ -901,4 +847,161 @@ class Plot_q1_q2_relation(Plot):
         
         # add legend
         ax.legend()
+        return(fig, ax)
+
+class Plot_conditional_ERDF(Plot):
+    def __init__(self, ModelResult, **kwargs):
+        '''
+        Plot sample of reference functions fitted to number density functions
+        by randomly drawing from parameter distribution, calculating ndfs and
+        then fitting reference functions.
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument.
+        '''
+        super().__init__(ModelResult, **kwargs)
+        self.default_filename = self.quantity_name + '_qlf_contribution'
+        
+    def _plot(self, ModelResult, z=0):
+        
+        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF']:
+            return NotImplementedError('Only implemented for bolometric '
+                                       'luminosity - Eddington models.')
+
+        if ModelResult.parameter.is_None():
+            raise AttributeError(
+                'best fit parameter have not been calculated.')
+            
+
+        # calculate qlf contributions
+        parameter = ModelResult.parameter.at_z(z)
+        edd_space = np.linspace(-10,9,1000)
+        lum       = [35, 40, 45, 50]
+        qlf_cont  = ModelResult.calculate_conditional_ERDF(lum, z, parameter,
+                                                           edd_space)
+                  
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1, sharex=True)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # line styles
+        linestyle = ['-','--',':', '-.']
+
+        # add axes labels
+        fig.supxlabel(r'log $\lambda$')
+        fig.supylabel(r'$\xi (\lambda|L_\mathrm{bol})$', x=0.01)
+
+        for i,l in enumerate(lum):
+            # plot median
+            ax.plot(qlf_cont[l][:,0], qlf_cont[l][:,1], 
+                    color='grey', linestyle=linestyle[i],
+                    label=r'$\log L_\mathrm{bol}$ = ' + str(l) + 
+                          r' erg s$^{-1}$')
+            
+        # add limits
+        ax.set_ylim([0,0.6])
+        
+        # add legend and minor ticks
+        add_legend(ax, 0)
+        ax.minorticks_on()
+        return(fig, ax)
+    
+class Plot_black_hole_mass_distribution(Plot):
+    def __init__(self, ModelResult, **kwargs):
+        '''
+        Plot expected distribution of black hole masses for a given luminosity
+        from ERDF. Can take multiple luminosities, but if only one is given it
+        also calculates the limits of the model and an adjusted distribution
+        that takes the limits into account.
+        You can adjust redshift, luminosity and base eddington space.
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument (so far only data at z=0 from Baron2019 paper).
+        '''
+        super().__init__(ModelResult, **kwargs)
+        self.default_filename = self.quantity_name + '_bh_mass_distribution'
+        
+    def _plot(self, ModelResult, z=0, lum=45.2, 
+              edd_space=np.linspace(-6, 31,10000), datapoints=True):
+        
+        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF']:
+            return NotImplementedError('Only implemented for bolometric '
+                                       'luminosity - Eddington models.')
+
+        if ModelResult.parameter.is_None():
+            raise AttributeError(
+                'best fit parameter have not been calculated.')
+        lum = make_list(lum)            
+
+        # calculate black hole mass distribution(s)
+        parameter = ModelResult.parameter.at_z(z)
+        m_bh_dist = ModelResult.calculate_conditional_ERDF(
+                                lum, z, parameter, edd_space, 
+                                black_hole_mass_distribution=True)
+        
+        # load black hole mass and luminosity data
+        if datapoints:
+            m_bh_data = load_data_points('mbh_Lbol')
+            m_bh_data = m_bh_data[~np.isnan(m_bh_data[:,0])] # remove NaNs
+        
+        # if only one luminosity is given, calculate upper and lower probable
+        # bound of model
+        if len(lum)==1:
+            dist = np.copy(m_bh_dist[lum[0]])
+            
+            # lower mass limit, Eddingtion ratio = 1
+            eddington_limit = lum[0]-ModelResult.log_eddington_constant   
+            # upper mass limit, Eddingtion ratio = 0.01
+            Jet_mode_limit  = lum[0]-ModelResult.log_eddington_constant+2
+
+            lower_ind = np.argmin(dist[:,0]<eddington_limit)
+            upper_ind = np.argmin(dist[:,0]<Jet_mode_limit)
+            
+            # cut distribution to are between limits and normalise to 1
+            cut_dist = dist[lower_ind:upper_ind]
+            norm = trapezoid(cut_dist[:,1], cut_dist[:,0])
+            cut_dist[:,1] = cut_dist[:,1]/norm
+                  
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1, sharex=True)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # line styles
+        linestyle = ['-','--',':', '-.']
+
+        # add axes labels
+        fig.supxlabel(r'log $M_\mathrm{BH}$ [$M_\odot$]')
+        fig.supylabel(r'$P (M_\mathrm{BH}|L_\mathrm{bol})$', x=0.01)
+        
+        # plot predicted black hole distribution
+        for i, l in enumerate(lum):           
+            ax.plot(m_bh_dist[l][:,0], m_bh_dist[l][:,1], 
+                    color='grey', linestyle=linestyle[i],
+                    label= 'Predicted Distribution for\n' 
+                           + r'$\log L_\mathrm{bol}$ = ' 
+                           + str(l) + r' erg s$^{-1}$', zorder=1000)
+                    # high zorder causes this line to be drawn last
+            
+        # add upper and lower limit and re-normalised distribution
+        if len(lum)==1:
+            ax.plot(cut_dist[:,0], cut_dist[:,1], 
+                    color='grey', linestyle=linestyle[1],
+                    label= r'Adjusted Distribution')
+            ax.axvline(eddington_limit, color='C3')
+            ax.axvline(Jet_mode_limit, color='C3')
+            # add text
+            ax.text(1.002*eddington_limit, 0.5, 'Eddington ratio = 1', 
+                    rotation=90, va='bottom', ha='left')
+            ax.text(1.002*Jet_mode_limit, 0.5, 'Eddington ratio = 0.01', 
+                    rotation=90, va='bottom', ha='left')
+            
+            # set limits
+            ax.set_xlim([0.9*eddington_limit,1.1*Jet_mode_limit])
+        
+        # add histogram of data points
+        if datapoints:
+            ax.hist(m_bh_data[:,0], bins=15, density=True,
+                    label = 'Observed Distribution\n(Baron2019, Type 1 AGN)',
+                    color='C3', alpha=0.4)
+        
+        # add legend
+        add_legend(ax, 0)
         return(fig, ax)

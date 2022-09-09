@@ -677,6 +677,10 @@ class ModelResult_QLF(ModelResult):
         self._initial_eddington_space = np.linspace(-50, 50, 100)
         self._initial_erdf = None
 
+        # log of constant for Eddington luminosity, where
+        # L_Edd = eddington_constant * m_bh (in erg/s)
+        self.log_eddington_constant = 38.1
+
         # initalize model itself
         super().__init__(redshifts, log_ndfs, log_hmf_functions,
                          quantity_name, physics_name, prior_name,
@@ -1015,13 +1019,18 @@ class ModelResult_QLF(ModelResult):
         return(log_erdf)
     
     def calculate_conditional_ERDF(self, log_L, z, parameter,
-                                   eddington_ratio_space = None):
+                                   eddington_ratio_space = None,
+                                   black_hole_mass_distribution=False):
         '''
         Calculates the conditional ERDF for the given (log) luminosity at the
         given redshift using the given parameter. Returns
         dict of form log_L:[log eddington ratio, probability]. 
         Eddington ratio space can be an given as optional argument, if None 
         it's created using make_log_eddington_ratio_space.
+        If black_hole_mass_distribution is True, calculate black hole masses 
+        associated with Eddington ratios and return black hole mass 
+        distribution instead, i.e. dict of form 
+        log_L:[log black hole mass, probability].
         
         Parameters
         ----------
@@ -1034,16 +1043,21 @@ class ModelResult_QLF(ModelResult):
         eddington_ratio_space : float or array, optional
             Eddington ratio space over which QLF contribution is supposed to be
             calculated. The default is None.
+        black_hole_mass_distribution : bool, optional
+            If True, transform Eddington ratios to black hole masses and 
+            return probability distribution of black hole masses instead of
+            ERDF.
 
         Returns
         -------
-        qlf_contribution: dict
-            Dictonary of calculated conditional ERDFs (log_L are keys). 
+        distribution: dict
+            Dictonary of calculated conditional ERDFs (or black hole mass
+            distributions if black_hole_mass_distribution=True) (log_L are 
+            keys). 
 
         '''
         log_L = make_array(log_L)
-
-        qlf_contribution = {}
+        distribution = {}
         for l in log_L:
             if eddington_ratio_space is None:
                 eddington_ratio_space = self.make_log_eddington_ratio_space(l, z, 
@@ -1054,10 +1068,22 @@ class ModelResult_QLF(ModelResult):
                                                                    l, z,
                                                                    parameter))
             # the contribution has to be normalised
-            normalisation    = trapezoid(qlf_con, eddington_ratio_space)
-            qlf_contribution[l] = np.array([eddington_ratio_space,
+            normalisation     = trapezoid(qlf_con, eddington_ratio_space)
+            conditional_erdf  = np.array([eddington_ratio_space,
                                             qlf_con/normalisation]).T
-        return(qlf_contribution)
+            
+            if black_hole_mass_distribution:
+                # calculate (log of) black hole masses associated with 
+                # Eddington ratio and overwrite Eddingtion ratio column with
+                # black hole masses
+                log_m_bhs = (l - conditional_erdf[:,0] 
+                             - self.log_eddington_constant)
+                conditional_erdf[:,0] = log_m_bhs
+                # sort according to black hole masses
+                conditional_erdf = conditional_erdf[log_m_bhs.argsort()]
+            
+            distribution[l] = conditional_erdf
+        return(distribution)
 
     def make_log_eddington_ratio_space(self, log_L, z, parameter,
                                        log_cut=6, num=100):

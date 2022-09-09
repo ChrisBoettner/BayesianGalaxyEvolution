@@ -27,6 +27,8 @@ edd_ratio_labels = [f'Eddington ratio: {e}' for e in edd_ratios]
 #                            log_slope_labels = edd_ratio_labels, datapoints=True,
 #                            scaled_ndf=(mbh,[3,30]))
 
+plt.close()
+
 plot = Plot_q1_q2_relation(mbh, lbol, datapoints=True,
                             scaled_ndf=(mbh,[3,30]))
 
@@ -72,23 +74,6 @@ upper_limit = mean_L-log_edd_const+2
 
 lower_ind = np.argmin(m_bh_dist[:,0]>lower_limit)
 upper_ind = np.argmin(m_bh_dist[:,0]>upper_limit)
-    
-
-plt.close()
-plt.figure()
-plt.hist(data[:,0], bins=15, density=True, label = 'observed black hole mass distribution')
-plt.plot(m_bh_dist[:,0], m_bh_dist[:,1], label='predicted black hole mass distribution')
-plt.axvline(lower_limit, color='black', label = 'Eddington ratio = 1')
-plt.axvline(upper_limit, color='black', label = 'Eddington ratio = 0.01')
-plt.plot(m_bh_dist[upper_ind:lower_ind,0], 
-         m_bh_dist[upper_ind:lower_ind,1]/c,
-         label='adjusted model distribution')
-plt.xlim([6,10])
-plt.title(f'mean bolometric luminosity = {mean_L}')
-plt.xlabel('log black hole mass (in stellar masses)')
-plt.ylabel('probability')
-plt.legend()
-
 
 from scipy.interpolate import interp1d
 
@@ -99,8 +84,26 @@ m_bh_cdf = interp1d(m_bh_pmf[:,0], np.cumsum(m_bh_pmf[:,1]))
 
 from scipy.stats import kstest
 
+    
+norm = m_bh_cdf(upper_limit) - m_bh_cdf(lower_limit)
+
+plt.figure()
+plt.hist(data[:,0], bins=15, density=True, label = 'observed black hole mass distribution')
+plt.plot(m_bh_dist[:,0], m_bh_dist[:,1], label='predicted black hole mass distribution')
+plt.axvline(lower_limit, color='black', label = 'Eddington ratio = 1')
+plt.axvline(upper_limit, color='black', label = 'Eddington ratio = 0.01')
+plt.plot(m_bh_dist[upper_ind:lower_ind,0], 
+         m_bh_dist[upper_ind:lower_ind,1]/norm,
+         label='adjusted model distribution')
+plt.xlim([6,10])
+plt.title(f'mean bolometric luminosity = {mean_L}')
+plt.xlabel('log black hole mass (in stellar masses)')
+plt.ylabel('probability')
+plt.legend()
+
+
+
 ks_result = kstest(np.sort(data[:,0]), m_bh_cdf)
 print('pvalue = ' + str(ks_result.pvalue))
 
-c = m_bh_cdf(upper_limit) - m_bh_cdf(lower_limit)
 
