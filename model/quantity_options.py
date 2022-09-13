@@ -147,7 +147,7 @@ def get_quantity_specifics(quantity_name):
     elif quantity_name == 'mbh':
         # GENERAL
         options['quantity_name'] = 'mbh'
-        options['quantity_name_tex'] = r'$M_\mathrm{BH}$'
+        options['quantity_name_tex'] = r'$M_\bullet$'
         options['ndf_name'] = 'BHMF'
         options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
@@ -172,8 +172,8 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(6.87, 12.41, 100)
         options['subplot_grid'] = (3, 2)
-        options['ndf_xlabel'] = r'log $M_\mathrm{BH}$ [$M_\odot$]'
-        options['ndf_ylabel'] = r'log $\phi(M_\mathrm{BH})$ [cMpc$^{-3}$ dex$^{-1}$]'
+        options['ndf_xlabel'] = r'log $M_\bullet$ [$M_\odot$]'
+        options['ndf_ylabel'] = r'log $\phi(M_\bullet)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15, 3]
         options['param_y_labels'] = [r'$\log B$',
                                      r'$\theta$']

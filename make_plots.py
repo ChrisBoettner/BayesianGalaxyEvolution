@@ -76,6 +76,13 @@ def save_plots(quantity, show = False, file_format='pdf'):
         del mstar
         del mbh
         
+    elif quantity == 'Lbol_mbh':
+        lbol = load_model('Lbol', 'eddington', prior_name='successive')
+        mbh  = load_model('mbh','quasar', prior_name='successive')
+        Plot_q1_q2_relation(lbol, mbh, scaled_ndf=(mbh, 3),
+                    quantity_range=np.linspace(43,48,100)).save(file_format)
+        del lbol
+        del mbh
         
     else:
         raise ValueError('quantity_name not known.')
@@ -86,6 +93,6 @@ def save_plots(quantity, show = False, file_format='pdf'):
     return
 
 if __name__ == '__main__':
-    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', 'mstar_mbh']
+    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', 'mstar_mbh','Lbol_mbh']
     [save_plots(quantity) for quantity in quantities]
     

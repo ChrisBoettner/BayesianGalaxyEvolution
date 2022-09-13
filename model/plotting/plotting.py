@@ -20,7 +20,8 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 turn_off_axes,\
                                                 get_distribution_limits,\
                                                 plot_data_points, CurvedText,\
-                                                plot_linear_relationship
+                                                plot_linear_relationship,\
+                                                plot_q1_q2_additional
                                                 
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array
@@ -843,7 +844,9 @@ class Plot_q1_q2_relation(Plot):
         # add lines for linear relation
         if log_slopes is not None:
             log_slopes = make_list(log_slopes)
-            plot_linear_relationship(ax, log_q1, log_slopes, log_slope_labels)        
+            plot_linear_relationship(ax, log_q1, log_slopes, log_slope_labels)  
+        # add other quantity-related things to plot
+        plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1)
         
         # add legend
         ax.legend()
@@ -968,8 +971,8 @@ class Plot_black_hole_mass_distribution(Plot):
         linestyle = ['-','--',':', '-.']
 
         # add axes labels
-        fig.supxlabel(r'log $M_\mathrm{BH}$ [$M_\odot$]')
-        fig.supylabel(r'$P (M_\mathrm{BH}|L_\mathrm{bol})$', x=0.01)
+        fig.supxlabel(r'log $M_\bullet$ [$M_\odot$]')
+        fig.supylabel(r'$P (M_\bullet|L_\mathrm{bol})$', x=0.01)
         
         # plot predicted black hole distribution
         for i, l in enumerate(lum):           

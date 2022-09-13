@@ -80,35 +80,44 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     # set default data_masks if none are given
     if data_masks is None:
         data_mask      = np.arange(len(data_percentile_dict[sigma[0]]))
-        mask_beginning = []
-        mask_trail     = []
+        mask_beginning = np.array([])
+        mask_trail     = np.array([])
     else:
         if len(data_masks)!=3:
             raise ValueError('data_masks must be array containing three '
                              'mask arrays: data_mask, mask_beginning, '
                              'mask_trail.')
         data_mask, mask_beginning, mask_trail = data_masks
-
+    
+    # differentiate which label should be used in case masks (data outside
+    # observations) are plotted or not
+    masks_shown = (mask_beginning.any() or mask_trail.any())
+    if masks_shown:
+        label = 'Constrained by data'
+    else:
+        label = 'Model Mean'
+    
     # plot confidence intervals
     for s in sigma:  
          if s == sigma[-1]:
              # plot medians
              ax.plot(data_percentile_dict[s][:,0][data_mask],
                      data_percentile_dict[s][:,1][data_mask],
-                     label='constrained by data',
+                     label=label,
                      color=color)
-             ax.plot(data_percentile_dict[s][:,0][mask_beginning],
-                     data_percentile_dict[s][:,1][mask_beginning],
-                     ':',label='not constrained by data',
-                     color=color)
-             ax.plot(data_percentile_dict[s][:,0][mask_trail],
-                     data_percentile_dict[s][:,1][mask_trail],
-                     ':', color=color)
+             if masks_shown:
+                 ax.plot(data_percentile_dict[s][:,0][mask_beginning],
+                         data_percentile_dict[s][:,1][mask_beginning],
+                         ':',label='Not constrained by data',
+                         color=color)
+                 ax.plot(data_percentile_dict[s][:,0][mask_trail],
+                         data_percentile_dict[s][:,1][mask_trail],
+                         ':', color=color)
          ax.fill_between(data_percentile_dict[s][:, 0],
                          data_percentile_dict[s][:, 2], 
                          data_percentile_dict[s][:, 3],
                          color=blend_color(color, sigma_color_alphas[s]),
-                         label= sigma_equiv_table[s] + r'\% percentile')
+                         label= sigma_equiv_table[s] + r'\% Percentile')
     return()
 
 def plot_data_points(ax, ModelResult1, ModelResult2=None, legend=True):
@@ -178,6 +187,22 @@ def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
                        axes = ax)  
     return()
     
+def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1):
+    '''
+
+    '''
+    
+    if (ModelResult1.quantity_name == 'Lbol' and
+        ModelResult2.quantity_name == 'mbh'):
+        
+        log_mbhs = ModelResult1.calculate_mean_log_black_hole_mass_from_ERDF(
+                        log_q1, z, ModelResult1.parameter.at_z(z))
+        
+        ax.plot(log_q1, log_mbhs, label='Mean calculated from ERDF',
+                color = ModelResult2.color, linestyle='-.')
+            
+    
+    return()
 
 ################ LEGEND #######################################################
 

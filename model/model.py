@@ -1085,6 +1085,51 @@ class ModelResult_QLF(ModelResult):
             distribution[l] = conditional_erdf
         return(distribution)
 
+    def calculate_mean_log_black_hole_mass_from_ERDF(self, log_L, z, 
+                                                     parameter):
+        '''
+        Calculates the mean expected (log of) black hole mass for given
+        (log) luminosity, redshift and parameter. The mean value is calculated
+        by first calculating the expected black hole mass distribution for the 
+        given luminosity (and redshift+parameter) and then calculating the 
+        mean of that distribution.
+        
+        Parameters
+        ----------
+        log_L : float or array
+            Input (log of) bolometric lunionsity in ergs/s.
+        z : int
+            Redshift at which value is calculated.
+        parameter : list 
+            Model parameter used for calculation.
+            
+        Returns
+        -------
+        mean_log_black_hole_mass: float or array
+            Array of (log of) mean black hole masses.
+
+        '''
+        
+        
+        # calculate black hole mass distributions
+        black_hole_mass_distributions = self.calculate_conditional_ERDF(
+                                            log_L, z, parameter,
+                                            black_hole_mass_distribution=True)
+        
+        # calculate mean value from distribution
+        mean_log_black_hole_mass = []
+        for l in black_hole_mass_distributions.keys():
+            log_mbh, prob = black_hole_mass_distributions[l].T
+            mean_mbh      = trapezoid(np.power(10,log_mbh)*prob, log_mbh)
+            mean_log_black_hole_mass.append(np.log10(mean_mbh))
+        mean_log_black_hole_mass = np.array(mean_log_black_hole_mass)
+            
+        # if input scalar, return scalar
+        if np.isscalar(log_L):
+            mean_log_black_hole_mass = mean_log_black_hole_mass[0]
+        return(mean_log_black_hole_mass)
+        
+
     def make_log_eddington_ratio_space(self, log_L, z, parameter,
                                        log_cut=6, num=100):
         '''
