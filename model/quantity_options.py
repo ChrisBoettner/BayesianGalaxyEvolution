@@ -92,7 +92,7 @@ def get_quantity_specifics(quantity_name):
         options['subplot_grid'] = (4, 3)
         options['ndf_xlabel'] = r'log $M_\star$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\star)$ [cMpc$^{-3}$ dex$^{-1}$]'
-        options['ndf_y_axis_limit'] = [-6, 3]
+        options['ndf_y_axis_limit'] = [-6, 1]
         options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
                                      r'$\delta$']
@@ -176,7 +176,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_ylabel'] = r'log $\phi(M_\bullet)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15, 3]
         options['param_y_labels'] = [r'$\log B$',
-                                     r'$\theta$']
+                                     r'$\eta$']
         options['ndf_legend_pos'] = 3
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 1

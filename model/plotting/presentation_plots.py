@@ -12,7 +12,6 @@ from matplotlib import rc_file
 rc_file('model/plotting/settings.rc')
 
 from model.plotting.plotting import Plot
-from model.plotting.convience_functions import turn_off_frame
 
 
 class Plot_feedback_illustration(Plot):
@@ -28,7 +27,7 @@ class Plot_feedback_illustration(Plot):
 
     def _plot(self, ModelResult):
         
-        if ModelResult.feedback_name not in ['stellar_blackhole', 'changing']:
+        if ModelResult.physics_name not in ['stellar_blackhole', 'changing']:
             raise ValueError('Currently only supports stellar_blackhole feedback.')
 
         # calculate ndfs
@@ -39,7 +38,7 @@ class Plot_feedback_illustration(Plot):
         ndf_without_feedback = np.array(ModelResult.calculate_ndf(z, 
                                                                   [parameter[0],
                                                                    0,0])).T
-        turnover_mass        = ModelResult.feedback_model.at_z(z).\
+        turnover_mass        = ModelResult.physics_model.at_z(z).\
                                            calculate_log_quantity(ModelResult.\
                                            quantity_options['log_m_c'], 
                                            *parameter) 

@@ -12,7 +12,8 @@ from model.analysis.reference_parametrization import get_reference_function_samp
                                                      calculate_best_fit_reference_parameter,\
                                                      calculate_reference_parameter_from_data    
 from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf,\
-                                        calculate_q1_q2_relation
+                                        calculate_q1_q2_relation,\
+                                        calculate_ndf_percentiles
 from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
                                                 plot_data_with_confidence_intervals,\
                                                 add_redshift_text, add_legend,\
@@ -21,7 +22,8 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 get_distribution_limits,\
                                                 plot_data_points, CurvedText,\
                                                 plot_linear_relationship,\
-                                                plot_q1_q2_additional
+                                                plot_q1_q2_additional,\
+                                                plot_feedback_regimes
                                                 
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array
@@ -33,8 +35,7 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
-from matplotlib import rc_file
-rc_file('model/plotting/settings.rc')
+plt.style.use('model/plotting/settings.rc')
 
 ################ MAIN FUNCTIONS AND CLASSES ###################################
 
@@ -44,24 +45,18 @@ def get_list_of_plots():
     '''
     return(Plot.__subclasses__())
 
-def plot_limits():
-    '''
-    Default plot limits
-    '''
-    limits = {'top': 0.93, 'bottom': 0.113,
-              'left': 0.075, 'right': 0.991,
-              'hspace': 0.0, 'wspace': 0.0}
-    return(limits)
-
 class Plot(object):
-    def __init__(self, ModelResult, **kwargs):
+    def __init__(self, ModelResult, columns='double', **kwargs):
         ''' Empty Parent Class '''
-        self.plot_limits = plot_limits()
+        self.adjust_style_parameter(columns) # adjust plot style parameter
 
-        self.make_plot(ModelResult, **kwargs)
+        self.make_plot(ModelResult, columns, **kwargs)
         self.default_filename = None
+        
+        plt.style.use('model/plotting/settings.rc') # return to original 
+                                                    # plot style parameter
 
-    def make_plot(self, ModelResult, **kwargs):
+    def make_plot(self, ModelResult, columns, **kwargs):
         ModelResult = make_list(ModelResult)
 
         self.quantity_name = ModelResult[0].quantity_name
@@ -78,6 +73,29 @@ class Plot(object):
 
     def _plot(self, ModelResult):
         return
+    
+    def adjust_style_parameter(self, columns):
+        '''
+        Depending on how plot is supposed to be displayed in paper format 
+        ('single' or 'double' column), adjust some parameter to make parts of 
+        plot readable.
+        '''
+        if columns == 'single':
+            mpl.rcParams['axes.labelsize']  *= 1.4
+            mpl.rcParams['xtick.labelsize'] *= 1.8
+            mpl.rcParams['ytick.labelsize'] *= 1.8
+            self.plot_limits = {'top': 0.965, 'bottom': 0.175,
+                                'left': 0.135, 'right': 0.995,
+                                'hspace': 0.0, 'wspace': 0.0}
+        elif columns == 'double':
+            mpl.rcParams['lines.markersize'] /= 2
+            self.plot_limits = {'top': 0.984, 'bottom': 0.130,
+                                'left': 0.078, 'right': 0.994,
+                                'hspace': 0.0, 'wspace': 0.0}
+        else:
+            raise ValueError('columns must be either \'single\' or \'double\'')
+            
+        return   
     
     def to_print_mode(self, labelsize_scaling = 1, leftbottom_ticks=True,
                       labels_off = False):
@@ -141,17 +159,69 @@ class Plot(object):
         return(self)
 
 ################ PLOTS ########################################################
-
-class Plot_best_fit_ndfs(Plot):
+class Plot_best_fit_ndf(Plot):
     def __init__(self, ModelResults, **kwargs):
         '''
         Plot modelled number density functions and data for comparison. Input
         can be a single model object or a list of objects.
         You can turn off the plotting of the data points using 'datapoints' 
+        argument. Choose redshift using 'redshift' argument
+        '''
+        super().__init__(ModelResults, **kwargs)
+        self.default_filename = (self.quantity_name + '_ndf_' + self.prior_name)
+
+    def _plot(self, ModelResults, datapoints=True, redshift=0):
+        # make list if input is scalar
+        ModelResults = make_list(ModelResults)
+
+        if ModelResults[0].parameter.is_None():
+            raise AttributeError(
+                'best fit parameter have not been calculated.')
+
+        # general plotting configuration
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # quantity specific settings
+        xlabel, ylabel = ModelResults[0].quantity_options['ndf_xlabel'],\
+                         ModelResults[0].quantity_options['ndf_ylabel']
+
+        # add axes labels
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        # add minor ticks and set number of ticks
+        ax.xaxis.set_major_locator(MaxNLocator(4))
+        ax.yaxis.set_major_locator(MaxNLocator(5))
+        #ax.minorticks_on()
+
+        # plot group data points
+        if datapoints:
+            plot_group_data(ax, ModelResults[0], redshift=redshift)
+
+        # plot modelled number density functions
+        for model in ModelResults:
+            plot_best_fit_ndf(ax, model, redshift=redshift)
+
+        # add axes limits
+        quantity_range = ModelResults[0].quantity_options['quantity_range']
+        ax.set_ylim(ModelResults[0].quantity_options['ndf_y_axis_limit'])
+        ax.set_xlim([quantity_range[0], quantity_range[-1]])
+        return(fig, ax)
+
+
+class Plot_best_fit_ndfs_all_z(Plot):
+    def __init__(self, ModelResults, **kwargs):
+        '''
+        Plot modelled number density functions and data across all 
+        redshifts. Input can be a single model object or a list of objects.
+        You can turn off the plotting of the data points using 'datapoints' 
         argument.
         '''
         super().__init__(ModelResults, **kwargs)
-        self.default_filename = self.quantity_name + '_ndf_' + self.prior_name
+        self.default_filename = (self.quantity_name + '_ndfs_all_z_' 
+                                                    + self.prior_name)
 
     def _plot(self, ModelResults, datapoints=True):
         # make list if input is scalar
@@ -404,21 +474,27 @@ class Plot_ndf_sample(Plot):
     def __init__(self, ModelResult, **kwargs):
         '''
         Plot sample of number density functions by randomly drawing from parameter
-        distribution and calculating ndfs. 
-        You can turn off the plotting of the data points using 'datapoints' 
-        argument and the best fit line using 'best_fit'.
+        distribution and calculating ndfs, then calculating percentiles of
+        these samples. You can adjust the number sigma equivalents drawn using
+        sigma argument and number of samples drawn for calculation using 
+        num argument.
+        You can turn off the plotting of the data points using datapoints 
+        argument, the best fit line using best_fit and the feedback regimes
+        using feedback_regimes.
         '''
-        super().__init__(ModelResult, **kwargs)
+        super().__init__(ModelResult,  **kwargs)
         self.default_filename = self.quantity_name + '_ndf_sample'
 
-    def _plot(self, ModelResult, best_fit=True, datapoints=True):
+    def _plot(self, ModelResult, sigma=1, num=5000, best_fit=False, 
+              datapoints=True, feedback_regimes=True):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
         # get ndf sample
         ndfs = {}
         for z in ModelResult.redshift:
-            ndfs[z] = ModelResult.get_ndf_sample(z)
+            ndfs[z] = calculate_ndf_percentiles(ModelResult, z, sigma=sigma,
+                                                num=num)
 
         # general plotting configuration
         subplot_grid = ModelResult.quantity_options['subplot_grid']
@@ -427,9 +503,7 @@ class Plot_ndf_sample(Plot):
         fig.subplots_adjust(**self.plot_limits)
 
         # define plot parameter
-        linewidth = 0.2
-        alpha     = 0.23
-        color     = 'grey'
+        color     = 'C3'
 
         # quantity specific settings
         xlabel, ylabel, ncol  = ModelResult.quantity_options['ndf_xlabel'],\
@@ -449,16 +523,19 @@ class Plot_ndf_sample(Plot):
 
         # plot number density functions
         for z in ModelResult.redshift:
-            for ndf in ndfs[z]:
-                axes[z].plot(ndf[:, 0], ndf[:, 1], color=color,
-                             linewidth=linewidth, alpha=alpha)
-                
+            plot_data_with_confidence_intervals(axes[z], ndfs[z], color,
+                                                median=False)
+        
+        # plot best fit
         if best_fit:
             plot_best_fit_ndf(axes, ModelResult)
 
         # plot group data points
         if datapoints:
             plot_group_data(axes, ModelResult)
+            
+        if feedback_regimes:
+            plot_feedback_regimes(axes, ModelResult)
 
         # add redshift as text to subplots
         add_redshift_text(axes, ModelResult.redshift)
@@ -471,12 +548,7 @@ class Plot_ndf_sample(Plot):
                          quantity_range[-1]])
 
         # add legend
-        if ModelResult.physics_name == 'changing':
-            separation_point = 2
-        else:
-            separation_point = 1
-        add_separated_legend(axes, separation_point=separation_point,
-                             ncol=ncol, loc = legend_loc)
+        add_legend(axes, -1, ncol=ncol, loc=legend_loc)
 
         # turn off unused axes
         turn_off_axes(axes)
@@ -694,7 +766,7 @@ class Plot_reference_comparison(Plot):
         return(fig, axes)
     
 class Plot_q1_q2_relation(Plot):
-    def __init__(self, ModelResult1, ModelResult2, **kwargs):
+    def __init__(self, ModelResult1, ModelResult2, columns='double', **kwargs):
         '''
         Plot relation between two observable quantities according to Model.
         Works by using ModelResult1 to calculate halo mass distribution and
@@ -707,16 +779,20 @@ class Plot_q1_q2_relation(Plot):
         scalar of an array.
         You can choose the redshift using z, the number of sigma equivalents
         shown using sigma, the datapoints using datapoints and the
-        q1 range using quantity_range. 
+        q1 range using quantity_range. Also can adjust number of samples drawn
+        for calculation using num argument.
         You can also add lines for linear relationships manually, just pass log
         of slopes via log_slopes argument. Can take array of values. You can 
         also add labels for these lines via log_slope_labels argument.
         '''
-        self.plot_limits = plot_limits()
-        
+        self.adjust_style_parameter(columns) # adjust plot style parameter
+
         self.make_plot(ModelResult1, ModelResult2, **kwargs)
         self.default_filename = (self.quantity_name + '_relation_' 
                                  + self.prior_name)
+        
+        plt.style.use('model/plotting/settings.rc') # return to original 
+                                                    # plot style parameter
 
     def make_plot(self, ModelResult1, ModelResult2, **kwargs):
         # adapted for two model results
@@ -728,7 +804,7 @@ class Plot_q1_q2_relation(Plot):
         self.axes = axes
         return
     
-    def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, 
+    def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, num = 500,
               datapoints=False, scaled_ndf=None, quantity_range=None,
               log_slopes=None, log_slope_labels=None):
         
@@ -744,7 +820,8 @@ class Plot_q1_q2_relation(Plot):
         # calculate relation and sigmas for all given sigmas, save as array
         q1_q2_relation = calculate_q1_q2_relation(ModelResult1,
                                                   ModelResult2,
-                                                  z, log_q1, sigma=sigma)
+                                                  z, log_q1, sigma=sigma,
+                                                  num=num)
 
         # calculate additional relations with ndf fudge factor
         if scaled_ndf:
@@ -801,7 +878,6 @@ class Plot_q1_q2_relation(Plot):
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
-
 
         # get color in RGB
         color = pick_from_list(ModelResult2.color, z)
@@ -980,7 +1056,7 @@ class Plot_black_hole_mass_distribution(Plot):
                     color='grey', linestyle=linestyle[i],
                     label= 'Predicted Distribution for\n' 
                            + r'$\log L_\mathrm{bol}$ = ' 
-                           + str(l) + r' erg s$^{-1}$', zorder=1000)
+                           + str(l) + r' [erg s$^{-1}$]', zorder=1000)
                     # high zorder causes this line to be drawn last
             
         # add upper and lower limit and re-normalised distribution

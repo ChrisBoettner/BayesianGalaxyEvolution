@@ -7,6 +7,7 @@ Created on Sun Apr 10 18:16:20 2022
 """
 import math
 import numpy as np
+import matplotlib as mpl
 from matplotlib.lines import Line2D
 from matplotlib import text as mtext
 from matplotlib.colors import to_rgb
@@ -17,39 +18,64 @@ from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ PLOT DATA ####################################################
 
-def plot_group_data(axes, ModelResult):
-    ''' Use list of group objects to plot group data. '''
-    groups = ModelResult.groups    
+def plot_group_data(axes, ModelResult, redshift=None):
+    ''' Use list of group objects to plot group data at redshift z. '''
+    axes = make_list(axes)
+    groups = ModelResult.groups
     for g in groups:
-        for z in g.redshift:
-            axes[z].errorbar(g.data_at_z(z).quantity,
-                             g.data_at_z(z).phi,
-                             [g.data_at_z(z).lower_error,
-                              g.data_at_z(z).upper_error],
-                             capsize=3,
-                             fmt=g.marker,
-                             color=g.color,
-                             label=g.label,
-                             alpha=ModelResult.quantity_options['marker_alpha'])
+        if redshift is None:
+            rs = g.redshift
+        elif np.isscalar(redshift):
+            rs = make_list(redshift)
+            
+        for z in rs:
+            if z not in g.redshift:
+                continue
+            if len(axes) == 1:
+                ax = axes[0]
+            else:
+                ax = axes[z]
+            ax.errorbar(g.data_at_z(z).quantity,
+                        g.data_at_z(z).phi,
+                        [g.data_at_z(z).lower_error,
+                         g.data_at_z(z).upper_error],
+                        capsize=3,
+                        elinewidth = mpl.rcParams['lines.markersize']/2,
+                        fmt=g.marker,
+                        color=g.color,
+                        label=g.label,
+                        alpha=ModelResult.quantity_options['marker_alpha'])
     return
 
 
-def plot_best_fit_ndf(axes, ModelResult):
-    ''' Calculate and plot best fit number density functions. '''
+def plot_best_fit_ndf(axes, ModelResult, redshift=None):
+    ''' Calculate and plot best fit number density functions at redshift z. '''
+    axes = make_list(axes)
+    
     ndfs = calculate_best_fit_ndf(ModelResult, ModelResult.redshift)
-
-    for z in ModelResult.redshift:
+    
+    if redshift is None:
+        redshift = ModelResult.redshift
+    elif np.isscalar(redshift):
+        redshift = make_list(redshift)
+    
+    for z in redshift:
         color = pick_from_list(ModelResult.color, z)
         label = pick_from_list(ModelResult.label, z)
-        axes[z].plot(ndfs[z][:, 0],
-                     ndfs[z][:, 1],
-                     linestyle=ModelResult.linestyle,
-                     label=label,
-                     color=color)
+        if len(axes) == 1:
+            ax = axes[0]
+        else:
+            ax = axes[z]
+        ax.plot(ndfs[z][:, 0],
+                ndfs[z][:, 1],
+                linestyle=ModelResult.linestyle,
+                label=label,
+                color=color)
     return(ndfs)
 
 def plot_data_with_confidence_intervals(ax, data_percentile_dict, 
-                                        color, data_masks=None):
+                                        color, data_masks=None, median=True,
+                                        alpha=1):
     '''
     Plot data with confidence intervals. 
     The input data must be a dictonary, 
@@ -60,7 +86,8 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     The color must be speficified either as rgb or str.
     Optional: Add data_masks for data that is or is not constrained by data,
     must be an array containing 3 mask arrays [data_mask, mask_beginning, 
-    mask_trail].
+    mask_trail]. If median=False, only plot confidence intervals. alpha 
+    controls alpha level of shaded area.
     '''
     
     # convert color to RGB
@@ -73,7 +100,7 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     sigma_equiv_table = {1: '68', 2: '95', 3: '99.7', 4: '99.993',
                          5: '99.99994'}
     # alpha values for different sigma equivalents
-    sigma_color_alphas = {1: 0.6, 2: 0.5, 3: 0.3, 4: 0.2, 5: 0.1}
+    sigma_color_alphas = {1: 0.85, 2: 0.6, 3: 0.35, 4: 0.2, 5: 0.1}
     if not set(sigma).issubset(sigma_equiv_table.keys()):
         raise ValueError('sigmas must be between 1 and 5 (inclusive).')
     
@@ -96,10 +123,10 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
         label = 'Constrained by data'
     else:
         label = 'Model Mean'
-    
+
     # plot confidence intervals
-    for s in sigma:  
-         if s == sigma[-1]:
+    for s in np.sort(make_array(sigma))[::-1]: # sort sigma in reverse order 
+         if s == sigma[-1] and median:
              # plot medians
              ax.plot(data_percentile_dict[s][:,0][data_mask],
                      data_percentile_dict[s][:,1][data_mask],
@@ -108,7 +135,8 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
              if masks_shown:
                  ax.plot(data_percentile_dict[s][:,0][mask_beginning],
                          data_percentile_dict[s][:,1][mask_beginning],
-                         ':',label='Not constrained by data',
+                         ':',
+                         #label='Not constrained by data',
                          color=color)
                  ax.plot(data_percentile_dict[s][:,0][mask_trail],
                          data_percentile_dict[s][:,1][mask_trail],
@@ -117,14 +145,15 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
                          data_percentile_dict[s][:, 2], 
                          data_percentile_dict[s][:, 3],
                          color=blend_color(color, sigma_color_alphas[s]),
-                         label= sigma_equiv_table[s] + r'\% Percentile')
+                         alpha=alpha,
+                         #label= sigma_equiv_table[s] + r'\% Percentile'
+                         )
     return()
 
 def plot_data_points(ax, ModelResult1, ModelResult2=None, legend=True):
     '''
     Plot additional dataset to compare to Model.
     '''
-    
     # figure out naming scheme, in order to look up if data is available
     if ModelResult2 is None:
         try:
@@ -189,7 +218,7 @@ def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
     
 def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1):
     '''
-
+    Plot additional relations for q1 - q2 relations if necessary.
     '''
     
     if (ModelResult1.quantity_name == 'Lbol' and
@@ -200,8 +229,52 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1):
         
         ax.plot(log_q1, log_mbhs, label='Mean calculated from ERDF',
                 color = ModelResult2.color, linestyle='-.')
-            
+    return()
+
+def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,
+                          vertical_lines=False, shaded=True, linewidth=2, 
+                          linecolor='grey', alpha=0.2):
+    '''
+    Plot feedback regimes, where one of the feedback modes becomes dominant
+    at redshift z. Relative strength is controlled using log_epsilon argument
+    (see calculate_feedback_regimes in Model.physics_model for more details).
+    Plot vertical lines if vertical_lines=True, shaded area if shaded=True.
+    '''
+    axes = make_list(axes)
+
+    if redshift is None:
+        redshift = ModelResult.redshift
+    elif np.isscalar(redshift):
+        redshift = make_list(redshift)
     
+    if ModelResult.physics_name in ['stellar', 'stellar_blackhole', 'changing']:
+        transition_quantity_value = {}
+        for z in redshift:
+            parameter = ModelResult.parameter.at_z(z)
+            transition_quantity_value[z] = ModelResult.\
+                                            calculate_feedback_regimes(
+                                                 z, parameter, 
+                                                 output='quantity',
+                                                 log_epsilon=log_epsilon)
+    
+        for z in redshift:
+            if len(axes) == 1:
+                ax = axes[0]
+            else:
+                ax = axes[z]
+            
+            # plot vertical line where M_h = M_c
+            if vertical_lines: # plot vertical lines for feedback dominated areas
+                ax.axvline(transition_quantity_value[z][0], linewidth=linewidth,
+                           color=linecolor)
+                ax.axvline(transition_quantity_value[z][1], linewidth=linewidth,
+                           color=linecolor)
+                ax.axvline(transition_quantity_value[z][2], linewidth=linewidth,
+                           color=linecolor)
+            if shaded: # plot shaded aread areas of feedback dominated areas
+                ax.axvspan(transition_quantity_value[z][1],
+                            transition_quantity_value[z][2],
+                            facecolor='C3', alpha=alpha, zorder= 0)
     return()
 
 ################ LEGEND #######################################################
@@ -343,7 +416,7 @@ def blend_color(color, alpha, bg_color=np.array([1,1,1])):
 def add_redshift_text(axes, redshifts):
     ''' Add current redshift as text to upper plot corner. '''
     for z in redshifts:
-        axes[z].text(0.97, 0.94, 'z=' + str(z),
+        axes[z].text(0.97, 0.94, r'$z \sim$ ' + str(z),
                      horizontalalignment='right',
                      verticalalignment='top',
                      transform=axes[z].transAxes)

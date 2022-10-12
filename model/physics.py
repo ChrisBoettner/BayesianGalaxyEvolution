@@ -142,7 +142,8 @@ class StellarBlackholeFeedback_free_m_c(object):
             self._current_parameter = [log_m_c, log_A, alpha, beta]
 
             # create lookup tables of halo mass and quantities
-            log_m_h_lookup = self._make_m_h_space(log_m_c, alpha, beta, num)
+            log_m_h_lookup = self._make_m_h_space(log_m_c, log_A, alpha, 
+                                                  beta, num=num)
             log_quantity_lookup = StellarBlackholeFeedback_free_m_c.\
                 calculate_log_quantity(
                     self, log_m_h_lookup, log_m_c, log_A,
@@ -261,8 +262,45 @@ class StellarBlackholeFeedback_free_m_c(object):
             else:
                 log_m_h[log_m_h > self._upper_m_h] = np.inf
         return(log_m_h)
+    
+    def _calculate_feedback_regimes(self, log_m_c, log_A, alpha, beta, 
+                                   log_epsilon=-2, output='halo_mass'):
+        '''
+        Calculate halo mass where one of the feedbacks is strongly dominating 
+        in the sense that (M_h/M_c)^-alpha > epsilon * (M_h/M_c)^beta and 
+        the other way around. Returns 3 values: [log_m_c, log_m_sn, log_m_ bh].
+        If output='halo_mass' (default) return transition
+        halo masses, if output='quantity' return quantity values (for this
+        halo mass and parameter).
+        '''
+        # check relative contribution of feedbacks using sn = epsilon*bh to
+        # get limiting mass where either contribution drops below epsilon,
+        # this is log_m_lim = -1/(alpha+beta) * log(epsilon) + log_m_c
+        
+        # mass where sn feedback is dominating
+        log_m_h_sn = 1/(alpha+beta)  * log_epsilon + log_m_c
+        # mass where bh feedback is dominating
+        log_m_h_bh = -1/(alpha+beta) * log_epsilon + log_m_c
+        
+        if output == 'halo_mass':
+            return(np.array([log_m_c, log_m_h_bh, log_m_h_sn]))
+        elif output == 'quantity':
+            # calculate corresponding quantity values
+            log_q_c = StellarBlackholeFeedback_free_m_c.calculate_log_quantity(
+                                                   self, log_m_c, log_m_c, 
+                                                   log_A, alpha, beta)[0]
+            log_q_sn = StellarBlackholeFeedback_free_m_c.calculate_log_quantity(
+                                                   self, log_m_h_sn, log_m_c, 
+                                                   log_A, alpha, beta)[0]
+            log_q_bh = StellarBlackholeFeedback_free_m_c.calculate_log_quantity(
+                                                   self, log_m_h_bh, log_m_c, 
+                                                   log_A, alpha, beta)[0]
+            return(np.array([log_q_c, log_q_sn, log_q_bh]))
+        else:
+            raise ValueError('output must be either \'halo_mass\' or '
+                             '\'quantity\'.')
 
-    def _make_m_h_space(self, log_m_c, alpha, beta, num, log_epsilon=-3):
+    def _make_m_h_space(self, log_m_c, log_A, alpha, beta, num, log_epsilon=-3):
         '''
         Create array of m_h points arranged so that the points are dense where
         q(m_h) changes quickly and sparse where they aren't.
@@ -272,14 +310,12 @@ class StellarBlackholeFeedback_free_m_c(object):
         sn/bh = epsilon).
 
         '''
-        # check relative contribution of feedbacks using sn = epsilon*bh to
-        # get limiting mass where either contribution drops below epsilon,
-        # this is log_m_lim = -1/(alpha+beta) * log(epsilon) + log_m_c
-
-        # mass where bh feedback strongly dominating
-        log_m_bh = -1/(alpha+beta) * log_epsilon + log_m_c
-        # mass where sn feedback strongly dominating
-        log_m_sn = 1/(alpha+beta)  * log_epsilon + log_m_c
+        
+        # calculate halo masses where one of the feedbacks strongly dominates
+        _, log_m_bh, log_m_sn = StellarBlackholeFeedback_free_m_c.\
+                                 _calculate_feedback_regimes(
+                                    self, log_m_c, log_A, alpha, beta,
+                                    log_epsilon=log_epsilon)
 
         # create high density space
         dense_log_m_h = np.linspace(log_m_sn, log_m_bh, int(num*0.8))
@@ -334,6 +370,16 @@ class StellarFeedback_free_m_c(StellarBlackholeFeedback_free_m_c):
                                                log_A,
                                                alpha,
                                                beta=0))
+    
+    def _calculate_feedback_regimes(self, log_m_c, log_A, alpha,
+                                   log_epsilon=-2, output='halo_mass'):
+        return(StellarBlackholeFeedback_free_m_c.
+               _calculate_feedback_regimes(self, log_m_c,
+                                                log_A,
+                                                alpha,
+                                                beta=0,
+                                                log_epsilon=log_epsilon,
+                                                output=output))
 
 
 class QuasarGrowth_free_m_c(StellarBlackholeFeedback_free_m_c):
@@ -503,6 +549,17 @@ class StellarBlackholeFeedback(StellarBlackholeFeedback_free_m_c):
                                                log_A=log_A,
                                                alpha=alpha,
                                                beta=beta))
+    
+    def _calculate_feedback_regimes(self, log_A, alpha, beta, log_epsilon=-2, 
+                                   output='halo_mass'):
+        return(StellarBlackholeFeedback_free_m_c.
+               _calculate_feedback_regimes(self, 
+                                          log_m_c=self.log_m_c,
+                                          log_A=log_A,
+                                          alpha=alpha,
+                                          beta=beta,
+                                          log_epsilon=log_epsilon,
+                                          output=output))
 
 
 class StellarFeedback(StellarBlackholeFeedback):
@@ -545,7 +602,16 @@ class StellarFeedback(StellarBlackholeFeedback):
                                                log_A=log_A,
                                                alpha=alpha,
                                                beta=0))
-
+    
+    def _calculate_feedback_regimes(self, log_A, alpha, log_epsilon=-2, 
+                                   output='halo_mass'):
+        return(StellarBlackholeFeedback_free_m_c.
+               _calculate_feedback_regimes(self, log_m_c=self.log_m_c,
+                                          log_A=log_A,
+                                          alpha=alpha,
+                                          beta=0,
+                                          log_epsilon=log_epsilon,
+                                          output=output))
 
 class NoFeedback(StellarBlackholeFeedback):
     def __init__(self, log_m_c, initial_guess, bounds):

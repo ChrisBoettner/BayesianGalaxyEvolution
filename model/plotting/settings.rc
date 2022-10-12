@@ -6,8 +6,8 @@ figure.figsize       : 16.6, 8.4
 
 figure.titlesize     : 36.0  # fontsize of figure title
 axes.labelsize       : 36.0  # fontsize of the x any y labels
-xtick.labelsize      : 20.0  # fontsize of the tick labels
-ytick.labelsize      : 20.0  # fontsize of the tick labels
+xtick.labelsize      : 26.0  # fontsize of the tick labels
+ytick.labelsize      : 26.0  # fontsize of the tick labels
 font.size            : 18.0  # general fontsize
 
 legend.fontsize      : 16.0  # fontsizw of legend entries
@@ -18,4 +18,6 @@ font.family          : serif
 font.serif           : Computer Modern Roman
 text.usetex          : True  		      # use latex for all text handling
 
-lines.linewidth  : 2.75
+lines.linewidth  : 11 # line width in points
+lines.markersize : 15 # marker size, in points
+axes.labelpad    : 5  # space between label and axis

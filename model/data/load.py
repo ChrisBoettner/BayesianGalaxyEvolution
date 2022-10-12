@@ -79,7 +79,7 @@ def load_data_points(quantity_name):
     '''
     if quantity_name == 'mstar_mbh':
         data = np.load(path + '/BHmass/mstar_mbh_Baron2019.npy')
-    if quantity_name == 'mbh_Lbol':
+    elif quantity_name == 'mbh_Lbol':
         data = np.load(path + '/BHmass/mbh_Lbol_Baron2019.npy')
     else:
         raise NameError('quantity_name not known.')
@@ -109,7 +109,7 @@ def _load_smf_data(cutoff, data_subset):
 
     # TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
     davidson = Group(davidson, [0, 1, 2, 3, 4], cutoff).plot_parameter(
-        'black', 'o', 'Davidson2017')
+        'black', 'o', 'Davidzon2017')
     ilbert = Group(ilbert, [0, 1, 2, 3], cutoff).plot_parameter(
         'black', 'H', 'Ilbert2013')
     duncan = Group(duncan, [4, 5, 6, 7], cutoff).plot_parameter(

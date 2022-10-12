@@ -86,6 +86,39 @@ def calculate_qhmr(ModelResult, z,
         qhmr = qhmr[s]
     return(qhmr)
 
+def calculate_ndf_percentiles(ModelResult, z, num = 5000,
+                              sigma=1, quantity_range = None):
+    '''
+    Calculates the distribution of number densities over a quantity range by
+    drawing ndf samples from distribution and calculating their percentiles. 
+    The exact range for the lower and upper percentile limit can be chosen 
+    using sigma argument, see model.helper.calculate_percentiles for more 
+    infos; multiple values can be chosen. Returns dictonary of form 
+    (sigma:array) if sigma is an array, where the array contains input 
+    quantity 1 value, median quantity 2 value and lower and upper percentile 
+    for every q2 value. If sigma is scalar, array is returned directly. 
+    '''  
+    if not np.isscalar(z):
+        raise ValueError('Redshift must be scalar quantity.')
+
+    sigma           = make_list(sigma)
+    
+    # calculate halo mass distribution for input quantity q1
+    ndf_sample   = ModelResult.get_ndf_sample(z, num=num,
+                                              quantity_range=quantity_range)
+    log_quantity = ndf_sample[0][:,0]
+    
+    # get list of all number density for every quantity value
+    abundances = np.array([ndf_sample[i][:,1] for i in range(num)])
+    ndf_percentiles = {}
+    for s in sigma:
+        # calculate percentiles (median, lower, upper) and add input
+        # quantity to list: (q1 value, ndens value, lower bound, upper bound)
+        log_number_densities = calculate_percentiles(abundances,
+                                                     sigma_equiv=s)
+        ndf_percentiles[s]   = np.array([log_quantity,
+                                         *log_number_densities]).T    
+    return(ndf_percentiles)
 
 def calculate_best_fit_ndf(ModelResult, redshifts, quantity_range=None):
     '''

@@ -163,15 +163,15 @@ class ModelResult():
         if self.physics_name == 'none':
             self._plot_parameter('black', 'o', '-', 'No Feedback')
         elif self.physics_name == 'stellar':
-            self._plot_parameter('C1', 's', '--', 'Stellar Feedback')
+            self._plot_parameter('lightgrey', 's', '-', 'Stellar Feedback')
         elif self.physics_name == 'stellar_blackhole':
             self._plot_parameter(
-                'C2', 'v', '-.', 'Stellar + Black Hole Feedback')
+                'C3', 'v', '-', 'Stellar + Black Hole Feedback')
         elif self.physics_name == 'changing':
             feedback_change_z = self.quantity_options['feedback_change_z']
             max_z = 10
             self._plot_parameter(
-                ['C2'] * feedback_change_z + ['C1'] *
+                ['C3'] * feedback_change_z + ['lightgrey'] *
                 (max_z+1-feedback_change_z),
                 'o', '-',
                 ['Stellar + Black Hole Feedback'] * feedback_change_z
@@ -181,10 +181,10 @@ class ModelResult():
                 'C3', '^', '-', 'BH Growth Model')
         elif self.physics_name == 'eddington':
             self._plot_parameter(
-                'C4', 'v', '-', 'Bolometric Luminosity Model')
+                'C3', 'v', '-', 'Bolometric Luminosity Model')
         elif self.physics_name == 'eddington_free_ERDF':
             self._plot_parameter(
-                'C5', '^', '--', 'Bolometric Luminosity Model (free ERDF)')
+                'C3', '^', '--', 'Bolometric Luminosity Model (free ERDF)')
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -278,7 +278,8 @@ class ModelResult():
         self.distribution = Redshift_dict(distributions)
         return
 
-    def calculate_log_abundance(self, log_quantity, z, parameter):
+    def calculate_log_abundance(self, log_quantity, z, parameter,
+                                hmf_z=None):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
         multiplying HMF function with physics model derivative for a given
@@ -296,6 +297,10 @@ class ModelResult():
             Redshift at which value is calculated.
         parameter : list 
             Model parameter used for calculation.
+        hmf_z : int, optional
+            If hmf_z is given, use that reshift for calculating the values of
+            the halo mass function. Useful for disentangeling baryonic physics
+            and HMF evolution. The default is None.
 
         Returns
         -------
@@ -311,14 +316,17 @@ class ModelResult():
         if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
             raise ValueError('Parameter out of bounds.')
 
+        # set hmf redshift
+        if hmf_z is None:
+            hmf_z = z
+
         # calculate halo masses from stellar masses using model
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
             log_quantity, *parameter)
 
-        # calculate value of bh phi (hmf + quasar growth model)
-
+        ## calculate value of bh phi (hmf + quasar growth model)
         # calculate value of halo mass function
-        log_hmf = self.calculate_log_hmf(log_m_h, z)
+        log_hmf = self.calculate_log_hmf(log_m_h, hmf_z)
 
         # calculate physics/feedback effect (and deal with zero values)
         ph_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
@@ -463,7 +471,7 @@ class ModelResult():
                 self.calculate_log_abundance(log_quantity, z, p))
         return(np.array(log_abundance_dist))
 
-    def calculate_ndf(self, z, parameter, quantity_range=None):
+    def calculate_ndf(self, z, parameter, quantity_range=None, hmf_z=None):
         '''
         Calculate a model number density function over a representative range
         at redshift z and using input parameter.  
@@ -477,6 +485,10 @@ class ModelResult():
         quantity_range : list, optional
             Range over which values are supposed to be calculated. If None
             use default from options dictonary.
+        hmf_z : int, optional
+            If hmf_z is given, use that reshift for calculating the values of
+            the halo mass function. Useful for disentangeling baryonic physics
+            and HMF evolution. The default is None.
 
         Returns
         -------
@@ -487,7 +499,8 @@ class ModelResult():
         if quantity_range is None:
             quantity_range = self.quantity_options['quantity_range']
 
-        ndf = self.calculate_log_abundance(quantity_range, z, parameter)
+        ndf = self.calculate_log_abundance(quantity_range, z, parameter,
+                                           hmf_z)
         return([quantity_range, ndf])
 
     def calculate_log_hmf(self, log_halo_mass, z):
@@ -547,6 +560,56 @@ class ModelResult():
                                      quantity_range=quantity_range)
             ndf_sample.append(np.array(ndf).T)
         return(ndf_sample)
+    
+    def calculate_feedback_regimes(self, z, parameter, log_epsilon=-1, 
+                                   output='quantity'):
+        '''
+        Calculate (log of) quantity values at which feedback regime changes.
+        For stellar and AGN feedback: Calculate values where one of the 
+        feedbacks is strongly dominating in the sense that 
+        (M_h/M_c)^-alpha > epsilon * (M_h/M_c)^beta and 
+        the other way around. 
+        Returns 3 values: [log_q(log_m_c), log_q(log_m_sn), log_q(log_m_ bh)].
+        If output='halo_mass', return halo masses for these values instead.
+
+        Parameters
+        ----------
+        z : int
+            Redshift at which value is calculated.
+        parameter : list
+            Input model parameter.
+        log_epsilon : float, optional
+            Threshold for regime change. The default is -1.
+        output : str, optional
+            Choose if 'quantity' or 'halo_mass' should be 
+            returned. The default is 'quantity'.
+
+        Raises
+        ------
+        NotImplementedError
+            So far, feedback regimes are only implemented for stellar + AGN
+            feedback models.
+
+        Returns
+        -------
+        regime_values: array
+            Array of regime change values in order
+            [log_q(log_m_c), log_q(log_m_sn), log_q(log_m_ bh)] (for stellar
+             + AGN feedback model).
+
+        '''
+        if self.physics_name not in ['stellar', 'stellar_blackhole',
+                                     'changing']:
+            raise NotImplementedError('calculate_feedback_regimes not yet '
+                                      'implemented for this physics model')
+        # calculate transition values    
+        regime_values = self.physics_model.at_z(z)._calculate_feedback_regimes(
+                            *parameter, log_epsilon=-1, output=output)
+        
+        # conversion between magnitude and luminosity if needed
+        regime_values = self.unit_conversion(regime_values, 'lum_to_mag')
+        return(regime_values)
+                                
     
     def unit_conversion(self, log_quantity, mode): 
         '''
@@ -688,7 +751,7 @@ class ModelResult_QLF(ModelResult):
                          name_addon, groups, calibrate, paramter_calc,
                          progress, **kwargs)
 
-    def calculate_log_abundance(self, log_L, z, parameter, num=100):
+    def calculate_log_abundance(self, log_L, z, parameter, hmf_z=None, num=100):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
         integrating (HMF+feedback)*ERDF over eddington_ratios for a given
@@ -711,13 +774,21 @@ class ModelResult_QLF(ModelResult):
             Log value of ndf at the input value and redshift.
 
         '''
-
         log_L = make_array(log_L)
 
         # check that parameters are within bounds
         if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
             raise ValueError('Parameter out of bounds.')
-
+        
+        # set hmf redshift
+        if hmf_z is not None:
+            raise NotImplementedError('Fixing HMF z is not yet implemented for '
+                                      'Lbol model. To do so: Add it to '
+                                      'calculate_log_abundance, '
+                                      'calculate_log_QLF_contribution, '
+                                      'calculate_phi_contribution, so that '
+                                      'hmf_z is called in calculate_log_hmf.')
+        
         phi = []
         for L in log_L:
             # estimate relevant Eddington ratios that contribute
