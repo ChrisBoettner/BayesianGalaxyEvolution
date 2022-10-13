@@ -104,16 +104,27 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
 
     # calculate weights
     if weighted:
-        weights = calculate_weights(model, relative=relative_weights)
+        # symmetrize uncertainties in data
+        data_uncertainties      = calculate_data_uncertainties(model,
+                                                    relative=relative_weights)
+        # we expect additional discrepancies due to how different groups
+        # treat biases and reduce data. We model this using another gaussian
+        # where the standard deviation is estimated from the residuals
+        systematic_uncertanties = np.std(res)
+        weights = 1/(data_uncertainties+systematic_uncertanties)
     else:
         weights = 1
+        
+    std = np.std(res)
+    
+    weights = 1/(1/weights+std)
 
     weighted_res = res * weights
 
     if out == 'res':
         return(weighted_res)  # return residuals
 
-    cost = np.sum(weighted_res**2)
+    cost = np.sum(weighted_res**2 + np.log(2*np.pi/weights**2))
     if out == 'cost':
         return(cost)  # otherwise return cost
     else:
@@ -121,7 +132,7 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
 
 
 ################ UNCERTAINTIES AND WEIGHTS ####################################
-def calculate_weights(model, z=None, relative=True):
+def calculate_data_uncertainties(model, z=None, relative=True):
     '''
     Calculate weights for residuals based on measurement uncertainties.
     If any uncertainties are not finite (inf or nan), assign 10* largest errors
@@ -140,14 +151,12 @@ def calculate_weights(model, z=None, relative=True):
     lower_bound = 10**(log_phi_obs - log_phi_obs_uncertainties[:, 0])
     upper_bound = 10**(log_phi_obs + log_phi_obs_uncertainties[:, 1])
 
-    uncertainty = (upper_bound - lower_bound) / 2
+    uncertainties = (upper_bound - lower_bound) / 2
 
     # replace nan values with large error estimate
-    uncertainty[np.logical_not(np.isfinite(uncertainty))
-                ] = np.nanmax(uncertainty) * 10
+    uncertainties[np.logical_not(np.isfinite(uncertainties))
+                ] = np.nanmax(uncertainties) * 10
 
     if relative:
-        uncertainty = uncertainty / 10**log_phi_obs
-
-    weights = 1 / uncertainty
-    return(weights)
+        uncertainties = uncertainties / 10**log_phi_obs
+    return(np.abs(uncertainties))

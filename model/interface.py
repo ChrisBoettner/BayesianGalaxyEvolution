@@ -15,7 +15,7 @@ from model.quantity_options import get_quantity_specifics
 
 
 def load_model(quantity_name, physics_name, data_subset=None,
-               prior_name=None, redshift=None, **kwargs):
+               prior_name='successive', redshift=None, **kwargs):
     '''
     Load saved (MCMC) model. Built for simplicity so that physics_name is
     associated with specific prior, but can be changed if needed.
@@ -28,12 +28,6 @@ def load_model(quantity_name, physics_name, data_subset=None,
     log_hmfs = load_hmf_functions()
     if redshift is None:
         redshift = list(log_ndfs.keys())
-
-    if prior_name is None:
-        if physics_name == 'changing':
-            prior_name = 'successive'
-        else:
-            prior_name = 'uniform'
 
     Model = choose_model(quantity_name)
     model = Model(redshift, log_ndfs, log_hmfs,

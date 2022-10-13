@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from model.helper import make_list, calculate_percentiles, fit_function
-from model.calibration.leastsq_fitting import calculate_weights
+from model.calibration.leastsq_fitting import calculate_data_uncertainties
 from model.analysis.calculations import calculate_best_fit_ndf
 
 ################ MAIN FUNCTIONS ###############################################
@@ -147,7 +147,7 @@ def calculate_reference_parameter_from_data(ModelResult, redshift):
     reference_parameter = {}
     for z in redshift:
         try: # include uncertainties if given
-            weights  = calculate_weights(ModelResult, z=z)
+            weights  = calculate_data_uncertainties(ModelResult, z=z)
         except:
             weights  = None
 

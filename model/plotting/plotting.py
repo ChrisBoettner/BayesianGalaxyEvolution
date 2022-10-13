@@ -498,7 +498,7 @@ class Plot_ndf_sample(Plot):
 
         # general plotting configuration
         subplot_grid = ModelResult.quantity_options['subplot_grid']
-        fig, axes = plt.subplots(*subplot_grid, sharey='row', sharex=True)
+        fig, axes = plt.subplots(*subplot_grid, sharey=True)
         axes = axes.flatten()
         fig.subplots_adjust(**self.plot_limits)
 

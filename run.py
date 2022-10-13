@@ -24,9 +24,9 @@ from model.interface import save_model
               help='Choose list of redshift to include.')
 @click.option('--parameter_calc', default=True,
               help='Choose if best fit parameter should be calculated. True/False.')
-@click.option('--min_chain_length', default=20000,
+@click.option('--min_chain_length', default=5000,
               help='Length of MCMC chains.')
-@click.option('--num_walker', default=250,
+@click.option('--num_walker', default=50,
               help='Number of MCMC walker in ensemble.')
 def run(**kwargs):
     ''''Runs save_model with choosen options'''

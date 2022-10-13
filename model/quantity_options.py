@@ -96,7 +96,7 @@ def get_quantity_specifics(quantity_name):
         options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
                                      r'$\delta$']
-        options['ndf_legend_pos'] = 9
+        options['ndf_legend_pos'] = 8
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 2
         options['reference_table_header'] = [r'$z$',
@@ -137,7 +137,7 @@ def get_quantity_specifics(quantity_name):
                                      r'[mag$^{-1}$ $M_\odot^{-1}$]',
                                      r'$\gamma$',
                                      r'$\delta$']
-        options['ndf_legend_pos'] = 9
+        options['ndf_legend_pos'] = 8
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 3
         options['reference_table_header'] = [r'$z$',
@@ -170,7 +170,7 @@ def get_quantity_specifics(quantity_name):
                                           [np.inf, np.inf, np.inf, np.inf]]
         options['reference_param_num'] = 4
         # PLOTS AND TABLES
-        options['quantity_range'] = np.linspace(6.87, 12.41, 100)
+        options['quantity_range'] = np.linspace(6.87, 10.73, 100)
         options['subplot_grid'] = (3, 2)
         options['ndf_xlabel'] = r'log $M_\bullet$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\bullet)$ [cMpc$^{-3}$ dex$^{-1}$]'

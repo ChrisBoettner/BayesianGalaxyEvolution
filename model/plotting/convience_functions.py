@@ -100,7 +100,7 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     sigma_equiv_table = {1: '68', 2: '95', 3: '99.7', 4: '99.993',
                          5: '99.99994'}
     # alpha values for different sigma equivalents
-    sigma_color_alphas = {1: 0.85, 2: 0.6, 3: 0.35, 4: 0.2, 5: 0.1}
+    sigma_color_alphas = {1: 0.85, 2: 0.6, 3: 0.45, 4: 0.2, 5: 0.1}
     if not set(sigma).issubset(sigma_equiv_table.keys()):
         raise ValueError('sigmas must be between 1 and 5 (inclusive).')
     
@@ -145,6 +145,8 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
                          data_percentile_dict[s][:, 2], 
                          data_percentile_dict[s][:, 3],
                          color=blend_color(color, sigma_color_alphas[s]),
+                         edgecolor=blend_color(color, 
+                                               sigma_color_alphas[s]+0.05),
                          alpha=alpha,
                          #label= sigma_equiv_table[s] + r'\% Percentile'
                          )
@@ -233,7 +235,7 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1):
 
 def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,
                           vertical_lines=False, shaded=True, linewidth=2, 
-                          linecolor='grey', alpha=0.2):
+                          linecolor='grey', alpha=0.22):
     '''
     Plot feedback regimes, where one of the feedback modes becomes dominant
     at redshift z. Relative strength is controlled using log_epsilon argument
