@@ -42,7 +42,7 @@ def load_model(quantity_name, physics_name, data_subset=None,
 
 
 def save_model(quantity_name, physics_name, data_subset=None,
-               prior_name=None, redshift=None, parameter_calc=True,
+               prior_name='successive', redshift=None, parameter_calc=True,
                **kwargs):
     '''
     Run and save (MCMC) model. Built for simplicity so that physics_name is
@@ -56,12 +56,6 @@ def save_model(quantity_name, physics_name, data_subset=None,
     log_hmfs = load_hmf_functions()
     if redshift is None:
         redshift = list(log_ndfs.keys())
-
-    if prior_name is None:
-        if physics_name == 'changing':
-            prior_name = 'successive'
-        else:
-            prior_name = 'uniform'
 
     print(quantity_name, prior_name, physics_name)
     start = timeit.default_timer()
@@ -83,7 +77,7 @@ def save_model(quantity_name, physics_name, data_subset=None,
 
 
 def run_model(quantity_name, physics_name, fitting_method='least_squares',
-              data_subset=None, prior_name=None, redshift=None,
+              data_subset=None, prior_name='successive', redshift=None,
               saving_mode='temp', parameter_calc=True,
               **kwargs):
     '''
@@ -104,12 +98,6 @@ def run_model(quantity_name, physics_name, fitting_method='least_squares',
         redshift = make_list(redshift)
         if not is_sublist(redshift, list(log_ndfs.keys())):
             return ValueError('redshifts not in dataset.')
-
-    if prior_name is None:
-        if physics_name == 'changing':
-            prior_name = 'successive'
-        else:
-            prior_name = 'uniform'
 
     Model = choose_model(quantity_name)
     model = Model(redshift, log_ndfs, log_hmfs,

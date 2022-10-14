@@ -21,49 +21,39 @@ def save_plots(quantity, show = False, file_format='pdf'):
         plt.ioff()
     
     if quantity in ['mstar' , 'Muv']: 
-        # successive prior
         model = load_model(quantity, 'changing')
         
-        Plot_ndf_sample(model).save(file_format)
-        Plot_marginal_pdfs(model).save(file_format)
-        Plot_parameter_sample(model).save(file_format)
+        Plot_ndf_intervals(mstar, sigma=[1,2,3]).save(file_format)
+        
         if quantity == 'mstar':
-            Plot_qhmr(model).save()
+            # feedback illustration plot
+            redshift = 0
+            mstar_no = run_model('mstar', 'none', redshift=redshift)
+            mstar_st = run_model('mstar', 'stellar', redshift=redshift)
+            mstar_sb = run_model('mstar', 'stellar_blackhole', redshift=redshift)
+            Plot_best_fit_ndf([mstar_no, mstar_st, mstar_sb],
+                              columns='single').save()
         del model
         
-        # uniform priors
-        models = [load_model(quantity,'none'), load_model(quantity,'stellar'), 
-                  load_model(quantity,'stellar_blackhole')]
-        Plot_best_fit_ndfs(models).save(file_format)
-        Plot_marginal_pdfs(models).save(file_format)
-        
     elif quantity == 'Lbol':
-        # successive prior
-        model = load_model(quantity, 'eddington', prior_name='successive')
-        
+        model = load_model(quantity, 'eddington')       
         # added for plotting
         lbol_free = run_model(quantity, 'eddington_free_ERDF')
         
-        Plot_best_fit_ndfs([model, lbol_free]).save(file_format)
-        Plot_ndf_sample(model).save(file_format)
-        Plot_marginal_pdfs(model).save(file_format)
-        Plot_parameter_sample(model).save(file_format)
-        Plot_conditional_ERDF(model).save(file_format)
-        Plot_black_hole_mass_distribution(model).save(file_format)
+        
+        Plot_ndf_intervals(model, sigma=[1,2,3], num=1000,
+                           additional_models=lbol_free).save(file_format)
+        
+        # conditional ERDF example
+        Plot_conditional_ERDF(lbol, parameter = [40 ,  2, -2,  2],
+                              columns='single').save()
         del model
         
         
     elif quantity == 'mbh':
-        # successive prior
-        model = load_model(quantity, 'quasar', prior_name='successive')
+        model = load_model(quantity, 'quasar')
         
-        # added for plotting
-        mbh_none = run_model(quantity, 'none')
-        
-        Plot_best_fit_ndfs([model, mbh_none]).save(file_format)
-        Plot_ndf_sample(model).save(file_format)
-        Plot_marginal_pdfs(model).save(file_format)
-        Plot_parameter_sample(model).save(file_format)
+        Plot_ndf_intervals(model, sigma=[1,2,3]).save()
         del model
         
     elif quantity == 'mstar_mbh':

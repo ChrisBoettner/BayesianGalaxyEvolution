@@ -168,7 +168,7 @@ class Plot_best_fit_ndf(Plot):
         argument. Choose redshift using 'redshift' argument
         '''
         super().__init__(ModelResults, **kwargs)
-        self.default_filename = (self.quantity_name + '_ndf_' + self.prior_name)
+        self.default_filename = (self.quantity_name + '_ndf_best_fit')
 
     def _plot(self, ModelResults, datapoints=True, redshift=0):
         # make list if input is scalar
@@ -220,8 +220,7 @@ class Plot_best_fit_ndfs_all_z(Plot):
         argument.
         '''
         super().__init__(ModelResults, **kwargs)
-        self.default_filename = (self.quantity_name + '_ndfs_all_z_' 
-                                                    + self.prior_name)
+        self.default_filename = (self.quantity_name + '_ndfs_best_fit')
 
     def _plot(self, ModelResults, datapoints=True):
         # make list if input is scalar
@@ -292,7 +291,7 @@ class Plot_marginal_pdfs(Plot):
         can be a single model object or a list of objects.
         '''
         super().__init__(ModelResults, **kwargs)
-        self.default_filename = self.quantity_name + '_pdf_' + self.prior_name
+        self.default_filename = self.quantity_name + '_pdf'
 
     def _plot(self, ModelResults):
         # make list if input is scalar
@@ -445,8 +444,8 @@ class Plot_qhmr(Plot):
         fig.subplots_adjust(**self.plot_limits)
 
         # add axes labels
-        fig.supxlabel('log $M_\\mathrm{h}$ [$M_\\odot$]')
-        fig.supylabel('log '+ModelResult.quantity_options['quantity_name_tex'],
+        ax.set_xlabel('log $M_\\mathrm{h}$ [$M_\\odot$]')
+        ax.set_ylabel('log '+ModelResult.quantity_options['quantity_name_tex'],
                       x=0.01)
 
         # create custom color map
@@ -470,7 +469,7 @@ class Plot_qhmr(Plot):
         return(fig, ax)
 
 
-class Plot_ndf_sample(Plot):
+class Plot_ndf_intervals(Plot):
     def __init__(self, ModelResult, **kwargs):
         '''
         Plot sample of number density functions by randomly drawing from parameter
@@ -480,13 +479,15 @@ class Plot_ndf_sample(Plot):
         num argument.
         You can turn off the plotting of the data points using datapoints 
         argument, the best fit line using best_fit and the feedback regimes
-        using feedback_regimes.
+        using feedback_regimes. You can add the best fit lines of other models
+        by passing the (list of) model objects to additional_models. 
         '''
         super().__init__(ModelResult,  **kwargs)
-        self.default_filename = self.quantity_name + '_ndf_sample'
+        self.default_filename = self.quantity_name + '_ndf_intervals'
 
     def _plot(self, ModelResult, sigma=1, num=5000, best_fit=False, 
-              datapoints=True, feedback_regimes=True):
+              datapoints=True, feedback_regimes=True, 
+              additional_models = None):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
@@ -533,9 +534,16 @@ class Plot_ndf_sample(Plot):
         # plot group data points
         if datapoints:
             plot_group_data(axes, ModelResult)
-            
+        
+        # add feedback regimes
         if feedback_regimes:
             plot_feedback_regimes(axes, ModelResult)
+            
+        # add best fits for other models as comparison
+        if additional_models:
+            models = make_list(additional_models)
+            for model in models:
+                plot_best_fit_ndf(axes, model, linewidth=4, alpha=0.6)
 
         # add redshift as text to subplots
         add_redshift_text(axes, ModelResult.redshift)
@@ -788,8 +796,7 @@ class Plot_q1_q2_relation(Plot):
         self.adjust_style_parameter(columns) # adjust plot style parameter
 
         self.make_plot(ModelResult1, ModelResult2, **kwargs)
-        self.default_filename = (self.quantity_name + '_relation_' 
-                                 + self.prior_name)
+        self.default_filename = (self.quantity_name + '_relation')
         
         plt.style.use('model/plotting/settings.rc') # return to original 
                                                     # plot style parameter
@@ -938,9 +945,9 @@ class Plot_conditional_ERDF(Plot):
         argument.
         '''
         super().__init__(ModelResult, **kwargs)
-        self.default_filename = self.quantity_name + '_qlf_contribution'
+        self.default_filename = self.quantity_name + '_conditional_ERDF'
         
-    def _plot(self, ModelResult, z=0):
+    def _plot(self, ModelResult, z=0, parameter=None):
         
         if ModelResult.physics_name not in ['eddington','eddington_free_ERDF']:
             return NotImplementedError('Only implemented for bolometric '
@@ -952,7 +959,8 @@ class Plot_conditional_ERDF(Plot):
             
 
         # calculate qlf contributions
-        parameter = ModelResult.parameter.at_z(z)
+        if parameter is None:
+            parameter = ModelResult.parameter.at_z(z)
         edd_space = np.linspace(-10,9,1000)
         lum       = [35, 40, 45, 50]
         qlf_cont  = ModelResult.calculate_conditional_ERDF(lum, z, parameter,
@@ -963,24 +971,27 @@ class Plot_conditional_ERDF(Plot):
         fig.subplots_adjust(**self.plot_limits)
         
         # line styles
+        linewidth = 5
         linestyle = ['-','--',':', '-.']
 
         # add axes labels
-        fig.supxlabel(r'log $\lambda$')
-        fig.supylabel(r'$\xi (\lambda|L_\mathrm{bol})$', x=0.01)
+        ax.set_xlabel(r'log $\lambda$')
+        ax.set_ylabel(r'$\xi (\lambda|L_\mathrm{bol})$', labelpad=40)
 
         for i,l in enumerate(lum):
             # plot median
             ax.plot(qlf_cont[l][:,0], qlf_cont[l][:,1], 
                     color='grey', linestyle=linestyle[i],
+                    linewidth=linewidth,
                     label=r'$\log L_\mathrm{bol}$ = ' + str(l) + 
-                          r' erg s$^{-1}$')
+                          r' [erg s$^{-1}$]')
             
         # add limits
-        ax.set_ylim([0,0.6])
+        ax.set_xlim([edd_space[1],edd_space[-1]])
+        ax.set_ylim([0,ax.get_ylim()[1]])
         
         # add legend and minor ticks
-        add_legend(ax, 0)
+        add_legend(ax, 0, fontsize=32)
         ax.minorticks_on()
         return(fig, ax)
     
@@ -1047,8 +1058,8 @@ class Plot_black_hole_mass_distribution(Plot):
         linestyle = ['-','--',':', '-.']
 
         # add axes labels
-        fig.supxlabel(r'log $M_\bullet$ [$M_\odot$]')
-        fig.supylabel(r'$P (M_\bullet|L_\mathrm{bol})$', x=0.01)
+        ax.set_xlabel(r'log $M_\bullet$ [$M_\odot$]')
+        ax.set_ylabel(r'$P (M_\bullet|L_\mathrm{bol})$', x=0.01)
         
         # plot predicted black hole distribution
         for i, l in enumerate(lum):           

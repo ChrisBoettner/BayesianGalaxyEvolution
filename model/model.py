@@ -184,7 +184,7 @@ class ModelResult():
                 'C3', 'v', '-', 'Bolometric Luminosity Model')
         elif self.physics_name == 'eddington_free_ERDF':
             self._plot_parameter(
-                'C3', '^', '--', 'Bolometric Luminosity Model (free ERDF)')
+                'grey', '^', '-', 'Bolometric Luminosity Model (free ERDF)')
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -895,6 +895,7 @@ class ModelResult_QLF(ModelResult):
         # if model has fixed Edd distribution: draw from that one
         # if model has varying Edd distribution: draw one Edd ratio from each
         # distribution per parameter
+        
         parameter_sample = self.draw_parameter_sample(z, num=num)
         if log_eddington_ratio is not None:
             log_edd_ratio = np.repeat(log_eddington_ratio, num)

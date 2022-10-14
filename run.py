@@ -18,7 +18,7 @@ from model.interface import save_model
                   \'changing\', \'quasar\', \'eddington\', \'eddington_free_ERDF\' or custom')
 @click.option('--data_subset', default=None,
               help='List of data sets names (of form AuthorYear')
-@click.option('--prior_name', default=None,
+@click.option('--prior_name', default='successive',
               help='Prior model: \'uniform\' or \'successive\'')
 @click.option('--redshift', default=None,
               help='Choose list of redshift to include.')

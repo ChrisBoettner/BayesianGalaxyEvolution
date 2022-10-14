@@ -211,7 +211,7 @@ def get_quantity_specifics(quantity_name):
                                           [np.inf, np.inf, np.inf, np.inf]]
         options['reference_param_num'] = 4
         # PLOTS AND TABLES
-        options['quantity_range'] = np.linspace(39.1552, 50.91, 100)
+        options['quantity_range'] = np.linspace(41.49, 50.91, 100)
         options['subplot_grid'] = (4, 2)
         options['ndf_xlabel'] = r'log $L_\mathrm{bol}$ [erg s$^{-1}$]'
         options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'

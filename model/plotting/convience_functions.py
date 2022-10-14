@@ -48,7 +48,7 @@ def plot_group_data(axes, ModelResult, redshift=None):
     return
 
 
-def plot_best_fit_ndf(axes, ModelResult, redshift=None):
+def plot_best_fit_ndf(axes, ModelResult, redshift=None, **kwargs):
     ''' Calculate and plot best fit number density functions at redshift z. '''
     axes = make_list(axes)
     
@@ -69,8 +69,9 @@ def plot_best_fit_ndf(axes, ModelResult, redshift=None):
         ax.plot(ndfs[z][:, 0],
                 ndfs[z][:, 1],
                 linestyle=ModelResult.linestyle,
-                label=label,
-                color=color)
+                #label=label,
+                color='grey',
+                **kwargs)
     return(ndfs)
 
 def plot_data_with_confidence_intervals(ax, data_percentile_dict, 
