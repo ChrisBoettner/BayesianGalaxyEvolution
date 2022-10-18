@@ -66,12 +66,14 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     '''
     Cost function for fitting. Includes physically sensible bounds for parameter.
 
-    Fitting is perfomed in either log space (res = log_phi_obs - log_phi_mod)
-    or linear space (res = 10**log_phi_obs - 10**log_phi_mod), depending on
-    quantity_options of model.
+    Fitting is perfomed in either log space (log_phi_obs - log_phi_mod),
+    linear space (10**log_phi_obs - 10**log_phi_mod)
+    or using relative weights ( 1- 10**log_phi_obs/10**log_phi_mod), depending 
+    on quantity_options of model.
 
     If weighted is True, include errorbars in fit. The weights are calculated
-    as the inverse of the RELATIVE uncertainties.
+    as the inverse of the uncertainties (relative or absolute depending on
+    quantity_options of model).
     '''
     if z is None:
         z = model._z
@@ -91,14 +93,17 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     
     
     # quantity-related fitting options
-    fitting_space    = model.quantity_options['fitting_space']
-    relative_weights = model.quantity_options['relative_weights']
+    fitting_space            = model.quantity_options['fitting_space']
+    relative_weights         = model.quantity_options['relative_weights']
+    systematic_uncertainties = model.quantity_options['systematic_uncertainties']
     
     # calculate residuals in log space
     if fitting_space == 'log':
         res = log_phi_obs - log_phi_mod
     elif fitting_space == 'linear':
         res = 10**log_phi_obs - 10**log_phi_mod
+    elif fitting_space == 'relative':
+        res = 1- 10**(log_phi_mod-log_phi_obs)
     else:
         raise NameError('Fitting space not known.')
 
@@ -107,17 +112,16 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
         # symmetrize uncertainties in data
         data_uncertainties      = calculate_data_uncertainties(model,
                                                     relative=relative_weights)
-        # we expect additional discrepancies due to how different groups
-        # treat biases and reduce data. We model this using another gaussian
-        # where the standard deviation is estimated from the residuals
-        systematic_uncertanties = np.std(res)
-        weights = 1/(data_uncertainties+systematic_uncertanties)
+        if systematic_uncertainties:
+            # we expect additional discrepancies due to how different groups
+            # treat biases and reduce data. We model this using another gaussian
+            # where the standard deviation is estimated from the residuals
+            systematic_uncertainties = np.std(res)
+        else:
+            systematic_uncertainties = 0
+        weights = 1/(data_uncertainties+systematic_uncertainties)
     else:
         weights = 1
-        
-    std = np.std(res)
-    
-    weights = 1/(1/weights+std)
 
     weighted_res = res * weights
 

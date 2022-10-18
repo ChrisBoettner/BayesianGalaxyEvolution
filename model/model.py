@@ -148,7 +148,7 @@ class ModelResult():
                 parameter = {int(z): p for z, p in parameter.items()}
                 self.parameter = Redshift_dict(parameter)
             except FileNotFoundError:
-                warnings.warn('Couldn\'t load best fit parameter')
+                warnings.warn('Could not load best fit parameter')
                 
         # choose if fitting should be done or not
         self.calibrate = calibrate
@@ -185,6 +185,15 @@ class ModelResult():
         elif self.physics_name == 'eddington_free_ERDF':
             self._plot_parameter(
                 'grey', '^', '-', 'Bolometric Luminosity Model (free ERDF)')
+        elif self.physics_name == 'eddington_changing':
+            feedback_change_z = self.quantity_options['feedback_change_z']
+            max_z = 7
+            self._plot_parameter(
+                ['C3'] * feedback_change_z + ['grey'] *
+                (max_z+1-feedback_change_z),
+                'o', '-',
+                ['eddington_free_ERDF'] * feedback_change_z
+                + ['eddington'] * (max_z+1-feedback_change_z))
         else:
             warnings.warn('Plot parameter not defined')
 
@@ -267,15 +276,14 @@ class ModelResult():
                 # add parameter to model, but only if not loaded from external
                 # file
                 self.parameter.add_entry(z, parameter)
+            
+            # add distributions to model
+            self.distribution.add_entry(z, posterior_samp)
                 
             distributions[z] = posterior_samp
 
             if (not custom_bar_flag) and (z == redshifts[-1]):
                 PBar.widgets[0] = model_details + 'DONE'
-
-        # add distributions to model object after fitting is done, because
-        # otherwise, large amount of data in model slows (parallel) mcmc run
-        self.distribution = Redshift_dict(distributions)
         return
 
     def calculate_log_abundance(self, log_quantity, z, parameter,
@@ -598,8 +606,7 @@ class ModelResult():
              + AGN feedback model).
 
         '''
-        if self.physics_name not in ['stellar', 'stellar_blackhole',
-                                     'changing']:
+        if self.quantity_name not in ['mstar', 'Muv']:
             raise NotImplementedError('calculate_feedback_regimes not yet '
                                       'implemented for this physics model')
         # calculate transition values    
@@ -729,7 +736,8 @@ class ModelResult_QLF(ModelResult):
             Name of physics model. Must be in implemented models in 
             quantity_options. 'eddington' fits ERDF at first redshift and then
             uses best fit parameter, 'eddington_free_ERDF' fits ERDF at every
-            redshift.
+            redshift. 'eddington_changing' uses free ERDF up to z=2 and then fixes it
+            for higher redshifts.
 
         Returns
         -------
@@ -751,7 +759,8 @@ class ModelResult_QLF(ModelResult):
                          name_addon, groups, calibrate, paramter_calc,
                          progress, **kwargs)
 
-    def calculate_log_abundance(self, log_L, z, parameter, hmf_z=None, num=100):
+    def calculate_log_abundance(self, log_L, z, parameter, hmf_z=None,
+                                num=100):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
         integrating (HMF+feedback)*ERDF over eddington_ratios for a given
@@ -1367,10 +1376,32 @@ class ModelResult_QLF(ModelResult):
                 ph_name = 'eddington'
                 if self.calibrate:
                     # use parameter at first redshift
-                    eddington_erdf_params = self.parameter.at_z(
-                                                    self.redshift[0])[2:]
+                    try:
+                        eddington_erdf_params = self.parameter.at_z(
+                                                        self.redshift[0])[2:]
+                    except:
+                        raise NameError('Cannot look up MAP estimate for ERDF '
+                                        'parameter because parameter have not '
+                                        'been loaded.')             
                 else:
                     eddington_erdf_params = None
+                    
+        elif self.physics_name == 'eddington_changing':
+            # for 'eddingto_free_ERDF' fit ERDF up to z=2 
+            feedback_change_z = self.quantity_options['feedback_change_z']
+            if z < feedback_change_z:
+                ph_name = 'eddington_free_ERDF'
+                eddington_erdf_params = None
+            else:
+                ph_name = 'eddington'
+                if self.calibrate:
+                    # use parameter last free ERDF redshift
+                    eddington_erdf_params = self.parameter.at_z(
+                                                    feedback_change_z-1)[2:]
+                else:
+                    eddington_erdf_params = None
+        else:
+            raise NameError('physics_name not known.')
                     
         # add model
         self.physics_model.add_entry(z, physics_model(
@@ -1430,5 +1461,5 @@ class Redshift_dict():
         return(list(self.dict.values())[0] is None)
 
     def update_data(self):
-        self.data = list(self.dict.values())
+        self.list = list(self.dict.values())
         return

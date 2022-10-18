@@ -70,7 +70,7 @@ def plot_best_fit_ndf(axes, ModelResult, redshift=None, **kwargs):
                 ndfs[z][:, 1],
                 linestyle=ModelResult.linestyle,
                 #label=label,
-                color='grey',
+                color=color,
                 **kwargs)
     return(ndfs)
 

@@ -23,9 +23,10 @@ from model.helper import within_bounds, custom_progressbar
 
 
 def mcmc_fit(model, prior, saving_mode,
-             num_walker=250, min_chain_length = 10000, tolerance=0.01,
+             num_walker=200, min_chain_length = 500, tolerance=0.01,
              autocorr_chain_multiple = 50, autocorr_discard=10, 
-             parameter_calc=True, parallel=True, progress=True):
+             parameter_calc=True, parallel=True, progress=True,
+             custom_walker_pos=None, parameter_method='annealing'):
     '''
     Calculate parameter that match observed numbder density function (LF/SMF)
     to modelled functions using MCMC fitting by maximizing the log probability
@@ -67,6 +68,14 @@ def mcmc_fit(model, prior, saving_mode,
         is True.
     progress : bool, optional
         Choose if progress bar is supposed to be shown. The default is True.
+    custom_walker_pos : array, optional
+        Optional choice for initial walker positions. If prior model is 
+        'uniform', use these values for all redshifts. If prior model is
+        successive, use values at initial redshift. If given, must be of of
+        dimension (num_walker, parameter_num). The default is None.
+    parameter_method: str, optional
+        Method by which MAP estimate of parameter is calculated. Must be
+        'minimize', 'annealing' or 'brute'. The default is 'annealing'.
 
     Raises
     ------
@@ -97,11 +106,21 @@ def mcmc_fit(model, prior, saving_mode,
     else:
         raise NameError('saving_mode not known.')
 
-    # select initial walker positions near initial guess
+    # select initial walker positions near initial guess   
     initial_guess = np.array(model.physics_model.at_z(model._z).initial_guess)
     ndim = len(initial_guess)
-    nwalkers = num_walker
-    walker_pos = initial_guess * (1 + 0.1 * np.random.rand(nwalkers, ndim))
+    if model._z == model.redshift[0] or model.prior_name == 'uniform':
+        if custom_walker_pos is None:
+            walker_pos = initial_guess * (1 + 0.1 * np.random.rand(num_walker,
+                                                                   ndim))
+        else:
+            walker_pos = custom_walker_pos[:,:ndim]
+            
+    else:
+        prior_dist  = model.distribution.at_z(model._z-1)
+        random_draw = np.random.choice(prior_dist.shape[0],
+                                       size=num_walker)
+        walker_pos  = prior_dist[random_draw][:,:ndim]
 
     # make prior and model object a global variable so it doesn"t have to be 
     # called in log_probability explicitly. This helps with parallization and 
@@ -124,12 +143,13 @@ def mcmc_fit(model, prior, saving_mode,
         with Pool() as pool:
             # create MCMC sampler
             if parallel:      
-                    sampler = emcee.EnsembleSampler(nwalkers, ndim,
+                    sampler = emcee.EnsembleSampler(num_walker, ndim,
                                                     log_probability,
                                                     backend = savefile,
                                                     pool=pool)
             else:
-                sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability,
+                sampler = emcee.EnsembleSampler(num_walker, ndim, 
+                                                log_probability,
                                                 backend = savefile)
                 
             # run burn-in until autocorrelation converges
@@ -180,17 +200,16 @@ def mcmc_fit(model, prior, saving_mode,
 
     # calculate best fit parameter (MAP) using annealing
     if parameter_calc:
+        # initial guess is sample with highest value for posterior
+        x0     = sampler.get_chain(flat=True)[np.argmax(sampler.get_log_prob())]
         bounds = list(zip(np.percentile(posterior_samp, 16, axis=0),
                           np.percentile(posterior_samp, 84, axis=0)))
         params = calculate_MAP_estimator(prior_global, model,
-                                         method='annealing',
+                                         method=parameter_method,
                                          bounds=bounds,
-                                         x0=np.median(
-                                             posterior_samp, 
-                                             axis=0))
+                                         x0=x0)
     else:
         params = None
-
     return(params, posterior_samp)
 
 ################ PROBABILITY FUNCTIONS ########################################
@@ -198,7 +217,7 @@ def mcmc_fit(model, prior, saving_mode,
 
 def log_probability(params):
     '''
-    Calculate total probability (which will be maximized by MCMC fitting).
+    Calculate total probability (which will be sampled by MCMC).
     Total probability is given by likelihood*prior_probability, meaning
     logprobability = loglikelihood+logprior
     '''
@@ -289,14 +308,13 @@ def dist_from_hist_nd(model, dist, dist_bounds):
         raise NotImplementedError('Parameter number of model should not increase.')
     else:
         pass
-    
     # create histogram
     try:
         hist_nd, edges = np.histogramdd(dist, bins=500, range=dist_bounds)
     except MemoryError:
         # if histogram with 500 bins uses too much Memory, reduce number of
         # bins
-        hist_nd, edges = np.histogramdd(dist, bins=200, range=dist_bounds)
+        hist_nd, edges = np.histogramdd(dist, bins=100, range=dist_bounds)
     # make empty spots have 0.1% of actual prob, so that these are not
     # completely ignored
     if np.any(hist_nd == 0):

@@ -949,7 +949,8 @@ class Plot_conditional_ERDF(Plot):
         
     def _plot(self, ModelResult, z=0, parameter=None):
         
-        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF']:
+        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF',
+                                            'eddington_changing']:
             return NotImplementedError('Only implemented for bolometric '
                                        'luminosity - Eddington models.')
 
@@ -1012,7 +1013,8 @@ class Plot_black_hole_mass_distribution(Plot):
     def _plot(self, ModelResult, z=0, lum=45.2, 
               edd_space=np.linspace(-6, 31,10000), datapoints=True):
         
-        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF']:
+        if ModelResult.physics_name not in ['eddington','eddington_free_ERDF',
+                                            'eddington_changing']:
             return NotImplementedError('Only implemented for bolometric '
                                        'luminosity - Eddington models.')
 

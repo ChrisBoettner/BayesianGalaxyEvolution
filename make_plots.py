@@ -23,37 +23,40 @@ def save_plots(quantity, show = False, file_format='pdf'):
     if quantity in ['mstar' , 'Muv']: 
         model = load_model(quantity, 'changing')
         
-        Plot_ndf_intervals(mstar, sigma=[1,2,3]).save(file_format)
+        Plot_ndf_intervals(model, sigma=[1,2,3]).save(file_format)
         
         if quantity == 'mstar':
             # feedback illustration plot
             redshift = 0
-            mstar_no = run_model('mstar', 'none', redshift=redshift)
-            mstar_st = run_model('mstar', 'stellar', redshift=redshift)
-            mstar_sb = run_model('mstar', 'stellar_blackhole', redshift=redshift)
+            mstar_no = run_model('mstar', 'none', 
+                                 fitting_method='least_squares',
+                                 redshift=redshift)
+            mstar_st = run_model('mstar', 'stellar', 
+                                 fitting_method='least_squares',
+                                 redshift=redshift)
+            mstar_sb = run_model('mstar', 'stellar_blackhole', 
+                                 fitting_method='least_squares',
+                                 redshift=redshift)
             Plot_best_fit_ndf([mstar_no, mstar_st, mstar_sb],
                               columns='single').save()
+            
+            del mstar_no; del mstar_st; del mstar_sb
         del model
-        
-    elif quantity == 'Lbol':
-        model = load_model(quantity, 'eddington')       
-        # added for plotting
-        lbol_free = run_model(quantity, 'eddington_free_ERDF')
-        
-        
-        Plot_ndf_intervals(model, sigma=[1,2,3], num=1000,
-                           additional_models=lbol_free).save(file_format)
-        
-        # conditional ERDF example
-        Plot_conditional_ERDF(lbol, parameter = [40 ,  2, -2,  2],
-                              columns='single').save()
-        del model
-        
-        
+
     elif quantity == 'mbh':
         model = load_model(quantity, 'quasar')
         
         Plot_ndf_intervals(model, sigma=[1,2,3]).save()
+        del model
+        
+    elif quantity == 'Lbol':
+        model = load_model(quantity, 'eddington_changing')       
+        
+        Plot_ndf_intervals(model, sigma=[1,2,3], num=1000).save(file_format)
+        
+        # conditional ERDF example
+        Plot_conditional_ERDF(model, parameter = [40 ,  2, -2,  2],
+                              columns='single').save()
         del model
         
     elif quantity == 'mstar_mbh':
@@ -83,6 +86,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
     return
 
 if __name__ == '__main__':
-    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', 'mstar_mbh','Lbol_mbh']
+    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', #'mstar_mbh','Lbol_mbh'
+                  ]
     [save_plots(quantity) for quantity in quantities]
     

@@ -81,6 +81,7 @@ def get_quantity_specifics(quantity_name):
                                             [np.log10(2), 4, 0.96]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
+        options['systematic_uncertainties'] = True
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function
@@ -121,7 +122,8 @@ def get_quantity_specifics(quantity_name):
                                             [20, 4, 0.99]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
-        # REFERENCE FUNCTION
+        options['systematic_uncertainties'] = True
+        # REFERENCE FUNCTION        options['relative_weights'] = True
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function_mag
         options['reference_p0'] = [-4, -20, -1.5]
@@ -162,6 +164,7 @@ def get_quantity_specifics(quantity_name):
                                             [ 10,  5]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
+        options['systematic_uncertainties'] = False
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
@@ -192,17 +195,19 @@ def get_quantity_specifics(quantity_name):
         options['quantity_name_tex'] = r'$L_\mathrm{bol}$'
         options['ndf_name'] = 'QLF'
         options['physics_models'] = ['none', 'eddington',
-                                     'eddington_free_ERDF']
+                                     'eddington_free_ERDF',
+                                     'eddington_changing']
         options['cutoff'] = -12
         options['log_m_c'] = 12.3
-        options['feedback_change_z'] = np.nan
+        options['feedback_change_z'] = 4
         # MODE
         options['model_param_num'] = 4
         options['model_p0'] = np.array([39,   5, -2, 1.9])
         options['model_bounds'] = np.array([[38,  0,  -4,   1],
-                                            [50,  10,  4,  10]])
+                                            [50,  8,  0,  10]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
+        options['systematic_uncertainties'] = False
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
