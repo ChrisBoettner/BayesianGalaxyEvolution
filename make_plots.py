@@ -50,13 +50,15 @@ def save_plots(quantity, show = False, file_format='pdf'):
         del model
         
     elif quantity == 'Lbol':
-        model = load_model(quantity, 'eddington_changing')       
+        model = load_model(quantity, 'eddington')       
         
         Plot_ndf_intervals(model, sigma=[1,2,3], num=1000).save(file_format)
         
         # conditional ERDF example
         Plot_conditional_ERDF(model, parameter = [40 ,  2, -2,  2],
                               columns='single').save()
+        # black hole mass distribution
+        Plot_black_hole_mass_distribution(model, columns='single').save()
         del model
         
     elif quantity == 'mstar_mbh':

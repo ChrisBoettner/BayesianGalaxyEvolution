@@ -10,23 +10,11 @@ from model.plotting.plotting import *
 
 # mstar  = load_model('mstar','changing')
 # muv    = load_model('Muv','changing')
-# mbh    = load_model('mbh','quasar')
-# lbol   = load_model('Lbol', 'eddington')
+mbh    = load_model('mbh','quasar')
+lbol   = load_model('Lbol', 'eddington')
 
-# redshift = 0
-# mstar_no = run_model('mstar', 'none', redshift=redshift)
-# mstar_st = run_model('mstar', 'stellar', redshift=redshift)
-# mstar_sb = run_model('mstar', 'stellar_blackhole', redshift=redshift)
-# Plot_best_fit_ndf([mstar_no, mstar_st, mstar_sb], columns='single').save()
+print('finish Lbol - mbh plot: make legend work and bigger, bring shaded area to foreground')
 
-# Plot_conditional_ERDF(lbol, parameter = [40 ,  2,
-#                                           -2,  2], columns='single')
+Plot_q1_q2_relation(lbol,mbh)
 
-save_model('Lbol', 'eddington', num_walker=10, min_chain_length=500)
-
-
-# Plot_ndf_intervals(mstar, sigma=[1,2,3]).save()
-# Plot_ndf_intervals(muv, sigma=[1,2,3]).save()
-# Plot_ndf_intervals(mbh, sigma=[1,2,3]).save()
-
-#Plot_ndf_intervals(lbol, sigma=[1,2,3], num = 1000).save()
+#Plot_black_hole_mass_distribution(lbol, columns='single').save()

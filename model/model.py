@@ -1166,14 +1166,14 @@ class ModelResult_QLF(ModelResult):
             distribution[l] = conditional_erdf
         return(distribution)
 
-    def calculate_mean_log_black_hole_mass_from_ERDF(self, log_L, z, 
-                                                     parameter):
+    def calculate_expected_log_black_hole_mass_from_ERDF(self, log_L, z, 
+                                                         parameter):
         '''
-        Calculates the mean expected (log of) black hole mass for given
-        (log) luminosity, redshift and parameter. The mean value is calculated
+        Calculates the expected (log of) black hole mass for given
+        (log) luminosity, redshift and parameter mean value is calculated
         by first calculating the expected black hole mass distribution for the 
         given luminosity (and redshift+parameter) and then calculating the 
-        mean of that distribution.
+        expectation value of that distribution.
         
         Parameters
         ----------
@@ -1187,7 +1187,7 @@ class ModelResult_QLF(ModelResult):
         Returns
         -------
         mean_log_black_hole_mass: float or array
-            Array of (log of) mean black hole masses.
+            Array of (log of) expected black hole masses.
 
         '''
         
@@ -1436,7 +1436,8 @@ class Redshift_dict():
 
         '''
         self.dict = input_dict
-        self.list = None
+        self.list = list(self.dict.values())
+        self.data = None
         self.update_data()
 
     def add_entry(self, z, value):
@@ -1461,5 +1462,5 @@ class Redshift_dict():
         return(list(self.dict.values())[0] is None)
 
     def update_data(self):
-        self.list = list(self.dict.values())
+        self.data = list(self.dict.values())
         return

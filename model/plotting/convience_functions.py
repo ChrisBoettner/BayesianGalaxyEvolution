@@ -14,7 +14,8 @@ from matplotlib.colors import to_rgb
 
 from model.data.load import load_data_points
 from model.helper import make_array, make_list, pick_from_list
-from model.analysis.calculations import calculate_best_fit_ndf
+from model.analysis.calculations import calculate_best_fit_ndf,\
+                                        calculate_expected_black_hole_mass_from_ERDF
 
 ################ PLOT DATA ####################################################
 
@@ -76,7 +77,7 @@ def plot_best_fit_ndf(axes, ModelResult, redshift=None, **kwargs):
 
 def plot_data_with_confidence_intervals(ax, data_percentile_dict, 
                                         color, data_masks=None, median=True,
-                                        alpha=1):
+                                        alpha=1, linewidth=10):
     '''
     Plot data with confidence intervals. 
     The input data must be a dictonary, 
@@ -101,7 +102,7 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     sigma_equiv_table = {1: '68', 2: '95', 3: '99.7', 4: '99.993',
                          5: '99.99994'}
     # alpha values for different sigma equivalents
-    sigma_color_alphas = {1: 0.85, 2: 0.6, 3: 0.45, 4: 0.2, 5: 0.1}
+    sigma_color_alphas = get_sigma_color_alphas()
     if not set(sigma).issubset(sigma_equiv_table.keys()):
         raise ValueError('sigmas must be between 1 and 5 (inclusive).')
     
@@ -132,13 +133,15 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
              ax.plot(data_percentile_dict[s][:,0][data_mask],
                      data_percentile_dict[s][:,1][data_mask],
                      label=label,
-                     color=color)
+                     color=color,
+                     linewidth=linewidth)
              if masks_shown:
                  ax.plot(data_percentile_dict[s][:,0][mask_beginning],
                          data_percentile_dict[s][:,1][mask_beginning],
                          ':',
                          #label='Not constrained by data',
-                         color=color)
+                         color=color,
+                         linewidth=linewidth)
                  ax.plot(data_percentile_dict[s][:,0][mask_trail],
                          data_percentile_dict[s][:,1][mask_trail],
                          ':', color=color)
@@ -219,24 +222,37 @@ def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
                        axes = ax)  
     return()
     
-def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1):
+def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma):
     '''
     Plot additional relations for q1 - q2 relations if necessary.
     '''
-    
+   
     if (ModelResult1.quantity_name == 'Lbol' and
         ModelResult2.quantity_name == 'mbh'):
         
-        log_mbhs = ModelResult1.calculate_mean_log_black_hole_mass_from_ERDF(
-                        log_q1, z, ModelResult1.parameter.at_z(z))
+        # turn previous plotted lines grey grey
+        for line in ax.get_lines():
+            line.set_color('grey')
+        for i, col in enumerate(ax.collections):
+            sigma_color_alphas = get_sigma_color_alphas()
+            col.set_color(blend_color(to_rgb('lightgrey'),
+                                      sigma_color_alphas[sigma[i]]))
         
-        ax.plot(log_q1, log_mbhs, label='Mean calculated from ERDF',
-                color = ModelResult2.color, linestyle='-.')
+        # add new plot with conditional ERDF
+        mbh_dict = calculate_expected_black_hole_mass_from_ERDF(ModelResult1,
+                        log_q1, z, sigma=sigma)
+        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3')
+        
+        # legend text change
+        ax.legend().get_texts()[1].\
+            set_text(r'$\langle \lambda | L_\mathrm{bol} \rangle$')
+        ax.legend().get_texts()[0].set_text(r'$\langle \lambda \rangle$')
+            
     return()
 
 def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,
                           vertical_lines=False, shaded=True, linewidth=2, 
-                          linecolor='grey', alpha=0.22):
+                          linecolor='grey', alpha=0.2):
     '''
     Plot feedback regimes, where one of the feedback modes becomes dominant
     at redshift z. Relative strength is controlled using log_epsilon argument
@@ -412,6 +428,11 @@ def blend_color(color, alpha, bg_color=np.array([1,1,1])):
     color    = make_array(color)
     bg_color = make_array(bg_color)
     return((1-alpha)*bg_color + alpha*color)
+
+def get_sigma_color_alphas():
+    '''For confidence interval plot, get alpha values for blending.'''
+    sigma_color_alphas = {1: 0.8, 2: 0.55, 3: 0.4, 4: 0.2, 5: 0.1}
+    return(sigma_color_alphas)
   
 ################ TEXT #########################################################
 

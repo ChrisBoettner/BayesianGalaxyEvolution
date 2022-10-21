@@ -10,6 +10,45 @@ import numpy as np
 from model.helper import calculate_percentiles, make_list
 
 ################ MAIN FUNCTIONS ###############################################
+def calculate_expected_black_hole_mass_from_ERDF(ModelResult, lum, z,
+                                                 num = 500, sigma=1):
+    '''
+    Calculates the distribution of expected black hole masses from the 
+    conditional ERDF for a given luminosity for a sample of parameter.
+    The exact range for the lower and upper percentile limit
+    can be chosen using sigma argument, see model.helper.calculate_percentiles 
+    for more infos; multiple values can be chosen. Returns dictonary of form 
+    (sigma:array) if sigma is  an array, where the array contains x_space value,
+    median erdf value and lower and upper percentile for every q2 value.
+    '''
+    if not np.isscalar(z):
+        raise ValueError('Redshift must be scalar quantity.')
+    if ModelResult.quantity_name != 'Lbol':
+        raise NotImplementedError('Only works for Lbol model.')
+
+    sigma     = make_list(sigma)
+
+    # draw parameter sample and calculate ERDF for every parameter set
+    parameter_sample = ModelResult.draw_parameter_sample(z, num=num)
+    mbh_dist = [] # distribution of ERDF values
+    for p in parameter_sample:
+        expected_mbh = ModelResult.\
+            calculate_expected_log_black_hole_mass_from_ERDF(
+                               lum, z, p)
+        mbh_dist.append(expected_mbh)    
+
+    mbh_dist = np.array(mbh_dist) 
+    
+    # calculate percentiles of ERDF at given sigmas
+    erdf = {}
+    for s in sigma:
+        # calculate percentiles (median, lower, upper) and add x_space
+        # to list: (x value, median value, lower bound, upper bound)
+        percentiles = calculate_percentiles(mbh_dist,
+                                            sigma_equiv=s)
+        erdf[s]     = np.array([lum, *percentiles]).T   
+    return(erdf)
+
 def calculate_conditional_ERDF_distribution(
                                     ModelResult, lum, z, 
                                     eddington_space=np.linspace(-6, 31, 1000), 

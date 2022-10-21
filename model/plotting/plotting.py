@@ -13,7 +13,8 @@ from model.analysis.reference_parametrization import get_reference_function_samp
                                                      calculate_reference_parameter_from_data    
 from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf,\
                                         calculate_q1_q2_relation,\
-                                        calculate_ndf_percentiles
+                                        calculate_ndf_percentiles,\
+                                        calculate_conditional_ERDF_distribution
 from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
                                                 plot_data_with_confidence_intervals,\
                                                 add_redshift_text, add_legend,\
@@ -47,7 +48,7 @@ def get_list_of_plots():
 
 class Plot(object):
     def __init__(self, ModelResult, columns='double', **kwargs):
-        ''' Empty Parent Class '''
+        ''' General Configurations '''
         self.adjust_style_parameter(columns) # adjust plot style parameter
 
         self.make_plot(ModelResult, columns, **kwargs)
@@ -84,6 +85,7 @@ class Plot(object):
             mpl.rcParams['axes.labelsize']  *= 1.4
             mpl.rcParams['xtick.labelsize'] *= 1.8
             mpl.rcParams['ytick.labelsize'] *= 1.8
+            mpl.rcParams['font.size']       *= 2.2
             self.plot_limits = {'top': 0.965, 'bottom': 0.175,
                                 'left': 0.135, 'right': 0.995,
                                 'hspace': 0.0, 'wspace': 0.0}
@@ -792,6 +794,8 @@ class Plot_q1_q2_relation(Plot):
         You can also add lines for linear relationships manually, just pass log
         of slopes via log_slopes argument. Can take array of values. You can 
         also add labels for these lines via log_slope_labels argument.
+        masks argument controls if plot should highlight which parts of the
+        model is constrained by data. legend=True adds legend.
         '''
         self.adjust_style_parameter(columns) # adjust plot style parameter
 
@@ -813,8 +817,8 @@ class Plot_q1_q2_relation(Plot):
     
     def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, num = 500,
               datapoints=False, scaled_ndf=None, quantity_range=None,
-              log_slopes=None, log_slope_labels=None):
-        
+              log_slopes=None, log_slope_labels=None, masks=False, 
+              legend=False):       
         # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
         
@@ -881,6 +885,12 @@ class Plot_q1_q2_relation(Plot):
         mask_trail                      = np.copy(mask_beginning)
         mask_beginning[(first_true+1):] = False
         mask_trail[:(first_true+1)]     = False
+        
+        # turn masks on or off
+        if masks:
+            data_masks = [data_mask, mask_beginning, mask_trail]
+        else:
+            data_masks = None
 
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
@@ -891,9 +901,7 @@ class Plot_q1_q2_relation(Plot):
         
         # plot values and confidence interval
         plot_data_with_confidence_intervals(ax, q1_q2_relation, color,
-                                            data_masks=[data_mask, 
-                                                        mask_beginning,
-                                                        mask_trail])
+                                            data_masks=data_masks)
              
         # plot additional relations with fudge factor
         if scaled_ndf:
@@ -929,10 +937,12 @@ class Plot_q1_q2_relation(Plot):
             log_slopes = make_list(log_slopes)
             plot_linear_relationship(ax, log_q1, log_slopes, log_slope_labels)  
         # add other quantity-related things to plot
-        plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1)
+        plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1,
+                              sigma=sigma)
         
         # add legend
-        ax.legend()
+        if legend:
+            add_legend(ax, 0, fontsize=32)
         return(fig, ax)
 
 class Plot_conditional_ERDF(Plot):
@@ -942,12 +952,12 @@ class Plot_conditional_ERDF(Plot):
         by randomly drawing from parameter distribution, calculating ndfs and
         then fitting reference functions.
         You can turn off the plotting of the data points using 'datapoints' 
-        argument.
+        argument, and adjust the linewidth using 'linewidth'.
         '''
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_conditional_ERDF'
         
-    def _plot(self, ModelResult, z=0, parameter=None):
+    def _plot(self, ModelResult, z=0, parameter=None, linewidth=5):
         
         if ModelResult.physics_name not in ['eddington','eddington_free_ERDF',
                                             'eddington_changing']:
@@ -972,7 +982,7 @@ class Plot_conditional_ERDF(Plot):
         fig.subplots_adjust(**self.plot_limits)
         
         # line styles
-        linewidth = 5
+        linewidth = linewidth
         linestyle = ['-','--',':', '-.']
 
         # add axes labels
@@ -1003,15 +1013,18 @@ class Plot_black_hole_mass_distribution(Plot):
         from ERDF. Can take multiple luminosities, but if only one is given it
         also calculates the limits of the model and an adjusted distribution
         that takes the limits into account.
-        You can adjust redshift, luminosity and base eddington space.
+        You can adjust redshift, luminosity, number of samples, plotted
+        sigma equivalents and base eddington space.
         You can turn off the plotting of the data points using 'datapoints' 
-        argument (so far only data at z=0 from Baron2019 paper).
+        argument (so far only data at z=0 from Baron2019 paper) and the legend
+        using 'legend' argument.
         '''
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_bh_mass_distribution'
         
     def _plot(self, ModelResult, z=0, lum=45.2, 
-              edd_space=np.linspace(-6, 31,10000), datapoints=True):
+              edd_space=np.linspace(-6, 32.13,10000), num=500,
+              sigma=1, datapoints=True, legend=False, linewidth=5):
         
         if ModelResult.physics_name not in ['eddington','eddington_free_ERDF',
                                             'eddington_changing']:
@@ -1021,79 +1034,78 @@ class Plot_black_hole_mass_distribution(Plot):
         if ModelResult.parameter.is_None():
             raise AttributeError(
                 'best fit parameter have not been calculated.')
-        lum = make_list(lum)            
+        if not np.isscalar(lum):
+            raise NotImplementedError('Not yet implemented for multiple '
+                                      'luminosities. lum must be scalar.')     
+        # sort sigma in reverse order
+        sigma = np.sort(make_array(sigma))[::-1]
 
         # calculate black hole mass distribution(s)
-        parameter = ModelResult.parameter.at_z(z)
-        m_bh_dist = ModelResult.calculate_conditional_ERDF(
-                                lum, z, parameter, edd_space, 
-                                black_hole_mass_distribution=True)
+        m_bh_dist = calculate_conditional_ERDF_distribution(
+                                        ModelResult, lum, z, 
+                                        eddington_space = edd_space,
+                                        num=num, sigma=sigma,
+                                        black_hole_mass_distribution=True)
         
         # load black hole mass and luminosity data
         if datapoints:
             m_bh_data = load_data_points('mbh_Lbol')
             m_bh_data = m_bh_data[~np.isnan(m_bh_data[:,0])] # remove NaNs
         
-        # if only one luminosity is given, calculate upper and lower probable
-        # bound of model
-        if len(lum)==1:
-            dist = np.copy(m_bh_dist[lum[0]])
-            
-            # lower mass limit, Eddingtion ratio = 1
-            eddington_limit = lum[0]-ModelResult.log_eddington_constant   
-            # upper mass limit, Eddingtion ratio = 0.01
-            Jet_mode_limit  = lum[0]-ModelResult.log_eddington_constant+2
-
-            lower_ind = np.argmin(dist[:,0]<eddington_limit)
-            upper_ind = np.argmin(dist[:,0]<Jet_mode_limit)
-            
-            # cut distribution to are between limits and normalise to 1
-            cut_dist = dist[lower_ind:upper_ind]
-            norm = trapezoid(cut_dist[:,1], cut_dist[:,0])
-            cut_dist[:,1] = cut_dist[:,1]/norm
+        ## calculate upper and lower probable bound of model
+        dist = np.copy(m_bh_dist[sigma[0]])
+        # lower mass limit, Eddingtion ratio = 1
+        eddington_limit = lum-ModelResult.log_eddington_constant   
+        # upper mass limit, Eddingtion ratio = 0.01
+        Jet_mode_limit  = lum-ModelResult.log_eddington_constant+2
+        lower_ind = np.argmin(dist[:,0]<eddington_limit)
+        upper_ind = np.argmin(dist[:,0]<Jet_mode_limit)
+        
+        ## cut distribution to are between limits and normalise to 1
+        parameter = ModelResult.parameter.at_z(z)
+        dist_map  = ModelResult.calculate_conditional_ERDF(
+                                    lum, z, parameter, edd_space, 
+                                    black_hole_mass_distribution=True)
+        cut_dist = dist_map[lum][lower_ind:upper_ind]
+        norm = trapezoid(cut_dist[:,1], cut_dist[:,0])
+        cut_dist[:,1] = cut_dist[:,1]/norm
                   
         # general plotting configuration
         fig, ax = plt.subplots(1, 1, sharex=True)
         fig.subplots_adjust(**self.plot_limits)
-        
-        # line styles
-        linestyle = ['-','--',':', '-.']
 
         # add axes labels
         ax.set_xlabel(r'log $M_\bullet$ [$M_\odot$]')
         ax.set_ylabel(r'$P (M_\bullet|L_\mathrm{bol})$', x=0.01)
         
         # plot predicted black hole distribution
-        for i, l in enumerate(lum):           
-            ax.plot(m_bh_dist[l][:,0], m_bh_dist[l][:,1], 
-                    color='grey', linestyle=linestyle[i],
-                    label= 'Predicted Distribution for\n' 
-                           + r'$\log L_\mathrm{bol}$ = ' 
-                           + str(l) + r' [erg s$^{-1}$]', zorder=1000)
-                    # high zorder causes this line to be drawn last
+        plot_data_with_confidence_intervals(ax, m_bh_dist, 'C3', median=True,
+                                            linewidth=linewidth)
+        
             
         # add upper and lower limit and re-normalised distribution
-        if len(lum)==1:
-            ax.plot(cut_dist[:,0], cut_dist[:,1], 
-                    color='grey', linestyle=linestyle[1],
-                    label= r'Adjusted Distribution')
-            ax.axvline(eddington_limit, color='C3')
-            ax.axvline(Jet_mode_limit, color='C3')
-            # add text
-            ax.text(1.002*eddington_limit, 0.5, 'Eddington ratio = 1', 
-                    rotation=90, va='bottom', ha='left')
-            ax.text(1.002*Jet_mode_limit, 0.5, 'Eddington ratio = 0.01', 
-                    rotation=90, va='bottom', ha='left')
-            
-            # set limits
-            ax.set_xlim([0.9*eddington_limit,1.1*Jet_mode_limit])
+        ax.plot(cut_dist[:,0], cut_dist[:,1], 
+                color='grey', linestyle='--',
+                label= r'Adjusted Distribution',
+                linewidth=linewidth)
+        ax.axvline(eddington_limit, color='grey')
+        ax.axvline(Jet_mode_limit, color='grey')
+        # add text
+        ax.text(1.005*eddington_limit, 0.5, '$\lambda = 1$', 
+                rotation=90, va='bottom', ha='left')
+        ax.text(1.005*Jet_mode_limit, 0.5, '$\lambda = 0.01$', 
+                rotation=90, va='bottom', ha='left')
+        
+        # set limits
+        ax.set_xlim([0.9*eddington_limit,1.09*Jet_mode_limit])
         
         # add histogram of data points
         if datapoints:
             ax.hist(m_bh_data[:,0], bins=15, density=True,
                     label = 'Observed Distribution\n(Baron2019, Type 1 AGN)',
-                    color='C3', alpha=0.4)
+                    color='C3', alpha=0.4,zorder=0)
         
         # add legend
-        add_legend(ax, 0)
+        if legend:
+            add_legend(ax, 0)
         return(fig, ax)

@@ -8,6 +8,8 @@ Created on Thu Apr  7 14:16:21 2022
 import numpy as np
 import pandas as pd
 import os
+from functools import wraps
+from time import time
 
 from scipy.optimize import root_scalar, curve_fit
 from scipy.stats import gaussian_kde
@@ -269,7 +271,8 @@ def pick_from_list(variable, ind):
 
 def system_path():
     '''
-    Choose path to save files depending on if code is run on cluster of my laptop.
+    Choose path to save files depending on if code is run on cluster of my 
+    laptop.
     '''
     path = '/data/p305250/mcmc_runs/'
     if os.path.isdir(path):  # if path exists use this one (cluster structure)
@@ -277,3 +280,18 @@ def system_path():
     else:  # else use path for home computer
         path = '/home/chris/Desktop/mcmc_runs/'
     return(path)
+
+################ TIMING #######################################################
+
+
+def timing(function):
+    '''Wrapper for timing functions'''
+    @wraps(function)
+    def wrap(*args, **kw):
+        ts = time()
+        result = function(*args, **kw)
+        te = time()
+        t  = np.around(te-ts,2)
+        print(f'{function.__name__}: {t} s')
+        return(result)
+    return(wrap)
