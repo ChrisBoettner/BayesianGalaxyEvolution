@@ -942,7 +942,7 @@ class Plot_q1_q2_relation(Plot):
         
         # add legend
         if legend:
-            add_legend(ax, 0, fontsize=32)
+            add_legend(ax, 0, fontsize=32, loc='upper left')
         return(fig, ax)
 
 class Plot_conditional_ERDF(Plot):

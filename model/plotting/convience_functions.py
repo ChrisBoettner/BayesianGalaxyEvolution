@@ -77,7 +77,7 @@ def plot_best_fit_ndf(axes, ModelResult, redshift=None, **kwargs):
 
 def plot_data_with_confidence_intervals(ax, data_percentile_dict, 
                                         color, data_masks=None, median=True,
-                                        alpha=1, linewidth=10):
+                                        alpha=1, linewidth=5):
     '''
     Plot data with confidence intervals. 
     The input data must be a dictonary, 
@@ -241,13 +241,17 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma):
         # add new plot with conditional ERDF
         mbh_dict = calculate_expected_black_hole_mass_from_ERDF(ModelResult1,
                         log_q1, z, sigma=sigma)
-        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3')
+        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3', alpha=0.9)
+        
+        # put later plot in foreground
+        ax.collections[-1].set_zorder(100)
+        ax.get_lines()[-1].set_zorder(101)
         
         # legend text change
         ax.legend().get_texts()[1].\
             set_text(r'$\langle \lambda | L_\mathrm{bol} \rangle$')
         ax.legend().get_texts()[0].set_text(r'$\langle \lambda \rangle$')
-            
+
     return()
 
 def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,

@@ -15,6 +15,6 @@ lbol   = load_model('Lbol', 'eddington')
 
 print('finish Lbol - mbh plot: make legend work and bigger, bring shaded area to foreground')
 
-Plot_q1_q2_relation(lbol,mbh)
+Plot_q1_q2_relation(lbol,mbh, columns='single').save()
 
 #Plot_black_hole_mass_distribution(lbol, columns='single').save()
