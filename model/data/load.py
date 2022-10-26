@@ -75,12 +75,48 @@ def load_data_points(quantity_name):
        2 : Bentz2018
        
     mbh_lbol : Black hole mass - Bolometric luminosity relation
-       Returns numpy array of form [log_bh_mass, log_l_bol]
+       Returns numpy array of form [log_bh_mass, log_l_bol].
+       
+    Muv_mstar : UV luminosity - stellar mass relation. 
+        Contains data from Bhatawdekar (z=6-9) and Song (z=4-8).
+        Returns dictonaries of form {z: [Muv, log_mstar, index]}, where
+        where index contains information about the data source,
+        0 : Song2016
+        1 : Bhatawdekar2019
     '''
     if quantity_name == 'mstar_mbh':
         data = np.load(path + '/BHmass/mstar_mbh_Baron2019.npy')
     elif quantity_name == 'mbh_Lbol':
         data = np.load(path + '/BHmass/mbh_Lbol_Baron2019.npy')
+    elif quantity_name == 'Muv_mstar':
+        # Bhatawdekar data
+        data_bh= np.load(path + '/Mainsequence/Muv_mstar_Bhatawdekar2019.npz')
+        data_bh = {i+6:data_bh[str(i)] for i in range(4)}
+        # Song data
+        data_so = np.load(path + '/Mainsequence/Muv_mstar_Song2016.npz')
+        data_so = {i+4:data_so[str(i)] for i in range(5)}
+        # combine data and add index for each data source
+        data = {}
+        for z in range(4,10):
+            if z<6:
+                # just use Song data and add column of 0s
+                d = data_so[z]
+                d = np.concatenate((d, np.zeros([len(d),1])),axis=1)
+                data[z] = d
+            elif (z>=6) & (z<9):
+                # use both data sources and add columns of 0s and 1s
+                d_so = data_so[z]
+                d_bh = data_bh[z]
+                d    = np.vstack([d_so,d_bh])
+                idx  = np.zeros([len(d),1])
+                idx[len(d_so):]  = 1
+                d = np.concatenate((d, idx), axis=1)
+                data[z] = d
+            elif z==9:
+                # just use Bhatawdekar data
+                d = data_bh[z]
+                d = np.concatenate((d, np.zeros([len(d),1])),axis=1)
+                data[z] = d
     else:
         raise NameError('quantity_name not known.')
     return(data)

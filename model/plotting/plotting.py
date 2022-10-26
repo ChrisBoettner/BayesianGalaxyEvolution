@@ -527,7 +527,7 @@ class Plot_ndf_intervals(Plot):
         # plot number density functions
         for z in ModelResult.redshift:
             plot_data_with_confidence_intervals(axes[z], ndfs[z], color,
-                                                median=False)
+                                                median=False, alpha=1)
         
         # plot best fit
         if best_fit:
@@ -818,7 +818,7 @@ class Plot_q1_q2_relation(Plot):
     def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, num = 500,
               datapoints=False, scaled_ndf=None, quantity_range=None,
               log_slopes=None, log_slope_labels=None, masks=False, 
-              legend=False):       
+              legend=False, linewidth=5):       
         # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
         
@@ -896,19 +896,21 @@ class Plot_q1_q2_relation(Plot):
         fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
 
-        # get color in RGB
-        color = pick_from_list(ModelResult2.color, z)
+        # get color
+        color = 'C3'
         
         # plot values and confidence interval
         plot_data_with_confidence_intervals(ax, q1_q2_relation, color,
-                                            data_masks=data_masks)
+                                            data_masks=data_masks,
+                                            linewidth=linewidth)
              
         # plot additional relations with fudge factor
         if scaled_ndf:
             for fudge_factor in ndf_fudge_factors:
                 ax.plot(alt_relations[fudge_factor][:,0],
                         alt_relations[fudge_factor][:,1],
-                        color='grey')
+                        color='grey',
+                        linewidth=linewidth)
                               
                 # # add (curved) text
                 text = ( f'{fudge_factor}x ' 
@@ -918,7 +920,7 @@ class Plot_q1_q2_relation(Plot):
                            text=text,
                            va = 'bottom',
                            axes = ax,
-                           )  
+                           fontsize=0.65*mpl.rcParams['font.size'])  
                 
 
         # add axis limits
@@ -931,7 +933,7 @@ class Plot_q1_q2_relation(Plot):
         ## add stuff to plot
         # add measured datapoints
         if datapoints:
-            plot_data_points(ax, ModelResult1, ModelResult2)
+            plot_data_points(ax, ModelResult1, ModelResult2, z=z)
         # add lines for linear relation
         if log_slopes is not None:
             log_slopes = make_list(log_slopes)

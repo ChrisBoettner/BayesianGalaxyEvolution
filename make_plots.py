@@ -64,18 +64,18 @@ def save_plots(quantity, show = False, file_format='pdf'):
     elif quantity == 'mstar_mbh':
         mstar  = load_model('mstar','changing')
         mbh    = load_model('mbh','quasar', prior_name='successive')
-        Plot_q1_q2_relation(
-                    mstar,mbh,datapoints=True,sigma=[1],
-                    scaled_ndf=(mbh, [10,30,100]),
-                    quantity_range=np.linspace(8.7,11.9,100)).save(file_format)
+        Plot_q1_q2_relation(mstar,mbh,datapoints=True,
+                            scaled_ndf=(mbh, [10,30,100]),
+                            quantity_range=np.linspace(8.7,11.9,100),
+                            columns='single').save(file_format)
         del mstar
         del mbh
         
     elif quantity == 'Lbol_mbh':
-        lbol = load_model('Lbol', 'eddington', prior_name='successive')
-        mbh  = load_model('mbh','quasar', prior_name='successive')
-        Plot_q1_q2_relation(lbol, mbh, scaled_ndf=(mbh, 3),
-                    quantity_range=np.linspace(43,48,100)).save(file_format)
+        lbol = load_model('Lbol', 'eddington')
+        mbh  = load_model('mbh','quasar')
+        Plot_q1_q2_relation(lbol, mbh, columns='single',
+                    quantity_range=np.linspace(43,48.3,100)).save(file_format)
         del lbol
         del mbh
         
@@ -88,7 +88,6 @@ def save_plots(quantity, show = False, file_format='pdf'):
     return
 
 if __name__ == '__main__':
-    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', #'mstar_mbh','Lbol_mbh'
-                  ]
+    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', 'Lbol_mbh', 'mstar_mbh']
     [save_plots(quantity) for quantity in quantities]
     

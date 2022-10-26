@@ -77,7 +77,7 @@ def plot_best_fit_ndf(axes, ModelResult, redshift=None, **kwargs):
 
 def plot_data_with_confidence_intervals(ax, data_percentile_dict, 
                                         color, data_masks=None, median=True,
-                                        alpha=1, linewidth=5):
+                                        alpha=0.8, linewidth=5):
     '''
     Plot data with confidence intervals. 
     The input data must be a dictonary, 
@@ -124,7 +124,7 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     if masks_shown:
         label = 'Constrained by data'
     else:
-        label = 'Model Mean'
+        label = 'Model Median'
 
     # plot confidence intervals
     for s in np.sort(make_array(sigma))[::-1]: # sort sigma in reverse order 
@@ -132,7 +132,7 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
              # plot medians
              ax.plot(data_percentile_dict[s][:,0][data_mask],
                      data_percentile_dict[s][:,1][data_mask],
-                     label=label,
+                     #label=label,
                      color=color,
                      linewidth=linewidth)
              if masks_shown:
@@ -156,7 +156,8 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
                          )
     return()
 
-def plot_data_points(ax, ModelResult1, ModelResult2=None, legend=True):
+def plot_data_points(ax, ModelResult1, ModelResult2=None, z=0, legend=True,
+                     **kwargs):
     '''
     Plot additional dataset to compare to Model.
     '''
@@ -172,24 +173,43 @@ def plot_data_points(ax, ModelResult1, ModelResult2=None, legend=True):
         try:
             name = ModelResult1.quantity_name + '_' + ModelResult2.quantity_name
             data = load_data_points(name)
-        except:
+        except NameError:
             raise NameError('Can\'t find data.')
     
-    # so far we only have data for mstar_mbh, can be extended, include labels
     if name == 'mstar_mbh':
         ax.scatter(data[:,0], data[:,1], 
                    s=35, alpha=0.5,  
                    color='lightgrey',
                    label='Baron2019 (Type 1 and Type 2)',
-                   marker='o')
+                   marker='o',
+                   **kwargs)
     
     elif name == 'mbh_Lbol':
         ax.scatter(data[:,0], data[:,1], 
                    s=35, alpha=0.5,  
                    color='lightgrey',
                    label='Baron2019 (Type 1)',
-                   marker='o')
-        
+                   marker='o',
+                   **kwargs)
+    
+    elif name == 'Muv_mstar':
+        if z not in data.keys():
+            raise KeyError('Redshift not in Mainsequence data dictonary.')
+        d   = data[z]
+        idx = d[:,2]
+        ax.scatter(d[:,0][idx==0], d[:,1][idx==0], 
+                   s=70, alpha=0.8,  
+                   color='grey',
+                   label='Song',
+                   marker='s',
+                   **kwargs)
+        ax.scatter(d[:,0][idx==1], d[:,1][idx==1], 
+                   s=70, alpha=0.8,  
+                   color='grey',
+                   label='Bhatawdekar2019',
+                   marker='^',
+                   **kwargs)
+        ax.legend(frameon=False, loc='upper right', fontsize=32)
     return()
     
 def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
@@ -222,7 +242,8 @@ def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
                        axes = ax)  
     return()
     
-def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma):
+def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
+                          legend=False):
     '''
     Plot additional relations for q1 - q2 relations if necessary.
     '''
@@ -241,17 +262,19 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma):
         # add new plot with conditional ERDF
         mbh_dict = calculate_expected_black_hole_mass_from_ERDF(ModelResult1,
                         log_q1, z, sigma=sigma)
-        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3', alpha=0.9)
+        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3')
         
         # put later plot in foreground
         ax.collections[-1].set_zorder(100)
         ax.get_lines()[-1].set_zorder(101)
         
         # legend text change
-        ax.legend().get_texts()[1].\
-            set_text(r'$\langle \lambda | L_\mathrm{bol} \rangle$')
-        ax.legend().get_texts()[0].set_text(r'$\langle \lambda \rangle$')
-
+        ax.legend(ax.get_lines(), 
+                      [r'$\langle \lambda \rangle$',
+                       r'$\langle \lambda | L_\mathrm{bol} \rangle$'],
+                      frameon=False,
+                      loc='upper left',
+                      fontsize=32)
     return()
 
 def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,
