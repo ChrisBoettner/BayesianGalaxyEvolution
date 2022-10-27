@@ -143,7 +143,7 @@ def get_quantity_specifics(quantity_name):
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 3
         options['reference_table_header'] = [r'$z$',
-                                             r'$\log \phi_*$ [cMpc$^{-1}$ mag$^{-1}$]',
+                                             r'$\log \phi_*$ [cMpc$^{-1}$ dex$^{-1}$]',
                                              r'$\mathcal{M}_\mathrm{UV}^\mathrm{c}$',
                                              r'$\alpha$']
     elif quantity_name == 'mbh':

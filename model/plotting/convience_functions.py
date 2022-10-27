@@ -195,21 +195,14 @@ def plot_data_points(ax, ModelResult1, ModelResult2=None, z=0, legend=True,
     elif name == 'Muv_mstar':
         if z not in data.keys():
             raise KeyError('Redshift not in Mainsequence data dictonary.')
+            
         d   = data[z]
-        idx = d[:,2]
-        ax.scatter(d[:,0][idx==0], d[:,1][idx==0], 
-                   s=70, alpha=0.8,  
-                   color='grey',
-                   label='Song',
-                   marker='s',
+        ax.scatter(d[:,0], d[:,1], 
+                   s=35, alpha=0.7,  
+                   color='lightgrey',
+                   label='Song2016',
+                   marker='o',
                    **kwargs)
-        ax.scatter(d[:,0][idx==1], d[:,1][idx==1], 
-                   s=70, alpha=0.8,  
-                   color='grey',
-                   label='Bhatawdekar2019',
-                   marker='^',
-                   **kwargs)
-        ax.legend(frameon=False, loc='upper right', fontsize=32)
     return()
     
 def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):

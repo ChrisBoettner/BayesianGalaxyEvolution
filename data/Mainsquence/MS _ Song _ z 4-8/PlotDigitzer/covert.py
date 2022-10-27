@@ -8,12 +8,13 @@ Created on Thu Oct 14 16:31:21 2021
 import pandas as pd
 import numpy as np
 
-data = pd.read_csv('data.csv')
 dat_processed = {}
 
-for i in range(5):
-    mag = data.iloc[1:,0+2*i].to_numpy(dtype=float)
-    mstar  = data.iloc[1:,1+2*i].to_numpy(dtype=float)
+for i in range(4,9):
+    data = pd.read_csv('z' + str(i) + '.csv')
+    
+    mag = data.iloc[1:,0].to_numpy(dtype=float)
+    mstar  = data.iloc[1:,1].to_numpy(dtype=float)
     
     # remove nans
     mag   = mag[np.isfinite(mag)]

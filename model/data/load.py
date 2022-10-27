@@ -90,33 +90,8 @@ def load_data_points(quantity_name):
         data = np.load(path + '/BHmass/mbh_Lbol_Baron2019.npy')
     elif quantity_name == 'Muv_mstar':
         # Bhatawdekar data
-        data_bh= np.load(path + '/Mainsequence/Muv_mstar_Bhatawdekar2019.npz')
-        data_bh = {i+6:data_bh[str(i)] for i in range(4)}
-        # Song data
-        data_so = np.load(path + '/Mainsequence/Muv_mstar_Song2016.npz')
-        data_so = {i+4:data_so[str(i)] for i in range(5)}
-        # combine data and add index for each data source
-        data = {}
-        for z in range(4,10):
-            if z<6:
-                # just use Song data and add column of 0s
-                d = data_so[z]
-                d = np.concatenate((d, np.zeros([len(d),1])),axis=1)
-                data[z] = d
-            elif (z>=6) & (z<9):
-                # use both data sources and add columns of 0s and 1s
-                d_so = data_so[z]
-                d_bh = data_bh[z]
-                d    = np.vstack([d_so,d_bh])
-                idx  = np.zeros([len(d),1])
-                idx[len(d_so):]  = 1
-                d = np.concatenate((d, idx), axis=1)
-                data[z] = d
-            elif z==9:
-                # just use Bhatawdekar data
-                d = data_bh[z]
-                d = np.concatenate((d, np.zeros([len(d),1])),axis=1)
-                data[z] = d
+        data = np.load(path + '/Mainsequence/Muv_mstar_Song2016.npz')
+        data = {z:data[str(z)] for z in range(4,9)}
     else:
         raise NameError('quantity_name not known.')
     return(data)

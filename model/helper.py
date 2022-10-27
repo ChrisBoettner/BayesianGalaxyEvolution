@@ -282,16 +282,19 @@ def system_path():
     return(path)
 
 ################ TIMING #######################################################
-
-
-def timing(function):
-    '''Wrapper for timing functions'''
-    @wraps(function)
-    def wrap(*args, **kw):
-        ts = time()
-        result = function(*args, **kw)
-        te = time()
-        t  = np.around(te-ts,2)
-        print(f'{function.__name__}: {t} s')
-        return(result)
-    return(wrap)
+def timing(decimals=2):
+    '''Timing function usable as decorator'''
+    # outer function to accept argument for number of decimal points for timer
+    def decorator(function):
+        # decorator function
+        @wraps(function)
+        def wrap(*args, **kwargs):
+            # wrapper for timing
+            ts = time()
+            result = function(*args, **kwargs)
+            te = time()
+            t  = np.around(te-ts, decimals)
+            print(f'Function \'{function.__name__}\' took {t} seconds.')
+            return(result)
+        return(wrap)
+    return(decorator)
