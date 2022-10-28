@@ -15,7 +15,14 @@ from model.plotting.plotting import *
 
 from make_plots import save_plots
 
-save_plots('Muv_mstar')
+z=5
+mstar  = load_model('mstar','changing', redshift=z)
+muv    = load_model('Muv','changing', redshift=z)
+Plot_q1_q2_relation(muv, mstar, z=z, datapoints=True, sigma=[1],
+                    quantity_range=np.linspace(-22.24,-17.23,100),
+                    y_lims=(7.5,11.9), columns='single')
+
+# save_plots('Muv_mstar')
 
 print('very asymmetric distribution in mstar. that not included in the model (which assumes direct relation between halo and stellar mass).'
 'we get away with that if distribution is symmetric (so ignore scatter). if it was infact something more asymmetrically distributed, maybe this leads to this offeset')

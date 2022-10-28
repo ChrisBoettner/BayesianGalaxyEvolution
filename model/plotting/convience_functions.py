@@ -92,11 +92,7 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     mask_trail]. If median=False, only plot confidence intervals. alpha 
     controls alpha level of shaded area.
     '''
-    
-    # convert color to RGB
-    if type(color) is str:
-        color = to_rgb(color)
-    
+
     ## get sigma equiv values and define sigma properties
     sigma = list(data_percentile_dict.keys())
     # conversion table between sigma equivalents and percentiles
@@ -182,7 +178,7 @@ def plot_data_points(ax, ModelResult1, ModelResult2=None, z=0, legend=True,
                    s=35, alpha=0.5,  
                    color='lightgrey',
                    label='Baron2019 (Type 1 and Type 2)',
-                   marker='o',
+                   marker='o', zorder=0,
                    **kwargs)
     
     elif name == 'mbh_Lbol':
@@ -239,25 +235,17 @@ def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
     return()
     
 def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
-                          linewidth=5, legend=False):
+                          color, linewidth=5, legend=False):
     '''
     Plot additional relations for q1 - q2 relations if necessary.
     ''' 
     if (ModelResult1.quantity_name == 'Lbol' and
         ModelResult2.quantity_name == 'mbh'):
         
-        # turn previous plotted lines grey grey
-        for line in ax.get_lines():
-            line.set_color('grey')
-        for i, col in enumerate(ax.collections):
-            sigma_color_alphas = get_sigma_color_alphas()
-            col.set_color(blend_color(to_rgb('lightgrey'),
-                                      sigma_color_alphas[sigma[i]]))
-        
         # add new plot with conditional ERDF
         mbh_dict = calculate_expected_black_hole_mass_from_ERDF(ModelResult1,
                         log_q1, z, sigma=sigma)
-        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3',
+        plot_data_with_confidence_intervals(ax, mbh_dict, color,
                                             linewidth=linewidth)
         
         # put later plot in foreground
@@ -279,12 +267,11 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
         median, lower, upper = song_relation_ranges(z, log_q1)
         
         #plot ranges (4sigma) and median
-        alpha_val = 0.5
         ax.fill_between(log_q1, lower, upper, 
-                        color=blend_color(to_rgb('lightgrey'),alpha_val), 
-                        edgecolor=blend_color(to_rgb('grey'),alpha_val),
+                        color=blend_color('lightgrey',0.5), 
+                        edgecolor='lightgrey',
                         zorder=0)
-        ax.plot(log_q1, median, color='grey',alpha=alpha_val,
+        ax.plot(log_q1, median, color='lightgrey',
                 linewidth=linewidth)
         
         # add redshift text
@@ -296,9 +283,9 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
         
     return()
 
-def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,
-                          vertical_lines=False, shaded=True, linewidth=2, 
-                          linecolor='grey', alpha=0.2):
+def plot_feedback_regimes(axes, ModelResult, color, redshift=None, 
+                          log_epsilon=-1, vertical_lines=False, shaded=True, 
+                          linewidth=2, linecolor='grey', alpha=0.2):
     '''
     Plot feedback regimes, where one of the feedback modes becomes dominant
     at redshift z. Relative strength is controlled using log_epsilon argument
@@ -339,7 +326,7 @@ def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,
             if shaded: # plot shaded aread areas of feedback dominated areas
                 ax.axvspan(transition_quantity_value[z][1],
                             transition_quantity_value[z][2],
-                            facecolor='C3', alpha=alpha, zorder= 0)
+                            facecolor=color, alpha=alpha, zorder= 0)
     return()
 
 ################ LEGEND #######################################################
@@ -489,21 +476,27 @@ def song_relation_ranges(z, quantity_range, num=int(1e+6), sigma=4):
     percentiles = calculate_percentiles(y, axis=1, sigma_equiv=sigma)
     return(percentiles)
     
+
 ################ COLORS #######################################################  
 
 def blend_color(color, alpha, bg_color=np.array([1,1,1])):
     '''
     Blend color with background color using alpha value. Color and background
-    color must be given as array of RGB values. Default background color is 
-    white.
+    color must be given as array of RGB values or str. Default background color 
+    is white.
     '''
+    if type(color) is str:
+        color = to_rgb(color)
+    if type(bg_color) is str:
+        bg_color = to_rgb(bg_color)
+    
     color    = make_array(color)
     bg_color = make_array(bg_color)
     return((1-alpha)*bg_color + alpha*color)
 
 def get_sigma_color_alphas():
     '''For confidence interval plot, get alpha values for blending.'''
-    sigma_color_alphas = {1: 0.8, 2: 0.55, 3: 0.4, 4: 0.2, 5: 0.1}
+    sigma_color_alphas = {0: 1, 1: 0.8, 2: 0.55, 3: 0.4, 4: 0.2, 5: 0.1}
     return(sigma_color_alphas)
   
 ################ TEXT #########################################################

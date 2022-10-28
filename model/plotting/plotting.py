@@ -36,7 +36,7 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
-plt.style.use('model/plotting/settings.rc')
+mpl.style.use('model/plotting/settings.rc')
 
 ################ MAIN FUNCTIONS AND CLASSES ###################################
 
@@ -47,16 +47,17 @@ def get_list_of_plots():
     return(Plot.__subclasses__())
 
 class Plot(object):
-    def __init__(self, ModelResult, columns='double', **kwargs):
+    def __init__(self, ModelResult, columns='double', color='C3', **kwargs):
         ''' General Configurations '''
         self.adjust_style_parameter(columns) # adjust plot style parameter
+        self.color = color
 
         self.make_plot(ModelResult, columns, **kwargs)
         self.default_filename = None
         
-        plt.style.use('model/plotting/settings.rc') # return to original 
+        mpl.style.use('model/plotting/settings.rc') # return to original 
                                                     # plot style parameter
-
+    
     def make_plot(self, ModelResult, columns, **kwargs):
         ModelResult = make_list(ModelResult)
 
@@ -506,7 +507,7 @@ class Plot_ndf_intervals(Plot):
         fig.subplots_adjust(**self.plot_limits)
 
         # define plot parameter
-        color     = 'C3'
+        color     = self.color
 
         # quantity specific settings
         xlabel, ylabel, ncol  = ModelResult.quantity_options['ndf_xlabel'],\
@@ -539,7 +540,7 @@ class Plot_ndf_intervals(Plot):
         
         # add feedback regimes
         if feedback_regimes:
-            plot_feedback_regimes(axes, ModelResult)
+            plot_feedback_regimes(axes, ModelResult, color=self.color)
             
         # add best fits for other models as comparison
         if additional_models:
@@ -776,7 +777,8 @@ class Plot_reference_comparison(Plot):
         return(fig, axes)
     
 class Plot_q1_q2_relation(Plot):
-    def __init__(self, ModelResult1, ModelResult2, columns='double', **kwargs):
+    def __init__(self, ModelResult1, ModelResult2, columns='double',
+                 color = 'C3', additional_color='C3', **kwargs):
         '''
         Plot relation between two observable quantities according to Model.
         Works by using ModelResult1 to calculate halo mass distribution and
@@ -796,13 +798,17 @@ class Plot_q1_q2_relation(Plot):
         also add labels for these lines via log_slope_labels argument.
         masks argument controls if plot should highlight which parts of the
         model is constrained by data. legend=True adds legend.
+        main color can be set with color argument, sometimes additional_color
+        is used for other parts of the plot.
         '''
         self.adjust_style_parameter(columns) # adjust plot style parameter
-
+        self.color     = color
+        self.additional_color = additional_color
+        
         self.make_plot(ModelResult1, ModelResult2, **kwargs)
         self.default_filename = (self.quantity_name + '_relation')
         
-        plt.style.use('model/plotting/settings.rc') # return to original 
+        mpl.style.use('model/plotting/settings.rc') # return to original 
                                                     # plot style parameter
 
     def make_plot(self, ModelResult1, ModelResult2, **kwargs):
@@ -895,12 +901,9 @@ class Plot_q1_q2_relation(Plot):
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
-
-        # get color
-        color = 'C3'
         
         # plot values and confidence interval
-        plot_data_with_confidence_intervals(ax, q1_q2_relation, color,
+        plot_data_with_confidence_intervals(ax, q1_q2_relation, self.color,
                                             data_masks=data_masks,
                                             linewidth=linewidth)
              
@@ -942,7 +945,7 @@ class Plot_q1_q2_relation(Plot):
             plot_linear_relationship(ax, log_q1, log_slopes, log_slope_labels)  
         # add other quantity-related things to plot
         plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1,
-                              sigma=sigma)
+                              sigma=sigma, color=self.additional_color)
         
         # add legend
         if legend:
@@ -1083,7 +1086,7 @@ class Plot_black_hole_mass_distribution(Plot):
         ax.set_ylabel(r'$P (M_\bullet|L_\mathrm{bol})$', x=0.01)
         
         # plot predicted black hole distribution
-        plot_data_with_confidence_intervals(ax, m_bh_dist, 'C3', median=True,
+        plot_data_with_confidence_intervals(ax, m_bh_dist, self.color, median=True,
                                             linewidth=linewidth)
         
             
@@ -1107,7 +1110,7 @@ class Plot_black_hole_mass_distribution(Plot):
         if datapoints:
             ax.hist(m_bh_data[:,0], bins=15, density=True,
                     label = 'Observed Distribution\n(Baron2019, Type 1 AGN)',
-                    color='C3', alpha=0.4,zorder=0)
+                    color=self.color, alpha=0.4,zorder=0)
         
         # add legend
         if legend:

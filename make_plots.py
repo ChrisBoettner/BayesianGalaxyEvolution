@@ -66,7 +66,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
         mstar  = load_model('mstar','changing', redshift=range(4,9))
         # plot for multiple redshifts
         for z in range(4,8):
-            Plot_q1_q2_relation(muv, mstar, z=z, datapoints=True, sigma=[1,2,3],
+            Plot_q1_q2_relation(muv, mstar, z=z, datapoints=True,
                                 quantity_range=np.linspace(-22.24,-17.23,100),
                                 y_lims=(7.5,11.9), columns='single'
                                 ).save(file_format, 
@@ -88,7 +88,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
     elif quantity == 'Lbol_mbh':
         lbol = load_model('Lbol', 'eddington', redshift=0)
         mbh  = load_model('mbh','quasar', redshift=0)
-        Plot_q1_q2_relation(lbol, mbh, columns='single',
+        Plot_q1_q2_relation(lbol, mbh, columns='single', color='lightgrey',
                     quantity_range=np.linspace(43,48.3,100)).save(file_format)
         del lbol
         del mbh
