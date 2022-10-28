@@ -61,9 +61,23 @@ def save_plots(quantity, show = False, file_format='pdf'):
         Plot_black_hole_mass_distribution(model, columns='single').save()
         del model
         
+    elif quantity == 'Muv_mstar':
+        muv    = load_model('Muv','changing', redshift=range(4,9))
+        mstar  = load_model('mstar','changing', redshift=range(4,9))
+        # plot for multiple redshifts
+        for z in range(4,8):
+            Plot_q1_q2_relation(muv, mstar, z=z, datapoints=True, sigma=[1,2,3],
+                                quantity_range=np.linspace(-22.24,-17.23,100),
+                                y_lims=(7.5,11.9), columns='single'
+                                ).save(file_format, 
+                                       file_name=(quantity + '_relation_z' 
+                                                  + str(z)))
+        del muv
+        del mstar
+        
     elif quantity == 'mstar_mbh':
-        mstar  = load_model('mstar','changing')
-        mbh    = load_model('mbh','quasar', prior_name='successive')
+        mstar  = load_model('mstar','changing', redshift=0)
+        mbh    = load_model('mbh','quasar', redshift=0)
         Plot_q1_q2_relation(mstar,mbh,datapoints=True,
                             scaled_ndf=(mbh, [10,30,100]),
                             quantity_range=np.linspace(8.7,11.9,100),
@@ -72,8 +86,8 @@ def save_plots(quantity, show = False, file_format='pdf'):
         del mbh
         
     elif quantity == 'Lbol_mbh':
-        lbol = load_model('Lbol', 'eddington')
-        mbh  = load_model('mbh','quasar')
+        lbol = load_model('Lbol', 'eddington', redshift=0)
+        mbh  = load_model('mbh','quasar', redshift=0)
         Plot_q1_q2_relation(lbol, mbh, columns='single',
                     quantity_range=np.linspace(43,48.3,100)).save(file_format)
         del lbol
@@ -88,6 +102,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
     return
 
 if __name__ == '__main__':
-    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', 'Lbol_mbh', 'mstar_mbh']
+    quantities = ['mstar', 'Muv', 'mbh', 'Lbol', 'Muv_mstar',
+                  'Lbol_mbh', 'mstar_mbh']
     [save_plots(quantity) for quantity in quantities]
     

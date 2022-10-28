@@ -790,7 +790,7 @@ class Plot_q1_q2_relation(Plot):
         You can choose the redshift using z, the number of sigma equivalents
         shown using sigma, the datapoints using datapoints and the
         q1 range using quantity_range. Also can adjust number of samples drawn
-        for calculation using num argument.
+        for calculation using num argument. Can fix y limits using y_lims.
         You can also add lines for linear relationships manually, just pass log
         of slopes via log_slopes argument. Can take array of values. You can 
         also add labels for these lines via log_slope_labels argument.
@@ -818,7 +818,7 @@ class Plot_q1_q2_relation(Plot):
     def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, num = 500,
               datapoints=False, scaled_ndf=None, quantity_range=None,
               log_slopes=None, log_slope_labels=None, masks=False, 
-              legend=False, linewidth=5):       
+              y_lims=None, legend=False, linewidth=5):       
         # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
         
@@ -925,6 +925,8 @@ class Plot_q1_q2_relation(Plot):
 
         # add axis limits
         ax.set_xlim((log_q1[0], log_q1[-1]))
+        if y_lims:
+            ax.set_ylim(y_lims)
 
         # add axis labels
         ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])

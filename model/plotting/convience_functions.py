@@ -13,7 +13,8 @@ from matplotlib import text as mtext
 from matplotlib.colors import to_rgb
 
 from model.data.load import load_data_points
-from model.helper import make_array, make_list, pick_from_list
+from model.helper import make_array, make_list, pick_from_list, \
+                         calculate_percentiles
 from model.analysis.calculations import calculate_best_fit_ndf,\
                                         calculate_expected_black_hole_mass_from_ERDF
 
@@ -195,13 +196,15 @@ def plot_data_points(ax, ModelResult1, ModelResult2=None, z=0, legend=True,
     elif name == 'Muv_mstar':
         if z not in data.keys():
             raise KeyError('Redshift not in Mainsequence data dictonary.')
-            
-        d   = data[z]
+        d = data[z]
+        
+        zorder = 0 if z<7 else 100 # decide if datapoint should be in front or
+                                   # back
         ax.scatter(d[:,0], d[:,1], 
-                   s=35, alpha=0.7,  
-                   color='lightgrey',
+                   s=40, alpha=0.7, 
+                   color='grey',
                    label='Song2016',
-                   marker='o',
+                   marker='o', zorder=zorder,
                    **kwargs)
     return()
     
@@ -236,11 +239,10 @@ def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):
     return()
     
 def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
-                          legend=False):
+                          linewidth=5, legend=False):
     '''
     Plot additional relations for q1 - q2 relations if necessary.
-    '''
-   
+    ''' 
     if (ModelResult1.quantity_name == 'Lbol' and
         ModelResult2.quantity_name == 'mbh'):
         
@@ -255,7 +257,8 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
         # add new plot with conditional ERDF
         mbh_dict = calculate_expected_black_hole_mass_from_ERDF(ModelResult1,
                         log_q1, z, sigma=sigma)
-        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3')
+        plot_data_with_confidence_intervals(ax, mbh_dict, 'C3',
+                                            linewidth=linewidth)
         
         # put later plot in foreground
         ax.collections[-1].set_zorder(100)
@@ -267,7 +270,30 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
                        r'$\langle \lambda | L_\mathrm{bol} \rangle$'],
                       frameon=False,
                       loc='upper left',
-                      fontsize=32)
+                      fontsize=mpl.rcParams['font.size']*1.3)
+    
+    elif (ModelResult1.quantity_name == 'Muv' and
+          ModelResult2.quantity_name == 'mstar'):     
+        
+        # calculate ranges from Song
+        median, lower, upper = song_relation_ranges(z, log_q1)
+        
+        #plot ranges (4sigma) and median
+        alpha_val = 0.5
+        ax.fill_between(log_q1, lower, upper, 
+                        color=blend_color(to_rgb('lightgrey'),alpha_val), 
+                        edgecolor=blend_color(to_rgb('grey'),alpha_val),
+                        zorder=0)
+        ax.plot(log_q1, median, color='grey',alpha=alpha_val,
+                linewidth=linewidth)
+        
+        # add redshift text
+        ax.text(0.97, 0.94, r'$z \sim$ ' + str(z),
+                horizontalalignment='right',
+                verticalalignment='top',
+                transform=ax.transAxes,
+                fontsize=mpl.rcParams['font.size']*1.5)
+        
     return()
 
 def plot_feedback_regimes(axes, ModelResult, redshift=None, log_epsilon=-1,
@@ -435,7 +461,33 @@ def get_distribution_limits(ModelResults):
     # return as list of limits
     limits = list(zip(min_values.values(),max_values.values()))
     return(limits)
+ 
+################ DATA ######################################################### 
+
+
+def song_relation_parameter(z):
+    ''' Parameter for linear relation in mstar-Muv relation from Song2016.'''
+    # {redshift: array} where array is
+    # [slope, slope_error, offset (at Muv=-21), offset_error]
+    parameter = {4: [-0.54, 0.03, 9.70, 0.02],
+                 5: [-0.50, 0.04, 9.59, 0.03],
+                 6: [-0.50, 0.03, 9.53, 0.02],
+                 7: [-0.50, 0,    9.36, 0.16],
+                 8: [-0.50, 0,    9.00, 0.32]}
+    return(parameter[z])
+
+def song_relation_ranges(z, quantity_range, num=int(1e+6), sigma=4):
+    ''' 95% range of linear relationship from Song 2016.'''
+    parameter = song_relation_parameter(z)
     
+    # draw from gaussian 
+    slope_draw  = parameter[0] + parameter[1] * np.random.randn(num)  
+    offset_draw = parameter[2] + parameter[3] * np.random.randn(num)
+    # possible y values (offset is given at x=-21)
+    y = slope_draw * (quantity_range[:,np.newaxis]+21) + offset_draw
+    # calculate percentiles
+    percentiles = calculate_percentiles(y, axis=1, sigma_equiv=sigma)
+    return(percentiles)
     
 ################ COLORS #######################################################  
 

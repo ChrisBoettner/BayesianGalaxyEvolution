@@ -119,11 +119,13 @@ def calculate_percentiles(data, axis=0, sigma_equiv=1):
     '''
     sigmas = {1: (50, 16   , 84   ),
               2: (50,  2.5 , 97.5 ),
-              3: (50,  0.15, 99.85)}
+              3: (50,  0.15, 99.85),
+              4: (50, 0.0003, 99.99997),
+              5: (50, 0.0000003, 99.9999997)}
     try:
         sigma = sigmas[sigma_equiv]
     except KeyError:
-        raise KeyError('sigma_equiv must be value list [1,2,3].')
+        raise KeyError('sigma_equiv must be value list [1,2,3,4,5].')
 
     data = make_array(data)  # turn into numpy array if not already
     data[data==np.inf] = np.nan # ignore inf values
