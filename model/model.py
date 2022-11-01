@@ -335,7 +335,6 @@ class ModelResult():
         ## calculate value of bh phi (hmf + quasar growth model)
         # calculate value of halo mass function
         log_hmf = self.calculate_log_hmf(log_m_h, hmf_z)
-
         # calculate physics/feedback effect (and deal with zero values)
         ph_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
             log_m_h, *parameter)
@@ -343,7 +342,7 @@ class ModelResult():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             # log of 0 is -inf, suppress corresponding numpy warning
             log_ph_factor = np.log10(ph_factor)
-            # calculate modelled phi value (ignore inf-inf warning)
+            # calculate modelled phi value (ignore inf warning)
             log_phi = log_hmf - log_ph_factor
 
         # deal with infinite masses

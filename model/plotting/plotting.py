@@ -1095,8 +1095,8 @@ class Plot_black_hole_mass_distribution(Plot):
                 color='grey', linestyle='--',
                 label= r'Adjusted Distribution',
                 linewidth=linewidth)
-        ax.axvline(eddington_limit, color='grey')
-        ax.axvline(Jet_mode_limit, color='grey')
+        ax.axvline(eddington_limit, color='grey', linewidth=linewidth+1)
+        ax.axvline(Jet_mode_limit, color='grey', linewidth=linewidth+1)
         # add text
         ax.text(1.005*eddington_limit, 0.5, '$\lambda = 1$', 
                 rotation=90, va='bottom', ha='left')
@@ -1110,7 +1110,7 @@ class Plot_black_hole_mass_distribution(Plot):
         if datapoints:
             ax.hist(m_bh_data[:,0], bins=15, density=True,
                     label = 'Observed Distribution\n(Baron2019, Type 1 AGN)',
-                    color=self.color, alpha=0.4,zorder=0)
+                    color='lightgrey', alpha=0.8,zorder=0)
         
         # add legend
         if legend:
