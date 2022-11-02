@@ -17,6 +17,7 @@ from model.helper import mag_to_lum, lum_to_mag, within_bounds, make_array, \
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics
 from model.physics import physics_model
+from model.scatter import scatter_model
 from model.calibration.parameter import load_parameter
 
 ################ MAIN CLASSES #################################################
@@ -287,7 +288,8 @@ class ModelResult():
         return
 
     def calculate_log_abundance(self, log_quantity, z, parameter,
-                                hmf_z=None):
+                                hmf_z=None, scatter_name='delta',
+                                scatter_parameter=None):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
         multiplying HMF function with physics model derivative for a given
@@ -295,6 +297,9 @@ class ModelResult():
 
         IMPORTANT: Input units must be log m in units of solar masses for
         the mass functions and UV luminosity in absolute mag for UVLF.
+        
+        EXPERIMENTAL: Can include scatter in the calculation, not tested or
+        implemented thoroughly though.
 
         Parameters
         ----------
@@ -309,6 +314,14 @@ class ModelResult():
             If hmf_z is given, use that reshift for calculating the values of
             the halo mass function. Useful for disentangeling baryonic physics
             and HMF evolution. The default is None.
+        scatter_name: str, optional
+            Name of distribution that describes scatter in quantity-
+            halo mass relation. The default is 'delta', which means no scatter.
+        scatter_value: float, optional
+            Value of scatter distribution that describes spread. scale 
+            parameter in scipy implementation of location-scale distributions.
+            The default is 'none', must be set if scatter model other than 
+            'delta' is used.
 
         Returns
         -------
@@ -328,25 +341,31 @@ class ModelResult():
         if hmf_z is None:
             hmf_z = z
 
-        # calculate halo masses from stellar masses using model
-        log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
-            log_quantity, *parameter)
-
-        ## calculate value of bh phi (hmf + quasar growth model)
-        # calculate value of halo mass function
-        log_hmf = self.calculate_log_hmf(log_m_h, hmf_z)
-        # calculate physics/feedback effect (and deal with zero values)
-        ph_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
-            log_m_h, *parameter)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=RuntimeWarning)
-            # log of 0 is -inf, suppress corresponding numpy warning
-            log_ph_factor = np.log10(ph_factor)
-            # calculate modelled phi value (ignore inf warning)
-            log_phi = log_hmf - log_ph_factor
-
-        # deal with infinite masses
-        log_phi[np.isinf(log_m_h)] = - np.inf
+        if scatter_name == 'delta':
+            # calculate halo masses from stellar masses using model
+            log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
+                log_quantity, *parameter)
+            # calculate value of halo mass function
+            log_hmf = self.calculate_log_hmf(log_m_h, hmf_z)
+            # calculate physics/feedback effect (and deal with zero values)
+            ph_factor = self.physics_model.at_z(z).\
+                    calculate_dlogquantity_dlogmh(log_m_h, *parameter)
+            with warnings.catch_warnings():
+                # log of 0 is -inf, suppress corresponding numpy warning
+                warnings.simplefilter('ignore', category=RuntimeWarning)
+                log_ph_factor = np.log10(ph_factor)
+                log_phi = log_hmf - log_ph_factor # calculate modelled phi value
+            # deal with infinite masses
+            log_phi[np.isinf(log_m_h)] = -np.inf
+            
+        else:
+            if scatter_parameter is None:
+                raise ValueError('scatter_parameter must be specific if '
+                                 'scatter model other than delta is used.')
+            log_phi = self._experimental_log_abundance_with_scatter(
+                        log_quantity, z, parameter, hmf_z,
+                        scatter_name, scatter_parameter)
+            
         return(log_phi)
 
     def draw_parameter_sample(self, z, num=1):
@@ -677,6 +696,84 @@ class ModelResult():
             initial_guess=self.quantity_options['model_p0'],
             bounds=self.quantity_options['model_bounds']))
         return
+    
+    def _experimental_log_abundance_with_scatter(
+            self, log_quantity, z, parameter, hmf_z,
+            scatter_name, scatter_parameter, ppf_cut=0.5*(1e-5),
+            num=int(1e+4)):  
+        '''
+        Experimental implementation of including scatter in the quantity-
+        halo mass relation. Should be used with caution.
+
+        Parameters
+        ----------
+        log_quantity : float or array
+            Input (log of) observable quantity. For mass function must be in
+            stellar masses, for luminosities must be in absolute magnitudes.
+        z : int
+            Redshift at which value is calculated.
+        parameter : list 
+            Model parameter used for calculation.
+        hmf_z : int, optional
+            If hmf_z is given, use that reshift for calculating the values of
+            the halo mass function. Useful for disentangeling baryonic physics
+            and HMF evolution. The default is None.
+        scatter_name: str, optional
+            Name of distribution that describes scatter in quantity-
+            halo mass relation. The default is 'delta', which means no scatter.
+        scatter_value: float, optional
+            Value of scatter distribution that describes spread. scale 
+            parameter in scipy implementation of location-scale distributions.
+            The default is 'none', must be set if scatter model other than 
+            'delta' is used.
+        ppf_cut : float, optional
+            The value after which distribution is not included in integral.
+            Specified in terms of total probability. A value of e.g. 0.05 means
+            that space for the integral is samples in the interval of values
+            where the CDF is 0.05 and 1-0.05. The distribution is normalized
+            accordingly. The default is 1e-6.
+        num : TYPE, optional
+            DESCRIPTION. The default is int(1e+6).
+
+        Returns
+        -------
+        None.
+
+        '''
+        
+        scatter_distribution = scatter_model(loc          = log_quantity,
+                                             scale        = scatter_parameter,
+                                             scatter_name = scatter_name)
+        
+        # calculate values of q where cutoff is set
+        # calulated using percent point function
+        log_q_lower_bound = scatter_distribution.ppf(ppf_cut)
+        loq_q_upper_bound = scatter_distribution.ppf(1-ppf_cut)
+        # calculate corresponding halo masses
+        log_m_h_lower_bound = self.physics_model.at_z(z).\
+                                    calculate_log_halo_mass(
+                                        log_q_lower_bound, *parameter)
+        log_m_h_upper_bound = self.physics_model.at_z(z).\
+                                    calculate_log_halo_mass(
+                                        loq_q_upper_bound, *parameter)
+                                    
+        # calculate values used for integral and spacing
+        log_m_h_space = np.linspace(log_m_h_lower_bound, log_m_h_upper_bound,
+                                    num)        
+        log_q_space   = self.physics_model.at_z(z).calculate_log_quantity(
+                                                log_m_h_space, *parameter)
+        d_log_m_h     = log_m_h_space[1] - log_m_h_space[0]
+        
+        # calculate integral
+        #breakpoint()
+        normalisation        = 1/(1-2*ppf_cut) # used for normalising pdf
+        scatter_contribution = normalisation*scatter_distribution.pdf(
+                                                log_q_space)
+        hmf_contribution     = np.power(10, self.calculate_log_hmf(
+                                                log_m_h_space,hmf_z))
+        integral_values      = scatter_contribution * hmf_contribution
+        phi                  = trapezoid(integral_values, dx=d_log_m_h, axis=0)
+        return(np.log10(phi))
 
     def _plot_parameter(self, color, marker, linestyle, label):
         '''
