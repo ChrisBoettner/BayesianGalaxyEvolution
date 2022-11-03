@@ -7,7 +7,7 @@ Created on Sat Apr  9 11:51:46 2022
 """
 import timeit
 
-from model.data.load import load_ndf_data, load_hmf_functions
+from model.data.load import load_ndf_data
 from model.model import choose_model
 from model.calibration.parameter import save_parameter
 from model.helper import is_sublist, make_list
@@ -26,12 +26,11 @@ def load_model(quantity_name, physics_name, data_subset=None,
     '''
     cutoff = get_quantity_specifics(quantity_name)['cutoff']
     groups, log_ndfs = load_ndf_data(quantity_name, cutoff, data_subset)
-    log_hmfs = load_hmf_functions()
     if redshift is None:
         redshift = list(log_ndfs.keys())
 
     Model = choose_model(quantity_name)
-    model = Model(redshift, log_ndfs, log_hmfs,
+    model = Model(redshift, log_ndfs,
                   quantity_name, physics_name, prior_name,
                   fitting_method='mcmc',
                   saving_mode='loading',
@@ -54,7 +53,6 @@ def save_model(quantity_name, physics_name, data_subset=None,
     '''
     cutoff = get_quantity_specifics(quantity_name)['cutoff']
     groups, log_ndfs = load_ndf_data(quantity_name, cutoff, data_subset)
-    log_hmfs = load_hmf_functions()
     if redshift is None:
         redshift = list(log_ndfs.keys())
 
@@ -64,7 +62,7 @@ def save_model(quantity_name, physics_name, data_subset=None,
     start = timeit.default_timer()
 
     Model = choose_model(quantity_name)
-    model = Model(redshift, log_ndfs, log_hmfs,
+    model = Model(redshift, log_ndfs,
                   quantity_name, physics_name, prior_name,
                   fitting_method='mcmc',
                   saving_mode='saving',
@@ -92,7 +90,6 @@ def run_model(quantity_name, physics_name, fitting_method='mcmc',
     '''
     cutoff = get_quantity_specifics(quantity_name)['cutoff']
     groups, log_ndfs = load_ndf_data(quantity_name, cutoff, data_subset)
-    log_hmfs = load_hmf_functions()
 
     if redshift is None:
         redshift = list(log_ndfs.keys())
@@ -102,7 +99,7 @@ def run_model(quantity_name, physics_name, fitting_method='mcmc',
             return ValueError('redshifts not in dataset.')
 
     Model = choose_model(quantity_name)
-    model = Model(redshift, log_ndfs, log_hmfs,
+    model = Model(redshift, log_ndfs,
                   quantity_name, physics_name, prior_name,
                   fitting_method=fitting_method,
                   saving_mode=saving_mode,

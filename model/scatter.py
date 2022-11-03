@@ -5,10 +5,10 @@ Created on Wed Nov  2 16:16:39 2022
 
 @author: chris
 """
-
+import numpy as np
 from scipy.stats import norm, cauchy
 
-def scatter_model(loc, scale, scatter_name):
+def scatter_model(scatter_name):
     '''
     Select model distribution for the scatter in the quantity - halo mass 
     relation. Distributions are specified through location and scale parameter.
@@ -29,14 +29,46 @@ def scatter_model(loc, scale, scatter_name):
     '''
     
     if scatter_name == 'normal':
-        scatter = norm(loc=loc, scale=scale)
+        scatter = norm
     elif scatter_name == 'cauchy':
         raise NotImplementedError(
                 'cauchy doesnt quite work yet because of covergence issues \n'
                 'you should probably implement your idea with the switch to '
-                'a gaussian. Also introduce that lower halo mass cutoff you '
-                'mentioned in the paper.')
-        scatter = cauchy(loc=loc, scale=scale)
+                'a gaussian.')
+        scatter = cauchy
     else:
         raise NotImplementedError('scatter_name not known')
     return(scatter)
+
+
+# class Joint_probability_distribution():
+# you were mistaken, no need to calculate normalisation
+#     def __init__(self, model, scatter_name, scatter_parameter=None):
+#         self.model             = model
+#         self.scatter_name      = scatter_name
+#         self.scatter           = scatter_model(scatter_name)
+#         self.scatter_parameter = scatter_parameter
+    
+#     def _calculate_normalisation(self, z, parameter, scatter_parameter = None):
+#         value_grid = 0
+#         return(value_grid)
+        
+#     def _unnormalized_probablility(self, log_quantity, log_halo_mass, z, 
+#                                    parameter,  scatter_parameter = None):
+        
+#         if scatter_parameter is None:
+#             scatter_parameter=self.scatter_parameter
+        
+#         # calculate location parameter for distribution for the input halo
+#         # masses
+#         log_Q = self.model.physics_model.at_z(z).\
+#                            calculate_log_quantity(log_halo_mass, *parameter)
+        
+#         # calculate unnormalized pdf
+#         scatter_contribution =  self.scatter.pdf(x = log_quantity,
+#                                                  loc = log_Q,
+#                                                  scale = scatter_parameter)
+#         hmf_contribution     = np.power(10, self.model.calculate_log_hmf(
+#                                                     log_halo_mass, z))
+#         return(scatter_contribution*hmf_contribution)
+        

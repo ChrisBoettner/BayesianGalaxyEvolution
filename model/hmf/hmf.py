@@ -8,76 +8,50 @@ Created on Fri Apr  8 15:00:12 2022
 import numpy as np
 from hmf import MassFunction
 
-from model.helper import make_array
-
-################ CALL FUNCTIONS ###############################################
-
-def get_log_mass_nonlinear(redshifts):
+def create_hmfs(Mmin=3, Mmax=21, redshift=range(20)):
     '''
-    Return (log of) turnover mass where the HMF switches from powerlaw-like 
-    behaviour to exponential behaviour for input redshift. Convienience 
-    function where masses are retrieved from dictionary created using 
-    calculate_log_mass_nonlinear so that calculation does not need to be
-    redone every time
+    Create Halo Mass Functions using hmf package and save to file. 
+    Currently build in such a way that HMFs get created for integer redshift,
+    where HMF model is Sheth-Tormen. Saves to 3 files,
+        HMF.npz : 
+            dictonary of HMFs of form {str{z}: [log_halo_mass, log_phi]}
+        turnover_mass.npz :
+            dictonary of (log of) turnover mass where the HMF switches from 
+            powerlaw-like behaviour to exponential behaviour, of form
+            {str{z}: log_m_turnover}
+        total_halo_number.npz :
+            dictonary of total number of halos within cosmic volume between
+            Mmin and Mmax, of form {str{z}: total_halo_num}
+            
+    Can adjust minimum and maximum halo mass.
     '''
-    redshifts = make_array(redshifts)
-    masses = {0: 12.641732938023212,
-              1: 11.19481037359994,
-              2: 9.95792461057341,
-              3: 8.985185160624045,
-              4: 8.200879226980947,
-              5: 7.5481524076095345,
-              6: 6.9906124460355805,
-              7: 6.504570343810428,
-              8: 6.074011310053344,
-              9: 5.687658678743158,
-              10: 5.3373399364162015,
-              11: 5.0169440795795985,
-              12: 4.721740450021632,
-              13: 4.4480627721112,
-              14: 4.192976137035432,
-              15: 3.954139767585932,
-              16: 3.7295503278644326,
-              17: 3.5176079649479837,
-              18: 3.316975197110768,
-              19: 3.126485380975656}
-    return([masses[z] for z in redshifts])
-
-################ CREATION FUNCTIONS ###########################################
-
-def calculate_log_mass_nonlinear(redshift):
-    '''
-    Calculate the (log of) turnover mass where the HMF switches from 
-    powerlaw-like behaviour to exponential behaviour for input redshift.
-
-    '''
-    redshift = make_array(redshift)
-    
+    hmfs, log_m_nonlinear, log_total_halo_number = {}, {}, {}
     log_m_nonlinear = {}
     for z in redshift:
-        mf = MassFunction(z=z, hmf_model='ST')
-        log_m_nonlinear[z] = np.log10(mf.mass_nonlinear)
-    return(log_m_nonlinear)
-        
-    
-
-def create_hmfs(Mmin=0.5, Mmax=21):
-    '''
-    Create Halo Mass Functions using hmf package. Currently build in such a way
-    that HMFs get created for integer redshifts from 0 to 19. HMF model is
-    Sheth-Tormen.
-    Can adjust minimum and maximum value.
-    '''
-    hmfs = {}
-    for z in range(20):
+        # create hmf object
         mf = MassFunction(z=z, hmf_model='ST', Mmin=Mmin,
                           Mmax=Mmax)  # create hmf object
+        # get halo masses
         log_m = np.log10(mf.m)
-        # take log of phi, some values are 0 though, so we do it in two parts
+        # calculate log of phi
         phi = mf.dndlog10m
         log_phi = np.copy(phi)
         log_phi[log_phi <= 0] = -np.inf
         log_phi[log_phi > 0] = np.log10(log_phi[log_phi > 0])
         # write to dictionary
         hmfs[str(z)] = np.array([log_m, log_phi]).T
-    return(hmfs)
+        
+        # get (log of) turnover mass where the HMF switches from 
+        # powerlaw-like behaviour to exponential behaviour for input redshift
+        log_m_nonlinear[str(z)] = np.array([np.log10(mf.mass_nonlinear)])
+        
+        # get total number of halos in volume (under assumption that hmf is
+        # 0 outside of [Mmin, Mmax])
+        log_total_halo_number[str(z)] = np.array([mf.ngtm[0]])
+    
+    # save everything
+    path = 'model/data/HMF/'
+    np.savez(path + 'HMF.npz', **hmfs)
+    np.savez(path + 'turnover_mass.npz', **log_m_nonlinear)
+    np.savez(path + 'total_halo_number.npz', **log_total_halo_number)
+    return

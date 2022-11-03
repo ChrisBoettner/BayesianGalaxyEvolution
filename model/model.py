@@ -14,6 +14,7 @@ from progressbar import ProgressBar, FormatLabel, NullBar
 
 from model.helper import mag_to_lum, lum_to_mag, within_bounds, make_array, \
                          system_path
+from model.data.load import load_hmf_functions
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics
 from model.physics import physics_model
@@ -41,9 +42,8 @@ class ModelResult():
     Central model object.
     '''
 
-    def __init__(self, redshifts, log_ndfs, log_hmf_functions,
-                 quantity_name, physics_name, prior_name,
-                 fitting_method, saving_mode, ndf_fudge_factor=None,
+    def __init__(self, redshifts, log_ndfs, quantity_name, physics_name,
+                 prior_name, fitting_method, saving_mode, ndf_fudge_factor=None,
                  name_addon=None,groups=None, calibrate=True, 
                  paramter_calc=True, progress=True, **kwargs):
         '''
@@ -59,9 +59,6 @@ class ModelResult():
             /BHMFs) at different redshifts of form {z: ndf}. 
             Input should be logarithmic values (quantity, phi). For luminosity
             function, the quantity should be given in magnitudes.
-        log_hmf_functions : dict
-            Dictonary of halo mass function at every redshift, which should be 
-            callable functions of form {z: hmf}.
         quantity_name : str
             Name of the quantity modelled. Must be 'Muv', 'mstar' or 'mbh'.
         physics_name : str
@@ -103,8 +100,18 @@ class ModelResult():
         # put in data
         self.redshift = make_array(redshifts)
         self.log_ndfs = Redshift_dict(log_ndfs)
-        self.log_hmfs = Redshift_dict(log_hmf_functions)
         self.groups = groups
+        
+        # load hmf related stuff
+        hmf_funcs, turnover_halo_mass, halo_number = load_hmf_functions()
+        self.log_hmfs               = Redshift_dict(hmf_funcs) # callable
+                                                               # functions
+        self.log_turnover_halo_mass = Redshift_dict(turnover_halo_mass)
+        self.total_halo_number      = Redshift_dict(halo_number)
+        self.hmf_slope              = 0.9  # approximate low mass slope of 
+                                           # HMFs (absolute value)
+        self.log_min_halo_mass      = 3    # minimum halo mass
+        self.log_max_halo_mass      = 21   # maximum halo mass
         
         if ndf_fudge_factor:
             print('Careful: Number densities adjusted by a factor of '
@@ -112,8 +119,6 @@ class ModelResult():
             for key in self.log_ndfs.dict.keys():
                 self.log_ndfs.dict[key][:,1] = (self.log_ndfs.dict[key][:,1] +
                                                 np.log10(ndf_fudge_factor))
-        
-        self.hmf_slope = 0.9  # approximate low mass slope of HMFs (absolute value)
         
         # put in model parameter
         self.quantity_name = quantity_name
@@ -699,8 +704,7 @@ class ModelResult():
     
     def _experimental_log_abundance_with_scatter(
             self, log_quantity, z, parameter, hmf_z,
-            scatter_name, scatter_parameter, ppf_cut=0.5*(1e-5),
-            num=int(1e+4)):  
+            scatter_name, scatter_parameter, num=int(1e+5)):  
         '''
         Experimental implementation of including scatter in the quantity-
         halo mass relation. Should be used with caution.
@@ -726,53 +730,38 @@ class ModelResult():
             parameter in scipy implementation of location-scale distributions.
             The default is 'none', must be set if scatter model other than 
             'delta' is used.
-        ppf_cut : float, optional
-            The value after which distribution is not included in integral.
-            Specified in terms of total probability. A value of e.g. 0.05 means
-            that space for the integral is samples in the interval of values
-            where the CDF is 0.05 and 1-0.05. The distribution is normalized
-            accordingly. The default is 1e-6.
-        num : TYPE, optional
-            DESCRIPTION. The default is int(1e+6).
+        num : int, optional
+            Number of samples created for integral evaluation. The default 
+            is int(1e+6).
 
         Returns
         -------
         None.
 
         '''
+        log_quantity = make_array(log_quantity)
         
-        scatter_distribution = scatter_model(loc          = log_quantity,
-                                             scale        = scatter_parameter,
-                                             scatter_name = scatter_name)
+        # create distribution
+        scatter = scatter_model(scatter_name)
         
-        # calculate values of q where cutoff is set
-        # calulated using percent point function
-        log_q_lower_bound = scatter_distribution.ppf(ppf_cut)
-        loq_q_upper_bound = scatter_distribution.ppf(1-ppf_cut)
-        # calculate corresponding halo masses
-        log_m_h_lower_bound = self.physics_model.at_z(z).\
-                                    calculate_log_halo_mass(
-                                        log_q_lower_bound, *parameter)
-        log_m_h_upper_bound = self.physics_model.at_z(z).\
-                                    calculate_log_halo_mass(
-                                        loq_q_upper_bound, *parameter)
-                                    
         # calculate values used for integral and spacing
-        log_m_h_space = np.linspace(log_m_h_lower_bound, log_m_h_upper_bound,
-                                    num)        
+        log_m_h_space = np.linspace(self.log_min_halo_mass, 
+                                    self.log_max_halo_mass,
+                                    num)[:, np.newaxis]   
+        
         log_q_space   = self.physics_model.at_z(z).calculate_log_quantity(
                                                 log_m_h_space, *parameter)
         d_log_m_h     = log_m_h_space[1] - log_m_h_space[0]
         
         # calculate integral
-        #breakpoint()
-        normalisation        = 1/(1-2*ppf_cut) # used for normalising pdf
-        scatter_contribution = normalisation*scatter_distribution.pdf(
-                                                log_q_space)
+        scatter_contribution = scatter.pdf(x     = log_q_space,
+                                           loc   = log_quantity,
+                                           scale = scatter_parameter)
         hmf_contribution     = np.power(10, self.calculate_log_hmf(
                                                 log_m_h_space,hmf_z))
         integral_values      = scatter_contribution * hmf_contribution
-        phi                  = trapezoid(integral_values, dx=d_log_m_h, axis=0)
+        phi                  = trapezoid(integral_values, dx=d_log_m_h,
+                                          axis=0)
         return(np.log10(phi))
 
     def _plot_parameter(self, color, marker, linestyle, label):
@@ -813,7 +802,7 @@ class ModelResult_QLF(ModelResult):
     higher redshifts.
     '''
 
-    def __init__(self, redshifts, log_ndfs, log_hmf_functions,
+    def __init__(self, redshifts, log_ndfs,
                  quantity_name, physics_name, prior_name,
                  fitting_method, saving_mode, ndf_fudge_factor=None,
                  name_addon=None, groups=None, calibrate=True, 
@@ -849,7 +838,7 @@ class ModelResult_QLF(ModelResult):
         self.log_eddington_constant = 38.1
 
         # initalize model itself
-        super().__init__(redshifts, log_ndfs, log_hmf_functions,
+        super().__init__(redshifts, log_ndfs,
                          quantity_name, physics_name, prior_name,
                          fitting_method, saving_mode, ndf_fudge_factor, 
                          name_addon, groups, calibrate, paramter_calc,

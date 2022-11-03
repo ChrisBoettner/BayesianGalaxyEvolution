@@ -12,16 +12,20 @@ from model.helper import make_list
 ################ MAIN FUNCTIONS ###############################################
 path = 'model/data/'
 
-def load_hmf_functions(source='ShethTormen'):
+def load_hmf_functions(source='ShethTormen', redshift=range(20)):
     '''
     Load HMF data and transform it to callable function by interpolating
     the data. Either load Pratikas data, or self-created Sheth-Tormen HMF using
     hmf module. Get for redshifts 0-20.
+    If ShethTormen, also return dicts of turnover mass and total number of 
+    halos.
     '''
 
     # either load or create HMFs (self-created ones have larger range)
     if source == 'ShethTormen':
-        hmfs = np.load(path + 'HMF/HMF.npz')
+        hmfs                    = np.load(path + 'HMF/HMF.npz')
+        log_turnover_halo_mass  = np.load(path + 'HMF/turnover_mass.npz')
+        total_halo_number       = np.load(path + 'HMF/total_halo_number.npz')
     elif source == 'Pratika':
         hmfs = np.load(path + 'HMF/HMF_Pratika.npz')
     else:
@@ -29,12 +33,18 @@ def load_hmf_functions(source='ShethTormen'):
 
     # create evaluatable function from data
     hmf_functions = []
-    for z in range(20):
+    for z in redshift:
         h = hmfs[str(z)]
         hmf_functions.append(interp1d(*h.T, bounds_error=False,
                                       fill_value=-np.inf))
     # turn into dictonary
-    hmf_functions = {z: hmf_functions[z] for z in range(20)}
+    hmf_functions = {z: hmf_functions[z] for z in redshift}
+    if source == 'ShethTormen':
+        log_turnover_halo_mass = {z: log_turnover_halo_mass[str(z)] 
+                                  for z in redshift}
+        total_halo_number      = {z: total_halo_number[str(z)] 
+                                  for z in redshift} 
+        return(hmf_functions, log_turnover_halo_mass, total_halo_number)
     return(hmf_functions)
 
 
