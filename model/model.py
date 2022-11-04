@@ -18,7 +18,7 @@ from model.data.load import load_hmf_functions
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics
 from model.physics import physics_model
-from model.scatter import scatter_model
+from model.scatter import Joint_distribution
 from model.calibration.parameter import load_parameter
 
 ################ MAIN CLASSES #################################################
@@ -294,7 +294,7 @@ class ModelResult():
 
     def calculate_log_abundance(self, log_quantity, z, parameter,
                                 hmf_z=None, scatter_name='delta',
-                                scatter_parameter=None):
+                                scatter_parameter=None, **kwargs):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
         multiplying HMF function with physics model derivative for a given
@@ -322,11 +322,14 @@ class ModelResult():
         scatter_name: str, optional
             Name of distribution that describes scatter in quantity-
             halo mass relation. The default is 'delta', which means no scatter.
-        scatter_value: float, optional
+        scatter_parameter: float, optional
             Value of scatter distribution that describes spread. scale 
             parameter in scipy implementation of location-scale distributions.
             The default is 'none', must be set if scatter model other than 
             'delta' is used.
+        **kwargs: dict, optional
+            Additional parameter passed to 
+            _experimental_log_abundance_with_scatter method.
 
         Returns
         -------
@@ -369,7 +372,7 @@ class ModelResult():
                                  'scatter model other than delta is used.')
             log_phi = self._experimental_log_abundance_with_scatter(
                         log_quantity, z, parameter, hmf_z,
-                        scatter_name, scatter_parameter)
+                        scatter_name, scatter_parameter, **kwargs)
             
         return(log_phi)
 
@@ -704,7 +707,7 @@ class ModelResult():
     
     def _experimental_log_abundance_with_scatter(
             self, log_quantity, z, parameter, hmf_z,
-            scatter_name, scatter_parameter, num=int(1e+5)):  
+            scatter_name, scatter_parameter, **kwargs):  
         '''
         Experimental implementation of including scatter in the quantity-
         halo mass relation. Should be used with caution.
@@ -732,36 +735,28 @@ class ModelResult():
             'delta' is used.
         num : int, optional
             Number of samples created for integral evaluation. The default 
-            is int(1e+6).
+            is int(1e+5).
+        **kwargs: dict, optional
+            kwargs passed to calculate_quantity_marginal_density method of
+            Joint_distribution.
 
         Returns
         -------
         None.
 
         '''
+        if hmf_z != z:
+            raise NotImplementedError('hmf_z not implemented for calculation '
+                                      'with scatter.')
+        
         log_quantity = make_array(log_quantity)
         
-        # create distribution
-        scatter = scatter_model(scatter_name)
+        distribution = Joint_distribution(self, scatter_name,
+                                          scatter_parameter)
         
-        # calculate values used for integral and spacing
-        log_m_h_space = np.linspace(self.log_min_halo_mass, 
-                                    self.log_max_halo_mass,
-                                    num)[:, np.newaxis]   
-        
-        log_q_space   = self.physics_model.at_z(z).calculate_log_quantity(
-                                                log_m_h_space, *parameter)
-        d_log_m_h     = log_m_h_space[1] - log_m_h_space[0]
-        
-        # calculate integral
-        scatter_contribution = scatter.pdf(x     = log_q_space,
-                                           loc   = log_quantity,
-                                           scale = scatter_parameter)
-        hmf_contribution     = np.power(10, self.calculate_log_hmf(
-                                                log_m_h_space,hmf_z))
-        integral_values      = scatter_contribution * hmf_contribution
-        phi                  = trapezoid(integral_values, dx=d_log_m_h,
-                                          axis=0)
+        phi = distribution.calculate_quantity_marginal_density(log_quantity, z,
+                                                               parameter, 
+                                                               **kwargs)
         return(np.log10(phi))
 
     def _plot_parameter(self, color, marker, linestyle, label):

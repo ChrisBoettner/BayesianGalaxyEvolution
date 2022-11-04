@@ -29,23 +29,14 @@ par = mstar.parameter.at_z(z)
 # print(mstar.calculate_log_abundance(log_q, z, par, scatter_name='cauchy',
 #                                     scatter_parameter=sigma))
 
-print('nevermind normalisation, that works easy')
-print('reason phi values are larger with scatter is bc you look at log-normal distribution in q')
-print('wechsler2018 4.3. states lognormal with constant scatter is usually assumed')
-print('maybe actually try with normal distribution, then heavy tail makes more sense too, maybe only heavy tail in lin space')
-print('for normal distribution maybe set sigma as some fraction of value, i.e. halo mass dependent')
-print('for heavy tail, do cauchy + gauss dropoff, so we dont have to impose limits on q distributions')
-
-from scipy.integrate import trapezoid
-
 x = mstar.quantity_options['quantity_range']
 sigmas = [1.1,1,0.9,0.8,0.6,0.4,0.3,0.2,0.1,0.01,0.001]
 
 plt.close()
 
 for s in sigmas:
-    y = mstar.calculate_log_abundance(x, z, par, scatter_name='normal',
-                                          scatter_parameter=s)
+    y = mstar.calculate_log_abundance(x, z, par, scatter_name='lognormal',
+                                          scatter_parameter=s, num=int(1e+4))
     plt.plot(x,y,label=str(s), linewidth=3, alpha=0.7)
 y = mstar.calculate_log_abundance(x, z, par)
 plt.plot(x,y,label='delta', linewidth=8,color='black', zorder=0)
