@@ -338,9 +338,7 @@ class ModelResult():
 
         '''
         log_quantity = make_array(log_quantity)
-        # conversion between magnitude and luminosity if needed
-        log_quantity = self.unit_conversion(log_quantity, 'mag_to_lum')
-
+        
         # check that parameters are within bounds
         if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
             raise ValueError('Parameter out of bounds.')
@@ -350,6 +348,11 @@ class ModelResult():
             hmf_z = z
 
         if scatter_name == 'delta':
+            # conversion between magnitude and luminosity if needed
+            # (for _experimental_log_abundance_with_scatter this is done in
+            #  Joint_distribution class)
+            log_quantity = self.unit_conversion(log_quantity, 'mag_to_lum')
+            
             # calculate halo masses from stellar masses using model
             log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
                 log_quantity, *parameter)
@@ -662,12 +665,12 @@ class ModelResult():
         '''
         if self.quantity_name == 'Muv':
             # convert magnitude to luminosity
-            if mode == 'mag_to_lum':
+            if mode == 'mag_to_lum' and np.all(log_quantity<=0):
                 log_quantity = np.log10(mag_to_lum(log_quantity))
-            elif mode == 'lum_to_mag':
+            elif mode == 'lum_to_mag' and np.all(log_quantity>=0):
                 log_quantity = lum_to_mag(np.power(10,log_quantity))
             else:
-                raise NameError('Unit conversion mode not known.')
+                raise NameError('Something went wrong in unit conversion.')
         return(log_quantity)
 
 
@@ -747,16 +750,14 @@ class ModelResult():
         '''
         if hmf_z != z:
             raise NotImplementedError('hmf_z not implemented for calculation '
-                                      'with scatter.')
-        
-        log_quantity = make_array(log_quantity)
+                                      'with scatter.') 
+        log_quantity = make_array(log_quantity)    
         
         distribution = Joint_distribution(self, scatter_name,
                                           scatter_parameter)
-        
-        phi = distribution.calculate_quantity_marginal_density(log_quantity, z,
-                                                               parameter, 
-                                                               **kwargs)
+        phi = distribution.quantity_marginal_density(log_quantity, z,
+                                                     parameter, 
+                                                     **kwargs)
         return(np.log10(phi))
 
     def _plot_parameter(self, color, marker, linestyle, label):

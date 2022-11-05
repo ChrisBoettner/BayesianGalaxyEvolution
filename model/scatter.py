@@ -9,6 +9,8 @@ import numpy as np
 from scipy.stats import norm, cauchy
 from scipy.integrate import trapezoid
 
+import warnings
+
 class Joint_distribution():
     def __init__(self, model, scatter_name, scatter_parameter=None):
         '''
@@ -46,28 +48,29 @@ class Joint_distribution():
         self.scatter_name      = scatter_name
         self.scatter_parameter = scatter_parameter
     
-    def calculate_number_density(self, log_quantity, log_halo_mass, z, 
+    def joint_number_density(self, log_quantity, log_halo_mass, z, 
                         parameter,  scatter_parameter=None):
         '''
         Calculate value of joint number density function for given log_quantity
         and log_halo_mass value. z and parameter needed for quantity - halo 
         mass relation.
         '''
-        
         if scatter_parameter is None:
             scatter_parameter=self.scatter_parameter
             
         # calculate value of distribution
-        scatter =  self.scatter_contribution(log_quantity,  log_halo_mass,
-                                              z, parameter, scatter_parameter)
-        hmf     = self.hmf_contribution(log_halo_mass, z)
+        scatter =  self.quantity_conditional_density(log_quantity,  
+                                                     log_halo_mass,
+                                                     z, parameter,
+                                                     scatter_parameter)
+        hmf     = self.halo_mass_marginal_density(log_halo_mass, z)
         return(scatter*hmf)
     
-    def calculate_quantity_marginal_density(self, log_quantity, z, parameter,
+    def quantity_marginal_density(self, log_quantity, z, parameter,
                                             scatter_parameter=None, **kwargs):
         '''
         Calculate value of marginal quantity ndf by integrating over all
-        m_h space.
+        m_h space. kwargs are passed to make_log_m_h_space.
         '''
         if scatter_parameter is None:
             scatter_parameter=self.scatter_parameter
@@ -76,20 +79,25 @@ class Joint_distribution():
         log_m_h_space = self.make_log_m_h_space(log_quantity, z, parameter,
                                                 **kwargs)
         # calculate ndf values at these m_h points and input quantity values
-        number_densities = self.calculate_number_density(log_quantity, 
-                                                         log_m_h_space,
-                                                         z, parameter,
-                                                         scatter_parameter)
+        number_densities = self.joint_number_density(log_quantity, 
+                                                     log_m_h_space,
+                                                     z, parameter,
+                                                     scatter_parameter)
         # integrate over sample
-        marginal_density =trapezoid(y=number_densities, x=log_m_h_space,
-                                          axis=0)
+        marginal_density = trapezoid(y=number_densities, x=log_m_h_space,
+                                     axis=0)
         return(marginal_density)
     
-    def scatter_contribution(self, log_quantity, log_halo_mass, z, parameter,
-                             scatter_parameter):
+    def quantity_conditional_density(self, log_quantity, log_halo_mass, z, 
+                                     parameter, scatter_parameter=None):
         '''
-        Calculate contribution of scatter to joint ndf.
+        Calculate value of conditional density p(q|m_h).
         '''
+        log_quantity = self.model.unit_conversion(log_quantity, 'mag_to_lum')
+        
+        if scatter_parameter is None:
+            scatter_parameter=self.scatter_parameter
+        
         # calculate location parameter for distribution for the input halo
         # masses
         log_Q = self.calculate_Q(log_halo_mass, z, parameter)
@@ -109,26 +117,43 @@ class Joint_distribution():
                                      loc   = 10**log_Q,
                                      scale = scatter_parameter*10**log_Q)
         else:
-            raise ValueError('scatter_name not known.')
-            
+            raise ValueError('scatter_name not known.')     
         return(pdf_values)
         
-    def hmf_contribution(self, log_halo_mass, z):
+    def halo_mass_marginal_density(self, log_halo_mass, z):
         '''
-        Calculate contribution of HMF to joint ndf.
+        Calculate value of HMF (which is marginal distribution for halo mass).
         '''
         hmf_values = np.power(10, self.model.calculate_log_hmf(
                                                 log_halo_mass, z))
         return(hmf_values)
+    
+    def halo_mass_conditional_density(self, log_halo_mass, log_quantity, z, 
+                                     parameter, scatter_parameter=None,
+                                     **kwargs):
+        '''
+        Calculate value of conditional density p(m_h|q) using Bayes' theorem.
+        **kwargs are passed to quantity_marginal_density.
+        '''
+        joint_dens         = self.joint_number_density(self, log_quantity, 
+                                                       log_halo_mass, z, 
+                                                       parameter, 
+                                                       scatter_parameter)
+        quantity_marg_dens = self.quantity_marginal_density(log_quantity, 
+                                                            z, parameter,
+                                                            scatter_parameter,
+                                                            **kwargs)
+        halo_cond_dens     = joint_dens/quantity_marg_dens
+        return(halo_cond_dens)
         
     def calculate_Q(self, log_halo_mass, z, parameter):
         '''
         Calculate Q(m_h) for given halo mass, redshift and quantity - halo
         mass relation parameter. (Convenience method)
         '''
-        log_m_h = self.model.physics_model.at_z(z).calculate_log_quantity(
+        log_Q = self.model.physics_model.at_z(z).calculate_log_quantity(
                                             log_halo_mass, *parameter)
-        return(log_m_h)
+        return(log_Q)
         
     def calculate_Q_inverse(self, log_quantity, z, parameter):  
         '''
@@ -136,9 +161,10 @@ class Joint_distribution():
         redshift and quantity - halo mass relation parameter. 
         (Convenience method)
         '''
-        log_Q = self.model.physics_model.at_z(z).calculate_log_halo_mass(
+        log_quantity = self.model.unit_conversion(log_quantity, 'mag_to_lum')
+        log_m_h = self.model.physics_model.at_z(z).calculate_log_halo_mass(
                                             log_quantity, *parameter)
-        return(log_Q)
+        return(log_m_h)
         
     
     def make_log_m_h_space(self, log_quantity, z, parameter, num=int(1e+4),
@@ -158,7 +184,7 @@ class Joint_distribution():
         # smaller value of epsilon means point are sampled more densely around
         # maximum and less densely further out
         log_m_epsilon = log_Q_inv-epsilon
-        
+
         # create logarithmically spaced points to the left and right of m_h
         lower_part = np.geomspace(epsilon, 
                                   log_m_epsilon-self.model.log_min_halo_mass,
@@ -168,14 +194,26 @@ class Joint_distribution():
                                   num)
         
         # transform to m_h_space
-        lower_part = log_m_epsilon - lower_part
-        upper_part = log_m_epsilon + upper_part
+        lower_part  = (log_m_epsilon - lower_part)[::-1]
+        upper_part  = log_m_epsilon + upper_part
+        
+        # add middle section that connects two part at same sampling density
+        distance  = upper_part[0] - lower_part[-1] 
+        samp_dens = upper_part[1] - upper_part[0]
+        points    = np.ceil(np.amax(distance/samp_dens)).astype(int)
+        if points >= num:
+            warnings.warn('Number of points created for middle section '
+                          'exceeds specified number of points in '
+                          'make_log_m_h_space.')
+        middle_part = np.linspace(lower_part[-1], upper_part[0], points,
+                                  endpoint=False)
         
         # join spaces (sorted in order)
-        log_m_h_space = np.concatenate([lower_part[::-1], upper_part])
+        log_m_h_space = np.concatenate([lower_part, middle_part[1:],
+                                        upper_part])
         
         # make arrays 2d, needed for correct broadcasting in
-        # calculate_quantity_marginal_density method
+        # quantity_marginal_density method
         if log_m_h_space.ndim == 1:
             log_m_h_space = log_m_h_space[:, np.newaxis]
         return(log_m_h_space)
