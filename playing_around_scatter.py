@@ -41,7 +41,7 @@ print('read wechsler review') # https://ui.adsabs.harvard.edu/abs/2018ARA%26A..5
 # =============================================================================
 #%%
 import numpy as np
-from model.scatter import Joint_distribution
+from model.scatter import Joint_distribution, calculate_q1_q2_conditional_pdf
 from scipy.integrate import trapezoid
 
 z = 4
@@ -59,34 +59,13 @@ muv_joint   = Joint_distribution(muv, scatter_name, muv_sigma)
 mstar_par = mstar.parameter.at_z(z)
 muv_par   = muv.parameter.at_z(z)
 
-def calc_q1_cond_prob(jdist1, jdist2, par1, par2, log_q1, log_q2, z):
-    log_m_h_space = jdist1.make_log_m_h_space(log_q1, z, par1)
-    # log_m_h_space2 = jdist2.make_log_m_h_space(log_q2, z, par2)
-    # log_m_h_space  = np.unique(np.sort(np.concatenate([log_m_h_space1, 
-    #                                                    log_m_h_space2])),
-    #                                                         axis=0)
-    
-    cond_q1        = jdist1.quantity_conditional_density(log_q1, log_m_h_space,
-                                                          z, par1)
-    joint_q2       = jdist2.joint_number_density(log_q2, log_m_h_space,
-                                                  z, par2)
-    
-    marg_q2        = jdist2.quantity_marginal_density(log_q2, z, par2)
-    
-    numerator = trapezoid(cond_q1*joint_q2, x=log_m_h_space, axis=0)
-    
-    prob = numerator/marg_q2
-    if len(prob)==1:
-        prob = prob[0]
-    return(prob)
-
-
 muv_val     = -20
 
 log_q_space = np.linspace(8,11,500)
 
-probs = calc_q1_cond_prob(mstar_joint, muv_joint, mstar_par, 
-                               muv_par, log_q_space, muv_val, z)
+probs = calculate_q1_q2_conditional_pdf(mstar_joint, muv_joint, 
+                                        log_q_space, muv_val, 
+                                        mstar_par, muv_par, z)
 
 m = np.argmax(probs)
 w = 100

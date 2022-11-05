@@ -11,6 +11,73 @@ from scipy.integrate import trapezoid
 
 import warnings
 
+def calculate_q1_q2_conditional_pdf(Jointdist1, Jointdist2, 
+                                    log_q1, log_q2, parameter1, parameter2, z,
+                                    **kwargs):
+    '''
+    Calculate conditional probability p(q1|q2), for a given value of  
+    log_q1, log_q2.
+
+    Parameters
+    ----------
+    Jointdist1 : Joint_distribution
+        Joint_distribution instance for log_q1.
+    Jointdist2 : Joint_distribution
+        Joint_distribution instance for log_q2.
+    log_q1 : float or array
+        Values for which probability are to be calculated.
+    log_q2 : float
+        Value on which conditional probability is calcuted.
+        MUST BE SCALAR IN CURRENT IMPLEMENTATION.
+    parameter1 : array
+        Parameter that describe quantity-halo mass relation for log_q1.
+    parameter2 : array
+        Parameter that describe quantity-halo mass relation for log_q2.
+    z : int
+        Redshift at which to calculate probability.
+    **kwargs : dict
+        Additional parameter passed to make_log_m_h_space.
+
+    Raises
+    ------
+    ValueError
+        Raised if log_q2 is not scalar.
+
+    Returns
+    -------
+    probability: float or array
+        Calculated probabilities.
+
+    '''
+    
+    if not np.isscalar(log_q2):
+        raise ValueError('In current implementation, log_q2 must be scalar.')
+    
+    log_m_h_space = Jointdist1.make_log_m_h_space(log_q1, z, parameter1,
+                                                  **kwargs)
+    # log_m_h_space2 = Jointdist2.make_log_m_h_space(log_q2, z, parameter2)
+    # log_m_h_space  = np.unique(np.sort(np.concatenate([log_m_h_space, 
+    #                                                     log_m_h_space2])),
+    #                                                         axis=0)
+    
+    # calculate necessary integrals
+    conditional_q1 = Jointdist1.quantity_conditional_density(log_q1, 
+                                                             log_m_h_space,
+                                                             z, parameter1)
+    joint_q2       = Jointdist2.joint_number_density(log_q2, log_m_h_space,
+                                                  z, parameter2)
+    marginal_q2    = Jointdist2.quantity_marginal_density(log_q2, z, 
+                                                          parameter2)
+    
+    # calculate probability
+    integral    = trapezoid(conditional_q1*joint_q2, x=log_m_h_space, axis=0)
+    probability = integral/marginal_q2
+    
+    if len(probability)==1:
+        probability = probability[0]
+    return(probability)
+
+
 class Joint_distribution():
     def __init__(self, model, scatter_name, scatter_parameter=None):
         '''
