@@ -103,7 +103,7 @@ def cost_function(params, model, out='cost', weighted=True, z=None):
     elif fitting_space == 'linear':
         res = 10**log_phi_obs - 10**log_phi_mod
     elif fitting_space == 'relative':
-        res = 1- 10**(log_phi_mod-log_phi_obs)
+        res = 1 - 10**(log_phi_mod-log_phi_obs)
     else:
         raise NameError('Fitting space not known.')
 

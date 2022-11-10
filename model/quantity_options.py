@@ -71,14 +71,14 @@ def get_quantity_specifics(quantity_name):
         options['ndf_name'] = 'SMF'
         options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
-        options['cutoff'] = -6
-        options['log_m_c'] = 12.3
-        options['feedback_change_z'] = 5
+        options['cutoff'] = -9
+        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41, 3: 12.94}
+        options['feedback_change_z'] = 4
         # MODEL
         options['model_param_num'] = 3
         options['model_p0'] = np.array([-2, 1, 0.5])
         options['model_bounds'] = np.array([[-5, 0, 0],
-                                            [np.log10(2), 4, 0.96]])
+                                            [np.log10(0.1), 4, 0.96]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
@@ -112,9 +112,9 @@ def get_quantity_specifics(quantity_name):
         options['ndf_name'] = 'UVLF'
         options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
-        options['cutoff'] = -6
-        options['log_m_c'] = 11.5
-        options['feedback_change_z'] = 8
+        options['cutoff'] = -9
+        options['log_m_c'] = {0: 11.73,1: 11.51, 2: 11.4, 3: 11.47}
+        options['feedback_change_z'] = 4
         # MODEL
         options['model_param_num'] = 3
         options['model_p0'] = np.array([18, 1, 0.5])
@@ -123,7 +123,7 @@ def get_quantity_specifics(quantity_name):
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
-        # REFERENCE FUNCTION        options['relative_weights'] = True
+        # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function_mag
         options['reference_p0'] = [-4, -20, -1.5]
@@ -135,8 +135,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_xlabel'] = r'$\mathcal{M}_\mathrm{UV}$'
         options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ mag$^{-1}$]'
         options['ndf_y_axis_limit'] = [-6, 3]
-        options['param_y_labels'] = [r'$\log A$' + '\n'
-                                     r'[mag$^{-1}$ $M_\odot^{-1}$]',
+        options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
                                      r'$\delta$']
         options['ndf_legend_pos'] = 8
@@ -153,8 +152,8 @@ def get_quantity_specifics(quantity_name):
         options['ndf_name'] = 'BHMF'
         options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
-        options['log_m_c'] = 12.3
-        options['feedback_change_z'] = np.nan
+        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41, 3: 12.94}
+        options['feedback_change_z'] = 4
         # MODE
         options['model_param_num'] = 2
         options['model_p0'] = np.array([5, 1])
@@ -198,7 +197,7 @@ def get_quantity_specifics(quantity_name):
                                      'eddington_free_ERDF',
                                      'eddington_changing']
         options['cutoff'] = -12
-        options['log_m_c'] = 12.3
+        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41, 3: 12.94}
         options['feedback_change_z'] = 4
         # MODE
         options['model_param_num'] = 4
@@ -221,7 +220,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_xlabel'] = r'log $L_\mathrm{bol}$ [erg s$^{-1}$]'
         options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15, 3]
-        options['param_y_labels'] = [r'$\log C$' + '\n' + r'[ergs s$^{-1}$ $M_\odot^{-1}$]',
+        options['param_y_labels'] = [r'$\log C$',
                                      r'$\theta$',
                                      r'$ \log \lambda_\mathrm{c}$',
                                      r'$\rho$']

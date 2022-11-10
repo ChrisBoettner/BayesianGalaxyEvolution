@@ -115,18 +115,15 @@ def _load_smf_data(cutoff, data_subset):
     redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
     '''
-    # get z=0,1,2,3,4 for Davidson, z=1,2,3 for Ilbert
     davidson = dict(np.load(path + 'SMF/Davidson2017SMF.npz'))
-    davidson = {i: davidson[j] for i, j in [['0', '1'],
-                                            ['1', '2'], ['2', '4'], 
-                                            ['3', '6'], ['4', '8']]}
     ilbert = dict(np.load(path + 'SMF/Ilbert2013SMF.npz'))
-    ilbert = {i: ilbert[j] for i, j in [
-        ['0', '0'], ['1', '2'], ['2', '4'], ['3', '6']]}
     duncan = dict(np.load(path + 'SMF/Duncan2014SMF.npz'))
     song = dict(np.load(path + 'SMF/Song2016SMF.npz'))
     bhatawdekar = dict(np.load(path + 'SMF/Bhatawdekar2018SMF.npz'))
     stefanon = dict(np.load(path + 'SMF/Stefanon2021SMF.npz'))
+    tomczak = dict(np.load(path + 'SMF/Tomczak2014SMF.npz'))
+    baldry = dict(np.load(path + 'SMF/Baldry2012SMF.npz'))
+    moustakas = dict(np.load(path + 'SMF/Moustakas2013SMF.npz'))
 
     # TURN DATA INTO GROUP OBJECTS, INCLUDING PLOT PARAMETER
     davidson = Group(davidson, [0, 1, 2, 3, 4], cutoff).plot_parameter(
@@ -135,13 +132,20 @@ def _load_smf_data(cutoff, data_subset):
         'black', 'H', 'Ilbert2013')
     duncan = Group(duncan, [4, 5, 6, 7], cutoff).plot_parameter(
         'black', 'v', 'Duncan2014')
-    song = Group(song, [6, 7, 8], cutoff).plot_parameter(
+    song = Group(song, [4, 5, 6, 7, 8], cutoff).plot_parameter(
         'black', 's', 'Song2016')
     bhatawdekar = Group(bhatawdekar, [6, 7, 8, 9], cutoff).plot_parameter(
         'black', '^', 'Bhatawdekar2019')
     stefanon = Group(stefanon, [6, 7, 8, 9, 10], cutoff).plot_parameter(
         'black', 'X', 'Stefanon2021')
-    groups = [davidson, ilbert, duncan, song, bhatawdekar, stefanon]
+    tomczak = Group(tomczak, [0,1,2,3], cutoff).plot_parameter(
+        'black', '+', 'Tomczak2014')
+    baldry = Group(baldry, [0], cutoff).plot_parameter(
+        'black', 'd', 'Baldry2012')
+    moustakas = Group(moustakas, [0,1], cutoff).plot_parameter(
+        'black', 'D', 'Moustakas2013')
+    groups = [davidson, ilbert, duncan, song, bhatawdekar, stefanon,
+              baldry, moustakas, tomczak]
 
     # choose subselection of data if given when calling the function
     if data_subset:
@@ -164,13 +168,9 @@ def _load_uvlf_data(cutoff, data_subset):
     redshift (of the form {redshift:data}).
     Remove data with number density below some cutoff limit.
     '''
-    # get z=0,1,2,3,4 for Madau
     # remove redshift 10 for Bouwens2021, since this is same data as Oesch2018,
     # also only load Bouwens2021, since Bouwens2015 contains same data
     cucciati = dict(np.load(path + 'UVLF/Cucciati2012UVLF.npz'))
-    cucciati = {i: cucciati[j] for i, j in [['0', '1'],
-                                            ['1', '4'], ['2', '7'],
-                                            ['3', '8'], ['4', '9']]}
     duncan = dict(np.load(path + 'UVLF/Duncan2014UVLF.npz'))
     #bouwens = dict(np.load(path + 'UVLF/Bouwens2015UVLF.npz'))
     bouwens2 = dict(np.load(path + 'UVLF/Bouwens2021UVLF.npz'))

@@ -299,15 +299,14 @@ def plot_feedback_regimes(axes, ModelResult, color, redshift=None,
     elif np.isscalar(redshift):
         redshift = make_list(redshift)
     
-    if ModelResult.physics_name in ['stellar', 'stellar_blackhole', 'changing']:
+    if ModelResult.physics_name in ['stellar', 'stellar_blackhole',
+                                    'changing']:
         transition_quantity_value = {}
         for z in redshift:
-            parameter = ModelResult.parameter.at_z(z)
             transition_quantity_value[z] = ModelResult.\
                                             calculate_feedback_regimes(
-                                                 z, parameter, 
-                                                 output='quantity',
-                                                 log_epsilon=log_epsilon)
+                                                 z,  log_epsilon=log_epsilon,
+                                                 output='quantity')
     
         for z in redshift:
             if len(axes) == 1:

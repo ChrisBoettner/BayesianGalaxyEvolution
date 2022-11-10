@@ -234,7 +234,7 @@ class Joint_distribution():
         return(log_m_h)
         
     
-    def make_log_m_h_space(self, log_quantity, z, parameter, num=int(1e+4),
+    def make_log_m_h_space(self, log_quantity, z, parameter, num=int(1e+2),
                            epsilon=1e-8):
         '''
         Create samples in log_m_h space in order to calculate quantity 
@@ -250,7 +250,10 @@ class Joint_distribution():
         # slight offset used to calculate logarithmic space,
         # smaller value of epsilon means point are sampled more densely around
         # maximum and less densely further out
-        log_m_epsilon = log_Q_inv-epsilon
+        log_m_epsilon     = log_Q_inv-epsilon
+        # deal with to large values
+        max_log_m_epsilon = self.model.log_max_halo_mass - epsilon
+        log_m_epsilon[log_m_epsilon>max_log_m_epsilon] = max_log_m_epsilon
 
         # create logarithmically spaced points to the left and right of m_h
         lower_part = np.geomspace(epsilon, 
@@ -267,7 +270,8 @@ class Joint_distribution():
         # add middle section that connects two part at same sampling density
         distance  = upper_part[0] - lower_part[-1] 
         samp_dens = upper_part[1] - upper_part[0]
-        points    = np.ceil(np.amax(distance/samp_dens)).astype(int)
+        points    = np.ceil(np.nanmax(distance[samp_dens>0]
+                                      /samp_dens[samp_dens>0])).astype(int)
         if points >= num:
             warnings.warn('Number of points created for middle section '
                           'exceeds specified number of points in '
@@ -278,6 +282,8 @@ class Joint_distribution():
         # join spaces (sorted in order)
         log_m_h_space = np.concatenate([lower_part, middle_part[1:],
                                         upper_part])
+        
+        log_m_h_space[np.isnan(log_m_h_space)] = self.model.log_max_halo_mass
         
         # make arrays 2d, needed for correct broadcasting in
         # quantity_marginal_density method

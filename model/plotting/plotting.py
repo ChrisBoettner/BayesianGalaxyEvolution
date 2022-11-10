@@ -24,12 +24,14 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 plot_data_points, CurvedText,\
                                                 plot_linear_relationship,\
                                                 plot_q1_q2_additional,\
-                                                plot_feedback_regimes
+                                                plot_feedback_regimes,\
+                                                blend_color
                                                 
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array
 
 from pathlib import Path
+import warnings
 import numpy as np
 from scipy.integrate import trapezoid
 import matplotlib as mpl
@@ -355,13 +357,17 @@ class Plot_parameter_sample(Plot):
     def __init__(self, ModelResult, **kwargs):
         '''
         Plot a sample of the model parameter distribution at every redshift.
+        Choose number of samples using num argument. In principle you can
+        add a second axis showing the lookback time using the time_axis
+        argument, but the code is rather experimental.
         '''
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_parameter'
 
-    def _plot(self, ModelResult):
+    def _plot(self, ModelResult, num=int(1e+4), time_axis=False):
         # general plotting configuration
-        param_num = ModelResult.quantity_options['model_param_num']
+        param_num = ModelResult.distribution.at_z(ModelResult.
+                                                  redshift[0]).shape[1]        
         fig, axes = plt.subplots(param_num,
                                  1, sharex=True)
         fig.subplots_adjust(**self.plot_limits)
@@ -371,15 +377,21 @@ class Plot_parameter_sample(Plot):
 
         # add axes labels
         param_labels =  ModelResult.quantity_options['param_y_labels']
+        if param_num > ModelResult.quantity_options['model_param_num']:
+            param_labels = [r'$\log M_\mathrm{c}$'] + param_labels
         for i, label in enumerate(param_labels):
             axes[i].set_ylabel(label, multialignment='center')
         axes[-1].set_xlabel(r'Redshift $z$')
         fig.align_ylabels(axes)
-
+        
+        # create custom color map
+        washed_out_color = blend_color(self.color, 0.2)
+        cm = LinearSegmentedColormap.from_list("Custom", 
+                                               [washed_out_color,self.color],
+                                               N=num)
         # draw and plot parameter samples
         for z in ModelResult.redshift:
             # draw parameter sample
-            num = int(1e+3)
             parameter_sample = ModelResult.draw_parameter_sample(z, num)
 
             # estimate density using Gaussian KDE and use to assign color
@@ -388,21 +400,24 @@ class Plot_parameter_sample(Plot):
             # create xvalues and add scatter for easier visibility
             x = np.repeat(z, num) + np.random.normal(loc=0,
                                                      scale=0.03, size=num)
-            # plot parameter sample
-            for i in range(parameter_sample.shape[1]):
-                axes[i].scatter(x, parameter_sample[:, i],
-                                c=color, s=0.1, cmap='Greys')
+            # plot parameter sample           
+            for i,j in enumerate(ModelResult.physics_model.at_z(z).
+                                 parameter_used):
+                axes[j].scatter(x, parameter_sample[:, i],
+                                c=color, s=0.1, cmap=cm)
 
         # add tick for every redshift
         axes[-1].set_xticks(ModelResult.redshift)
         axes[-1].set_xticklabels(ModelResult.redshift)
 
-        # set number for x ticks
+        # set number for x ticks and minor ticks
         for ax in axes.flatten():
-            ax.yaxis.set_major_locator(MaxNLocator(3))
+            ax.tick_params(axis='y', which='minor')
+        #    ax.yaxis.set_major_locator(MaxNLocator(3))
 
-        # second axis for redshift
-        if len(ModelResult.redshift)==11: # only include plots with z=0-10
+        # second axis for time, very experimental
+        if len(ModelResult.redshift)==11 and time_axis:
+            warnings.warn('additional time axis deprecated, use with caution')
             ax_z = axes[0].twiny()
             axes = np.append(axes, ax_z)
             ax_z.set_xlim(axes[0].get_xlim())
@@ -417,10 +432,6 @@ class Plot_parameter_sample(Plot):
             ax_z.set_xticklabels(t_label)
             ax_z.set_xlabel('Lookback time [Gyr]')
             
-        # fit everything back into frame
-        fig.tight_layout()
-        fig.subplots_adjust(hspace = 0)
-        
         return(fig, axes)
 
 
@@ -1030,7 +1041,7 @@ class Plot_black_hole_mass_distribution(Plot):
         self.default_filename = self.quantity_name + '_bh_mass_distribution'
         
     def _plot(self, ModelResult, z=0, lum=45.2, 
-              edd_space=np.linspace(-6, 32.13,10000), num=500,
+              edd_space=np.linspace(-6, 32.13,10000), num=1000,
               sigma=1, datapoints=True, legend=False, linewidth=5):
         
         if ModelResult.physics_name not in ['eddington','eddington_free_ERDF',

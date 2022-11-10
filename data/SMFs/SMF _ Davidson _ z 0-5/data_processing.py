@@ -11,7 +11,8 @@ import pandas as pd
 
 dicto = {}
 for i in range(0,9):
-    data_i = pd.read_csv('mf_mass2b_fl5b_act_Vmax'+str(i)+'.dat', delim_whitespace=True, header = None).values
+    data_i = pd.read_csv('mf_mass2b_fl5b_act_Vmax'+str(i)+'.dat',
+                         delim_whitespace=True, header = None).values
     
     data = data_i.copy()  
     
@@ -24,4 +25,11 @@ for i in range(0,9):
     
     dicto[str(i)] = data
     
-np.savez('Davidson2017SMF.npz', **dicto)
+dictz = {}
+dictz['0'] = dicto['0']
+dictz['1'] = np.concatenate([dicto['1'], dicto['2'], dicto['3']])
+dictz['2'] = np.concatenate([dicto['4'], dicto['5']])
+dictz['3'] = np.concatenate([dicto['6'], dicto['7']])
+dictz['4'] = dicto['8']    
+
+np.savez('Davidson2017SMF.npz', **dictz)

@@ -24,6 +24,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
         model = load_model(quantity, 'changing')
         
         Plot_ndf_intervals(model, sigma=[1,2,3]).save(file_format)
+        Plot_parameter_sample(model, columns='single').save(file_format)
         
         if quantity == 'mstar':
             # feedback illustration plot
@@ -38,7 +39,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
                                  fitting_method='least_squares',
                                  redshift=redshift)
             Plot_best_fit_ndf([mstar_no, mstar_st, mstar_sb],
-                              columns='single').save()
+                              columns='single').save(file_format)
             
             del mstar_no; del mstar_st; del mstar_sb
         del model
@@ -46,19 +47,22 @@ def save_plots(quantity, show = False, file_format='pdf'):
     elif quantity == 'mbh':
         model = load_model(quantity, 'quasar')
         
-        Plot_ndf_intervals(model, sigma=[1,2,3]).save()
+        Plot_ndf_intervals(model, sigma=[1,2,3]).save(file_format)
+        Plot_parameter_sample(model, columns='single').save(file_format)
         del model
         
     elif quantity == 'Lbol':
         model = load_model(quantity, 'eddington')       
         
         Plot_ndf_intervals(model, sigma=[1,2,3], num=1000).save(file_format)
+        Plot_parameter_sample(model, columns='single').save(file_format)
         
         # conditional ERDF example
         Plot_conditional_ERDF(model, parameter = [40 ,  2, -2,  2],
-                              columns='single').save()
+                              columns='single').save(file_format)
         # black hole mass distribution
-        Plot_black_hole_mass_distribution(model, columns='single').save()
+        Plot_black_hole_mass_distribution(model, 
+                                          columns='single').save(file_format)
         del model
         
     elif quantity == 'Muv_mstar':

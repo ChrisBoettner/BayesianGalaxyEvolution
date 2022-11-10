@@ -45,7 +45,8 @@ class ModelResult():
     def __init__(self, redshifts, log_ndfs, quantity_name, physics_name,
                  prior_name, fitting_method, saving_mode, ndf_fudge_factor=None,
                  name_addon=None,groups=None, calibrate=True, 
-                 paramter_calc=True, progress=True, **kwargs):
+                 paramter_calc=True, progress=True, fixed_m_c=True,
+                 scatter_name='delta', scatter_parameter=None, **kwargs):
         '''
         Main model object. Calibrate the model by fitting parameter to
         observational data.
@@ -64,7 +65,7 @@ class ModelResult():
         physics_name : str
             Name of physics model. Must be in implemented models in 
             quantity_options. Model 'changing' uses 'stellar_blackhole'
-            for z<4 and 'stellar' for z>4.
+            for z<3 and 'stellar' for z=>3, and keeps log_m_c free for z<3.
         prior_name : str
             Name of prior model. Must be 'uniform' or 'successive'.
         fitting_method : str
@@ -89,6 +90,17 @@ class ModelResult():
         progress : bool, optional
             Choose if progress bar is supposed to be shown. The default is 
             True.
+        fixed_m_c : bool, optional
+            Choose if log_m_c is treated as fixed parameter. The default is 
+            True. 
+        scatter_name: str, optional
+            Name of distribution that describes scatter in quantity-
+            halo mass relation. The default is 'delta', which means no scatter.
+        scatter_parameter: float, optional
+            Value of scatter distribution that describes spread. scale 
+            parameter in scipy implementation of location-scale distributions.
+            The default is 'none', must be set if scatter model other than 
+            'delta' is used.
         **kwargs : dict
             Additional arguments that can be passed to the mcmc function.
 
@@ -112,6 +124,9 @@ class ModelResult():
                                            # HMFs (absolute value)
         self.log_min_halo_mass      = 3    # minimum halo mass
         self.log_max_halo_mass      = 21   # maximum halo mass
+        
+        self.scatter_name      = scatter_name
+        self.scatter_parameter = scatter_parameter
         
         if ndf_fudge_factor:
             print('Careful: Number densities adjusted by a factor of '
@@ -159,10 +174,10 @@ class ModelResult():
         # choose if fitting should be done or not
         self.calibrate = calibrate
         if self.calibrate:
-            self.fit_model(self.redshift, **kwargs)
+            self.fit_model(self.redshift, fixed_m_c=fixed_m_c, **kwargs)
         else:
             for z in self.redshift:
-                self._add_physics_model(z)
+                self._add_physics_model(z, fixed_m_c=fixed_m_c)
 
 
         # default plot parameter per physics_model
@@ -203,7 +218,7 @@ class ModelResult():
         else:
             warnings.warn('Plot parameter not defined')
 
-    def fit_model(self, redshifts, **kwargs):
+    def fit_model(self, redshifts, fixed_m_c=True, **kwargs):
         '''
         Calibrate model by fitting to data (or loading previous fit).
 
@@ -211,6 +226,9 @@ class ModelResult():
         ----------
         redshifts : int or list
             Choose redshifts that are supposed to be fitted.
+        fixed_m_c : bool, optional
+            Choose if log_m_c is treated as fixed parameter. The default is 
+            True. 
         **kwargs : dict
             See main description.
 
@@ -232,7 +250,6 @@ class ModelResult():
         redshifts = make_array(redshifts)
 
         # run fits
-        distributions = {}
         posterior_samp, bounds = None, None
         for z in PBar(redshifts):
             # progress tracking
@@ -251,7 +268,7 @@ class ModelResult():
             self.filename.add_entry(z, filename)
 
             # add physics model
-            self._add_physics_model(z)
+            self._add_physics_model(z, fixed_m_c=fixed_m_c)
 
             # create new prior from distribution of previous iteration
             if self.prior_name == 'uniform':
@@ -285,8 +302,6 @@ class ModelResult():
             
             # add distributions to model
             self.distribution.add_entry(z, posterior_samp)
-                
-            distributions[z] = posterior_samp
 
             if (not custom_bar_flag) and (z == redshifts[-1]):
                 PBar.widgets[0] = model_details + 'DONE'
@@ -319,14 +334,6 @@ class ModelResult():
             If hmf_z is given, use that reshift for calculating the values of
             the halo mass function. Useful for disentangeling baryonic physics
             and HMF evolution. The default is None.
-        scatter_name: str, optional
-            Name of distribution that describes scatter in quantity-
-            halo mass relation. The default is 'delta', which means no scatter.
-        scatter_parameter: float, optional
-            Value of scatter distribution that describes spread. scale 
-            parameter in scipy implementation of location-scale distributions.
-            The default is 'none', must be set if scatter model other than 
-            'delta' is used.
         **kwargs: dict, optional
             Additional parameter passed to 
             _experimental_log_abundance_with_scatter method.
@@ -347,7 +354,7 @@ class ModelResult():
         if hmf_z is None:
             hmf_z = z
 
-        if scatter_name == 'delta':
+        if self.scatter_name == 'delta':
             # conversion between magnitude and luminosity if needed
             # (for _experimental_log_abundance_with_scatter this is done in
             #  Joint_distribution class)
@@ -370,12 +377,12 @@ class ModelResult():
             log_phi[np.isinf(log_m_h)] = -np.inf
             
         else:
-            if scatter_parameter is None:
+            if self.scatter_parameter is None:
                 raise ValueError('scatter_parameter must be specific if '
                                  'scatter model other than delta is used.')
             log_phi = self._experimental_log_abundance_with_scatter(
                         log_quantity, z, parameter, hmf_z,
-                        scatter_name, scatter_parameter, **kwargs)
+                        self.scatter_name, self.scatter_parameter, **kwargs)
             
         return(log_phi)
 
@@ -406,7 +413,7 @@ class ModelResult():
         parameter_sample = self.distribution.at_z(z)[random_draw]
         return(parameter_sample)
 
-    def calculate_quantity_distribution(self, log_halo_mass, z, num=int(1e+5)):
+    def calculate_quantity_distribution(self, log_halo_mass, z, num=int(1e+4)):
         '''
         At a given redshift, calculate distribution of observable quantity
         (mstar/Muv/mbh) for a given halo mass by drawing parameter sample and
@@ -598,14 +605,16 @@ class ModelResult():
             ndf_sample.append(np.array(ndf).T)
         return(ndf_sample)
     
-    def calculate_feedback_regimes(self, z, parameter, log_epsilon=-1, 
-                                   output='quantity'):
+    def calculate_feedback_regimes(self, z, parameter=None, log_epsilon=-1, 
+                                   output='quantity', num=500):
         '''
         Calculate (log of) quantity values at which feedback regime changes.
         For stellar and AGN feedback: Calculate values where one of the 
         feedbacks is strongly dominating in the sense that 
         (M_h/M_c)^-alpha > epsilon * (M_h/M_c)^beta and 
         the other way around. 
+        If parameter are given, calculate regimes for this value. If parameter
+        is None, draw sample from distribution and calculate median.
         Returns 3 values: [log_q(log_m_c), log_q(log_m_sn), log_q(log_m_ bh)].
         If output='halo_mass', return halo masses for these values instead.
 
@@ -613,8 +622,8 @@ class ModelResult():
         ----------
         z : int
             Redshift at which value is calculated.
-        parameter : list
-            Input model parameter.
+        parameter : list, optional
+            Input model parameter. The default is None.
         log_epsilon : float, optional
             Threshold for regime change. The default is -1.
         output : str, optional
@@ -638,12 +647,26 @@ class ModelResult():
         if self.quantity_name not in ['mstar', 'Muv']:
             raise NotImplementedError('calculate_feedback_regimes not yet '
                                       'implemented for this physics model')
-        # calculate transition values    
-        regime_values = self.physics_model.at_z(z)._calculate_feedback_regimes(
-                            *parameter, log_epsilon=-1, output=output)
+        
+        # if no parameter are given, draw sample and calculate median
+        if parameter is None:
+            parameter_sample = self.draw_parameter_sample(z, num)
+            regime_values    = []
+            for p in parameter_sample:
+                regime_values.append(self.physics_model.at_z(z).
+                                         _calculate_feedback_regimes(
+                                            *p, log_epsilon=-1, output=output))
+            regime_values = np.median(regime_values,axis=0)
+        
+        # else calculate values for given parameter
+        else:
+            regime_values = self.physics_model.at_z(z).\
+                                 _calculate_feedback_regimes(
+                                     *parameter, log_epsilon=-1, output=output)
         
         # conversion between magnitude and luminosity if needed
-        regime_values = self.unit_conversion(regime_values, 'lum_to_mag')
+        if output == 'quantity':
+            regime_values = self.unit_conversion(regime_values, 'lum_to_mag')
         return(regime_values)
                                 
     
@@ -674,7 +697,7 @@ class ModelResult():
         return(log_quantity)
 
 
-    def _add_physics_model(self, z):
+    def _add_physics_model(self, z, fixed_m_c=True):
         '''
         Add physics model to general model according to physics_name.
 
@@ -682,6 +705,9 @@ class ModelResult():
         ----------
         z : int
             Redshift for which physics model is added.
+        fixed_m_c : bool, optional
+            Choose if log_m_c is treated as fixed parameter. The default is 
+            True. 
 
         Returns
         -------
@@ -695,17 +721,27 @@ class ModelResult():
         elif self.physics_name == 'changing':  # standard changing feedback
             feedback_change_z = self.quantity_options['feedback_change_z']
             if z < feedback_change_z:
-                ph_name = 'stellar_blackhole'
+                ph_name   = 'stellar_blackhole'
+                fixed_m_c = False 
             elif z >= feedback_change_z:
                 ph_name = 'stellar'
+                fixed_m_c = True
         else:
             raise NameError('physics_name not known.')
+        
+        #choose log_m_c
+        if z<self.quantity_options['feedback_change_z']:
+            log_m_c = self.log_m_c[z]
+        else:
+            log_m_c = self.log_m_c[self.quantity_options['feedback_change_z']-1]
+        
         # add model
         self.physics_model.add_entry(z, physics_model(
             ph_name,
-            self.log_m_c,
+            log_m_c,
             initial_guess=self.quantity_options['model_p0'],
-            bounds=self.quantity_options['model_bounds']))
+            bounds=self.quantity_options['model_bounds'],
+            fixed_m_c=fixed_m_c))
         return
     
     def _experimental_log_abundance_with_scatter(
@@ -1182,7 +1218,8 @@ class ModelResult_QLF(ModelResult):
     
     def calculate_conditional_ERDF(self, log_L, z, parameter,
                                    eddington_ratio_space = None,
-                                   black_hole_mass_distribution=False):
+                                   black_hole_mass_distribution=False,
+                                   num=1000):
         '''
         Calculates the conditional ERDF for the given (log) luminosity at the
         given redshift using the given parameter. Returns
@@ -1209,6 +1246,9 @@ class ModelResult_QLF(ModelResult):
             If True, transform Eddington ratios to black hole masses and 
             return probability distribution of black hole masses instead of
             ERDF.
+        num : int
+            Number of points created in the linspace, which is used for 
+            evaluating the integral.
 
         Returns
         -------
@@ -1224,7 +1264,7 @@ class ModelResult_QLF(ModelResult):
             if eddington_ratio_space is None:
                 eddington_ratio_space = self.make_log_eddington_ratio_space(l, z, 
                                                                 parameter,
-                                                                num=1000)
+                                                                num=num)
             qlf_con          = np.power(10, self.calculate_log_QLF_contribution(
                                                                    eddington_ratio_space,
                                                                    l, z,
@@ -1313,7 +1353,7 @@ class ModelResult_QLF(ModelResult):
             ratio space (as log value).
         num : int
             Number of points created in the linspace, which is used for 
-            evaluating the integral
+            evaluating the integral.
 
         Raises
         ------
@@ -1421,7 +1461,7 @@ class ModelResult_QLF(ModelResult):
                                           num)
         return(log_eddington_space)
 
-    def _add_physics_model(self, z):
+    def _add_physics_model(self, z, fixed_m_c=True):
         '''
         Add physics model to general model according to physics_name. If 
         physics model is eddington_free_ERDF, fit ERDF at every redshift.
@@ -1438,6 +1478,9 @@ class ModelResult_QLF(ModelResult):
         None.
 
         '''
+        if not fixed_m_c:
+            raise NotImplementedError('free m_c not yet implemented for QLF.')
+        
         # create physics model
         if self.physics_name == 'none':
             ph_name = self.physics_name
@@ -1483,11 +1526,17 @@ class ModelResult_QLF(ModelResult):
                     eddington_erdf_params = None
         else:
             raise NameError('physics_name not known.')
+            
+        #choose log_m_c
+        if z<self.quantity_options['feedback_change_z']:
+            log_m_c = self.log_m_c[z]
+        else:
+            log_m_c = self.log_m_c[self.quantity_options['feedback_change_z']-1]
                     
         # add model
         self.physics_model.add_entry(z, physics_model(
             ph_name,
-            self.log_m_c,
+            log_m_c,
             initial_guess=self.quantity_options['model_p0'],
             bounds=self.quantity_options['model_bounds'],
             eddington_erdf_params=eddington_erdf_params))
@@ -1517,7 +1566,6 @@ class Redshift_dict():
 
         '''
         self.dict = input_dict
-        self.list = list(self.dict.values())
         self.data = None
         self.update_data()
 

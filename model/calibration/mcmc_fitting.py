@@ -113,14 +113,20 @@ def mcmc_fit(model, prior, saving_mode,
         if custom_walker_pos is None:
             walker_pos = initial_guess * (1 + 0.1 * np.random.rand(num_walker,
                                                                    ndim))
-        else:
-            walker_pos = custom_walker_pos[:,:ndim]
+        elif custom_walker_pos.shape[1] > ndim:
+            walker_pos = custom_walker_pos[:, model.physics_model.\
+                                              at_z(model._z).parameter_used]
+        else: 
+            walker_pos = custom_walker_pos
             
     else:
         prior_dist  = model.distribution.at_z(model._z-1)
         random_draw = np.random.choice(prior_dist.shape[0],
                                        size=num_walker)
-        walker_pos  = prior_dist[random_draw][:,:ndim]
+        walker_pos  = prior_dist[random_draw]
+        if walker_pos.shape[1] > ndim:
+            walker_pos  = walker_pos[:, model.physics_model.\
+                                              at_z(model._z).parameter_used]
 
     # make prior and model object a global variable so it doesn"t have to be 
     # called in log_probability explicitly. This helps with parallization and 
@@ -192,7 +198,7 @@ def mcmc_fit(model, prior, saving_mode,
         tau = sampler.get_autocorr_time()   
     else:
         raise NameError('saving_mode not known.')
-
+    
     # discard burn-in of mcmc walk
     posterior_samp = sampler.get_chain(
                       discard= autocorr_discard*np.amax(tau).astype(int),
@@ -303,14 +309,15 @@ def dist_from_hist_nd(model, dist, dist_bounds):
     
     # if new model has fewer parameter, marginalise over leftover parameter
     if param_num<dist.shape[1]:
-        dist = dist[:,:-(dist.shape[1]-param_num)]
+        dist = dist[:,model.physics_model.at_z(model._z).parameter_used]
     elif param_num > dist.shape[1]:
-        raise NotImplementedError('Parameter number of model should not increase.')
+        raise NotImplementedError('Parameter number of model should not '
+                                  'increase.')
     else:
         pass
     # create histogram
     try:
-        hist_nd, edges = np.histogramdd(dist, bins=500, range=dist_bounds)
+        hist_nd, edges = np.histogramdd(dist, bins=300, range=dist_bounds)
     except MemoryError:
         # if histogram with 500 bins uses too much Memory, reduce number of
         # bins
