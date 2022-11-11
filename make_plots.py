@@ -21,10 +21,14 @@ def save_plots(quantity, show = False, file_format='pdf'):
         plt.ioff()
     
     if quantity in ['mstar' , 'Muv']: 
-        model = load_model(quantity, 'changing')
+        model = load_model(quantity, 'stellar_blackhole')
         
         Plot_ndf_intervals(model, sigma=[1,2,3]).save(file_format)
-        Plot_parameter_sample(model, columns='single').save(file_format)
+        Plot_parameter_sample(model, columns='single',
+                              marginalise=(model.
+                                           quantity_options
+                                           ['feedback_change_z'], 
+                                           [1,2])).save(file_format)
         
         if quantity == 'mstar':
             # feedback illustration plot
@@ -41,6 +45,12 @@ def save_plots(quantity, show = False, file_format='pdf'):
             Plot_best_fit_ndf([mstar_no, mstar_st, mstar_sb],
                               columns='single').save(file_format)
             
+            # SHMR
+            Plot_qhmr(model, redshift=[0,1,2], sigma=2, columns='single').\
+                save(file_format, file_name=quantity + '_qhmr_low_z')
+            Plot_qhmr(model, redshift=[4,5,6,7,8], sigma=2, columns='single',
+                      only_data=True, m_halo_range=np.linspace(10, 13.43, 1000)
+                      ).save(file_format, file_name=quantity + '_qhmr_high_z')
             del mstar_no; del mstar_st; del mstar_sb
         del model
 
@@ -66,13 +76,14 @@ def save_plots(quantity, show = False, file_format='pdf'):
         del model
         
     elif quantity == 'Muv_mstar':
-        muv    = load_model('Muv','changing', redshift=range(4,9))
-        mstar  = load_model('mstar','changing', redshift=range(4,9))
+        muv    = load_model('Muv','stellar_blackhole', redshift=range(4,9))
+        mstar  = load_model('mstar','stellar_blackhole', redshift=range(4,9))
         # plot for multiple redshifts
         for z in range(4,8):
             Plot_q1_q2_relation(muv, mstar, z=z, datapoints=True,
                                 quantity_range=np.linspace(-22.24,-17.23,100),
-                                y_lims=(7.5,11.9), columns='single'
+                                y_lims=(7.5,11.9), columns='single',
+                                sigma = 2, 
                                 ).save(file_format, 
                                        file_name=(quantity + '_relation_z' 
                                                   + str(z)))
@@ -80,11 +91,12 @@ def save_plots(quantity, show = False, file_format='pdf'):
         del mstar
         
     elif quantity == 'mstar_mbh':
-        mstar  = load_model('mstar','changing', redshift=0)
+        mstar  = load_model('mstar','stellar_blackhole', redshift=0)
         mbh    = load_model('mbh','quasar', redshift=0)
         Plot_q1_q2_relation(mstar,mbh,datapoints=True,
                             scaled_ndf=(mbh, [10,30,100]),
                             quantity_range=np.linspace(8.7,11.9,100),
+                            sigma=2,
                             columns='single').save(file_format)
         del mstar
         del mbh
@@ -93,7 +105,8 @@ def save_plots(quantity, show = False, file_format='pdf'):
         lbol = load_model('Lbol', 'eddington', redshift=0)
         mbh  = load_model('mbh','quasar', redshift=0)
         Plot_q1_q2_relation(lbol, mbh, columns='single', color='lightgrey',
-                    quantity_range=np.linspace(43,48.3,100)).save(file_format)
+                    quantity_range=np.linspace(43,48.3,100),
+                    sigma=2).save(file_format)
         del lbol
         del mbh
         

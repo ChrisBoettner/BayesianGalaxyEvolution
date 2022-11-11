@@ -128,7 +128,7 @@ def calculate_percentiles(data, axis=0, sigma_equiv=1):
         raise KeyError('sigma_equiv must be value list [1,2,3,4,5].')
 
     data = make_array(data)  # turn into numpy array if not already
-    data[data==np.inf] = np.nan # ignore inf values
+    data[~np.isfinite(data)] = np.nan # ignore inf values
     
     # percentiles in order: median, lower, upper
     percentiles = np.nanpercentile(data, sigma, axis=axis)
@@ -186,12 +186,15 @@ def fit_function(function, data, p0, uncertainties=None,
 ################ SORTING AND FILTERING ########################################
 
 
-def sort_by_density(data):
+def sort_by_density(data, keep=None):
     '''
     Estimate density of data using Gaussian KDE and return data sorted by
-    density and density values.
+    density and density values. Can choose which columns to keep before
+    creating density map using keep argument.
     '''
     data = make_array(data)
+    if keep:
+        data = data[:,keep]
     density = gaussian_kde(data.T).evaluate(data.T)
     idx = density.argsort()
     sorted_data, density = data[idx], density[idx]

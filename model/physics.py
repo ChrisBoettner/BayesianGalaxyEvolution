@@ -63,9 +63,9 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
         initial_guess = np.insert(initial_guess, 0, log_m_c)
         log_m_c_range = 3  # +- range in which log_m_c is expected
         bounds = np.insert(bounds, 0,
-                           [log_m_c-log_m_c_range,
+                           [10,
                             log_m_c+log_m_c_range],
-                           axis=1)
+                            axis=1)
 
         if physics_name == 'stellar':
             physics = StellarFeedback_free_m_c(log_m_c,
@@ -98,6 +98,7 @@ class StellarBlackholeFeedback_free_m_c(object):
         
         # parameter used compared to the unconstrained model
         self.parameter_used = [0,1,2,3]
+        self.fixed_m_c_flag = False
 
         # max halo mass (just used to avoid overflows)
         self._upper_m_h = 50
@@ -340,6 +341,7 @@ class StellarFeedback_free_m_c(StellarBlackholeFeedback_free_m_c):
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'stellar_free_m_c'
         self.parameter_used = [0,1,2]
+        self.fixed_m_c_flag = False
 
     def calculate_log_quantity(self, log_m_h, log_m_c, log_A, alpha):
         return(StellarBlackholeFeedback_free_m_c.
@@ -395,6 +397,7 @@ class QuasarGrowth_free_m_c(StellarBlackholeFeedback_free_m_c):
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'quasargrowth_free_m_c'
         self.parameter_used = [0,1,2]
+        self.fixed_m_c_flag = False
 
     def calculate_log_quantity(self, log_m_h, log_m_c, log_B, eta):
         '''
@@ -435,6 +438,7 @@ class QuasarLuminosity_free_ERDF(object):
         
         # parameter used compared to the unconstrained model
         self.parameter_used = [0,1,2,3]
+        self.fixed_m_c_flag = True
 
         # latest parameter used
         self.parameter = None
@@ -524,6 +528,7 @@ class StellarBlackholeFeedback(StellarBlackholeFeedback_free_m_c):
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'stellar_blackhole'
         self.parameter_used = [1,2,3]
+        self.fixed_m_c_flag = True
 
     def calculate_log_quantity(self, log_m_h, log_A, alpha, beta):
         return(StellarBlackholeFeedback_free_m_c.
@@ -579,6 +584,7 @@ class StellarFeedback(StellarBlackholeFeedback):
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'stellar'
         self.parameter_used = [1,2]
+        self.fixed_m_c_flag = True
 
     def calculate_log_quantity(self, log_m_h, log_A, alpha):
         return(StellarBlackholeFeedback_free_m_c.
@@ -664,6 +670,7 @@ class QuasarGrowth(QuasarGrowth_free_m_c):
         super().__init__(log_m_c, initial_guess, bounds)
         self.name = 'quasargrowth'
         self.parameter_used = [1,2]
+        self.fixed_m_c_flag = True
 
     def calculate_log_quantity(self, log_m_h, log_B, eta):
         return(QuasarGrowth_free_m_c.
@@ -701,6 +708,7 @@ class QuasarLuminosity(QuasarLuminosity_free_ERDF):
         self.log_m_c = log_m_c
         
         self.parameter_used = [0,1]
+        self.fixed_m_c_flag = True
 
         # parameter used
         self.parameter = eddington_erdf_params

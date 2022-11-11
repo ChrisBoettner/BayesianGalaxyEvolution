@@ -168,8 +168,20 @@ class ModelResult():
                 parameter = load_parameter(self, name_addon)
                 parameter = {int(z): p for z, p in parameter.items()}
                 self.parameter = Redshift_dict(parameter)
+                # automatically determine if m_c is fixed or not
+                if (len(parameter[self.redshift[0]])
+                    == self.quantity_options['model_param_num']+1):
+                    fixed_m_c = False
+                elif (len(parameter[self.redshift[0]])
+                      == self.quantity_options['model_param_num']):
+                    pass
+                else:
+                    warnings.warn('Could not determine if m_c is fixed based '
+                                  'on parameter, might have to choose ' 
+                                  'manually.')
             except FileNotFoundError:
-                warnings.warn('Could not load best fit parameter')
+                warnings.warn('Could not load best fit parameter. '
+                              '(fixed_m_c might need to be chosen manually.)')
                 
         # choose if fitting should be done or not
         self.calibrate = calibrate
@@ -1531,7 +1543,8 @@ class ModelResult_QLF(ModelResult):
         if z<self.quantity_options['feedback_change_z']:
             log_m_c = self.log_m_c[z]
         else:
-            log_m_c = self.log_m_c[self.quantity_options['feedback_change_z']-1]
+            log_m_c = self.log_m_c[self.quantity_options['feedback_change_z']
+                                   -1]
                     
         # add model
         self.physics_model.add_entry(z, physics_model(

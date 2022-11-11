@@ -23,7 +23,7 @@ from model.helper import within_bounds, custom_progressbar
 
 
 def mcmc_fit(model, prior, saving_mode,
-             num_walker=200, min_chain_length = 500, tolerance=0.01,
+             num_walker=10, min_chain_length = 500, tolerance=0.01,
              autocorr_chain_multiple = 50, autocorr_discard=10, 
              parameter_calc=True, parallel=True, progress=True,
              custom_walker_pos=None, parameter_method='annealing'):
@@ -149,10 +149,10 @@ def mcmc_fit(model, prior, saving_mode,
         with Pool() as pool:
             # create MCMC sampler
             if parallel:      
-                    sampler = emcee.EnsembleSampler(num_walker, ndim,
-                                                    log_probability,
-                                                    backend = savefile,
-                                                    pool=pool)
+                sampler = emcee.EnsembleSampler(num_walker, ndim,
+                                                log_probability,
+                                                backend = savefile,
+                                                pool=pool)
             else:
                 sampler = emcee.EnsembleSampler(num_walker, ndim, 
                                                 log_probability,

@@ -360,11 +360,16 @@ class Plot_parameter_sample(Plot):
         Choose number of samples using num argument. In principle you can
         add a second axis showing the lookback time using the time_axis
         argument, but the code is rather experimental.
+        Can choose to only plot some columns (and marginalise over the rest),
+        use marginalise argument that has to be of the form (marg_z, columns),
+        where marg_z is the redshift at which marginalisation is supposed to 
+        start and columns is a list of the columns that are meant to be kept. 
         '''
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_parameter'
 
-    def _plot(self, ModelResult, num=int(1e+4), time_axis=False):
+    def _plot(self, ModelResult, num=int(1e+4), time_axis=False,
+              marginalise=None):
         # general plotting configuration
         param_num = ModelResult.distribution.at_z(ModelResult.
                                                   redshift[0]).shape[1]        
@@ -384,36 +389,63 @@ class Plot_parameter_sample(Plot):
         axes[-1].set_xlabel(r'Redshift $z$')
         fig.align_ylabels(axes)
         
+        # parameter for marginalisation
+        marg_z  = marginalise[0] if marginalise else ModelResult.redshift[-1]+1
+        columns = marginalise[1] if marginalise else None
+        
         # create custom color map
         washed_out_color = blend_color(self.color, 0.2)
         cm = LinearSegmentedColormap.from_list("Custom", 
                                                [washed_out_color,self.color],
                                                N=num)
+        
+        # check if log_m_c is kept free at any redshift
+        free_m_c = False in [ModelResult.physics_model.at_z(z).
+                             fixed_m_c_flag for z in ModelResult.redshift]
         # draw and plot parameter samples
         for z in ModelResult.redshift:
             # draw parameter sample
             parameter_sample = ModelResult.draw_parameter_sample(z, num)
-
-            # estimate density using Gaussian KDE and use to assign color
-            parameter_sample, color = sort_by_density(parameter_sample)
+            # estimate density using Gaussian KDE and use to assign color,
+            # marginalise first if wanted
+            cols = columns if z>=marg_z else None
+            parameter_sample, color = sort_by_density(parameter_sample, 
+                                                      keep=cols)
 
             # create xvalues and add scatter for easier visibility
             x = np.repeat(z, num) + np.random.normal(loc=0,
                                                      scale=0.03, size=num)
-            # plot parameter sample           
-            for i,j in enumerate(ModelResult.physics_model.at_z(z).
-                                 parameter_used):
-                axes[j].scatter(x, parameter_sample[:, i],
-                                c=color, s=0.1, cmap=cm)
+            # plot parameter sample 
+            # if some parameter are marginalised, only plot remaining ones
+            if z>=marg_z:
+                for i,j in enumerate(columns):
+                    axes[j].scatter(x, parameter_sample[:, i],
+                                    c=color, s=0.1, cmap=cm)
+            else:
+                # otherwise plot all, but make destinction where depending
+                # of if theres a log_m_c column or not
+                for i,j in enumerate(ModelResult.physics_model.at_z(z).
+                                     parameter_used):
+                    if free_m_c:
+                        axes[j].scatter(x, parameter_sample[:, i],
+                                        c=color, s=0.1, cmap=cm)
+                    else:
+                        axes[i].scatter(x, parameter_sample[:, i],
+                                        c=color, s=0.1, cmap=cm)
 
         # add tick for every redshift
         axes[-1].set_xticks(ModelResult.redshift)
         axes[-1].set_xticklabels(ModelResult.redshift)
 
-        # set number for x ticks and minor ticks
-        for ax in axes.flatten():
+        # set ticks and set ylim
+        for i, ax in enumerate(axes.flatten()):
             ax.tick_params(axis='y', which='minor')
-        #    ax.yaxis.set_major_locator(MaxNLocator(3))
+            ax.yaxis.set_major_locator(MaxNLocator(2))
+            if i>0:
+                curr_lim  = ax.get_ylim()
+                upper_lim = (1.15*curr_lim[1] 
+                             if curr_lim[1]>0 else 0.85*curr_lim[1])
+                ax.set_ylim([curr_lim[0], upper_lim])
 
         # second axis for time, very experimental
         if len(ModelResult.redshift)==11 and time_axis:
@@ -438,48 +470,84 @@ class Plot_parameter_sample(Plot):
 class Plot_qhmr(Plot):
     def __init__(self, ModelResult, **kwargs):
         '''
-        Plot relation between observable quantity and halo mass.
+        Plot relation between observable quantity and halo mass. Choose if
+        relation should be shown directly or as a ratio using ratio argument.
+        Select redshift to be shown using redshift and number of sigma
+        equivalents using sigma. If median=True, plot median of distribution.
+        If only_data is true, show only in range where observational data is 
+        available.
+        Adapt range over which quantities is calculated using m_halo_range
+        and change y limits using y_lims. Add legend using legend argument.
         '''
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_qhmr'
 
-    def _plot(self, ModelResult, sigma=1):
+    def _plot(self, ModelResult, ratio=True, redshift=None, sigma=1, 
+              median=True, only_data=False, 
+              m_halo_range=np.linspace(10.7, 14.23, 1000), y_lims=None,
+              legend=True):
         if not np.isscalar(sigma):
             raise ValueError('Sigma must be scalar.')
 
         # calculate qhmr
-        redshifts = ModelResult.redshift[::2]
+        if redshift is None:
+            redshift = ModelResult.redshift
         qhmr = {}
-        for z in redshifts:
-            qhmr[z] = calculate_qhmr(ModelResult, z, sigma=sigma)
+        for z in redshift:
+            qhmr[z] = calculate_qhmr(ModelResult, z, sigma=sigma, ratio=ratio,
+                                     log_m_halos=m_halo_range)
+            
+        # calculate masks where data is outside of 
 
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
 
         # add axes labels
-        ax.set_xlabel('log $M_\\mathrm{h}$ [$M_\\odot$]')
-        ax.set_ylabel('log '+ModelResult.quantity_options['quantity_name_tex'],
-                      x=0.01)
+        ax.set_xlabel(r'log $M_\mathrm{h}$ [$M_\odot$]')
+        y_label = 'log '+ModelResult.quantity_options['quantity_name_tex']
+        if ratio:
+            y_label = y_label + r'/$M_\mathrm{h}$'
+        #breakpoint()
+        ax.set_ylabel(y_label, x=0.01)
 
         # create custom color map
-        cm = LinearSegmentedColormap.from_list("Custom", ['C2', 'C1'],
-                                               N=len(ModelResult.redshift))
-
-        for z in redshifts:
-            # plot median
-            ax.plot(qhmr[z][:, 0], qhmr[z][:, 1], color=cm(z),
-                    label='$z$ = ' + str(z))
-            # plot 16th/84th percentiles
-            ax.fill_between(qhmr[z][:, 0], qhmr[z][:, 2], qhmr[z][:, 3],
-                            alpha=0.2, color=cm(z))
+        #washed_out_color = blend_color(self.color, 0.5)
+        cm = LinearSegmentedColormap.from_list("Custom", 
+                                               ['lightgrey', self.color],
+                                               N=len(redshift))
+        for i, z in enumerate(redshift):
+            # calculate masks where values are outside of observations
+            if only_data:
+                qhmr_qs = np.copy(list(qhmr[z].values())[0][:,1])
+                if  ratio: #'add halo masses back'
+                    qhmr_qs += list(qhmr[z].values())[0][:,0]
+                obs_qs  = ModelResult.log_ndfs.at_z(z)[:,0]
+                mask_beginning = qhmr_qs<np.amin(obs_qs)
+                mask_trail     = np.amax(obs_qs)<qhmr_qs
+                data_mask      = np.logical_not(mask_beginning+mask_trail)
+                data_masks     = [data_mask, mask_beginning, mask_trail] 
+            else:
+                data_masks     = None
+            # plot confidence intervals
+            plot_data_with_confidence_intervals(ax, qhmr[z], 
+                                                cm(i/len(redshift)), 
+                                                median=median,
+                                                data_masks = data_masks,
+                                                only_data=only_data,
+                                                label = r'$z \sim$ ' + str(z))
             
         # add axis limits
-        ax.set_xlim((qhmr[z][0,0], qhmr[z][-1,0]))
+        # add axis limits
+        ax.set_xlim((m_halo_range[0], m_halo_range[-1]))
+        if y_lims:
+            ax.set_ylim(y_lims)
 
         # add legend and minor ticks
-        add_legend(ax, 0)
         ax.minorticks_on()
+        # add legend
+        if legend:
+            add_legend(ax, 0, fontsize=32, loc='lower right')
         return(fig, ax)
 
 
@@ -499,7 +567,7 @@ class Plot_ndf_intervals(Plot):
         super().__init__(ModelResult,  **kwargs)
         self.default_filename = self.quantity_name + '_ndf_intervals'
 
-    def _plot(self, ModelResult, sigma=1, num=5000, best_fit=False, 
+    def _plot(self, ModelResult, sigma=1, num=10000, best_fit=False, 
               datapoints=True, feedback_regimes=True, 
               additional_models = None):
         if ModelResult.distribution.is_None():
@@ -842,6 +910,7 @@ class Plot_q1_q2_relation(Plot):
         # if no quantity_range is given, use default
         if quantity_range is None:
             log_q1 = ModelResult1.quantity_options['quantity_range']
+            log_q1 = np.linspace(log_q1[0], log_q1[-1], 1000)
         else:
             log_q1 = quantity_range
         

@@ -78,7 +78,8 @@ def plot_best_fit_ndf(axes, ModelResult, redshift=None, **kwargs):
 
 def plot_data_with_confidence_intervals(ax, data_percentile_dict, 
                                         color, data_masks=None, median=True,
-                                        alpha=0.8, linewidth=5):
+                                        alpha=0.8, linewidth=5, 
+                                        only_data=False, label=None):
     '''
     Plot data with confidence intervals. 
     The input data must be a dictonary, 
@@ -90,9 +91,10 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
     Optional: Add data_masks for data that is or is not constrained by data,
     must be an array containing 3 mask arrays [data_mask, mask_beginning, 
     mask_trail]. If median=False, only plot confidence intervals. alpha 
-    controls alpha level of shaded area.
+    controls alpha level of shaded area. only_data argument can be used to
+    only show values within data_mask.
+    A label for the medians can be added using label argument.
     '''
-
     ## get sigma equiv values and define sigma properties
     sigma = list(data_percentile_dict.keys())
     # conversion table between sigma equivalents and percentiles
@@ -114,43 +116,46 @@ def plot_data_with_confidence_intervals(ax, data_percentile_dict,
                              'mask arrays: data_mask, mask_beginning, '
                              'mask_trail.')
         data_mask, mask_beginning, mask_trail = data_masks
-    
+
     # differentiate which label should be used in case masks (data outside
     # observations) are plotted or not
     masks_shown = (mask_beginning.any() or mask_trail.any())
-    if masks_shown:
-        label = 'Constrained by data'
-    else:
-        label = 'Model Median'
 
     # plot confidence intervals
     for s in np.sort(make_array(sigma))[::-1]: # sort sigma in reverse order 
-         if s == sigma[-1] and median:
-             # plot medians
-             ax.plot(data_percentile_dict[s][:,0][data_mask],
-                     data_percentile_dict[s][:,1][data_mask],
-                     #label=label,
-                     color=color,
-                     linewidth=linewidth)
-             if masks_shown:
-                 ax.plot(data_percentile_dict[s][:,0][mask_beginning],
-                         data_percentile_dict[s][:,1][mask_beginning],
-                         ':',
-                         #label='Not constrained by data',
-                         color=color,
-                         linewidth=linewidth)
-                 ax.plot(data_percentile_dict[s][:,0][mask_trail],
-                         data_percentile_dict[s][:,1][mask_trail],
-                         ':', color=color)
-         ax.fill_between(data_percentile_dict[s][:, 0],
-                         data_percentile_dict[s][:, 2], 
-                         data_percentile_dict[s][:, 3],
+         x  = data_percentile_dict[s][:, 0]
+         yl = data_percentile_dict[s][:, 2]
+         yu = data_percentile_dict[s][:, 3]
+         if only_data:
+             x  =  x[data_mask]
+             yl = yl[data_mask]
+             yu = yu[data_mask]
+         ax.fill_between(x, yl, yu,
                          color=blend_color(color, sigma_color_alphas[s]),
                          edgecolor=blend_color(color, 
                                                sigma_color_alphas[s]+0.05),
                          alpha=alpha,
                          #label= sigma_equiv_table[s] + r'\% Percentile'
                          )
+         if s == sigma[-1] and median:
+             # plot medians
+             ax.plot(data_percentile_dict[s][:,0][data_mask][1:-1],
+                     data_percentile_dict[s][:,1][data_mask][1:-1],
+                     label=label,
+                     color=color,
+                     linewidth=linewidth)
+             if masks_shown and (not only_data):
+                 ax.plot(data_percentile_dict[s][:,0][mask_beginning][1:-1],
+                         data_percentile_dict[s][:,1][mask_beginning][1:-1],
+                         ':',
+                         #label='Not constrained by data',
+                         color=color,
+                         linewidth=linewidth)
+                 ax.plot(data_percentile_dict[s][:,0][mask_trail][1:-1],
+                         data_percentile_dict[s][:,1][mask_trail][1:-1],
+                         ':', color=color)
+            
+
     return()
 
 def plot_data_points(ax, ModelResult1, ModelResult2=None, z=0, legend=True,
@@ -484,10 +489,8 @@ def blend_color(color, alpha, bg_color=np.array([1,1,1])):
     color must be given as array of RGB values or str. Default background color 
     is white.
     '''
-    if type(color) is str:
-        color = to_rgb(color)
-    if type(bg_color) is str:
-        bg_color = to_rgb(bg_color)
+    color = to_rgb(color)
+    bg_color = to_rgb(bg_color)
     
     color    = make_array(color)
     bg_color = make_array(bg_color)

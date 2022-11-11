@@ -26,8 +26,10 @@ from model.interface import save_model
               help='Choose if best fit parameter should be calculated. True/False.')
 @click.option('--min_chain_length', default=500,
               help='Length of MCMC chains.')
-@click.option('--num_walker', default=200,
+@click.option('--num_walker', default=10,
               help='Number of MCMC walker in ensemble.')
+@click.option('--fixed_m_c', default=True,
+              help='Choose if log_m_c is treated as fixed parameter.')
 def run(**kwargs):
     ''''Runs save_model with choosen options'''
     return(save_model(**kwargs))

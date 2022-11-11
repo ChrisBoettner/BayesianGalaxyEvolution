@@ -174,7 +174,7 @@ def calculate_ndf_percentiles(ModelResult, z, num = 5000,
 
 def calculate_qhmr(ModelResult, z, 
                    log_m_halos=np.linspace(8, 14, 100), num=int(5e+3),
-                   sigma=1):
+                   sigma=1, ratio=False):
     '''
     Calculates the quantity distribution for an array of input halo masses at 
     given redshift. You can input different sigma equivalents (see 
@@ -182,6 +182,7 @@ def calculate_qhmr(ModelResult, z,
     of form (sigma:array) if sigma is an array, where the array contains 
     input halo mass, median quantity and lower and upper  percentile for
     every halo mass. If sigma is scalar, array is returned directly.
+    If ratio is True, return q/m_h, else return q.
     '''
     if not np.isscalar(z):
         raise ValueError('Redshift must be scalar quantity.')
@@ -195,18 +196,17 @@ def calculate_qhmr(ModelResult, z,
     # calculate percentiles (median, lower, upper) and add input
     # halo mass to list: (halo mass, median quantity, lower bound,  
     #                     upper bound)
-    
     qhmr = {}
     for s in sigma:
+        if ratio:
+            values = log_q_dist - log_m_halos
+        else:
+            values = log_q_dist 
         # calculate percentiles (median, lower, upper) and add input
         # q1 to list: (q1 value, median q2 value, lower bound, upper bound)
-        log_q_percentiles    = calculate_percentiles(log_q_dist,
+        log_q_percentiles    = calculate_percentiles(values,
                                                      sigma_equiv=s)
         qhmr[s]              = np.array([log_m_halos, *log_q_percentiles]).T
-        
-    # if simga scalar, return array instead of dict
-    if len(sigma)==1:
-        qhmr = qhmr[s]
     return(qhmr)
 
 def calculate_best_fit_ndf(ModelResult, redshifts, quantity_range=None):

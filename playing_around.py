@@ -78,9 +78,37 @@ from model.plotting.plotting import *
 # i = mstar.calculate_ndf(2, mstar.parameter.at_z(2))
 
 #%%
-mstar = save_model('mstar', 'changing')
-muv = save_model('Muv', 'changing')
-mbh = save_model('mbh', 'quasar')
-lbol = save_model('Lbol', 'eddington', num_walker=10)
+# mstar = save_model('mstar', 'stellar_blackhole', fixed_m_c=False)
+# muv = save_model('Muv', 'stellar_blackhole', fixed_m_c=False)
+# mbh = save_model('mbh', 'quasar')
+# lbol = save_model('Lbol', 'eddington', num_walker=10)
 
-print('make plots, see if stuff still works, especially for bhs')
+# print('make plots, see if stuff still works, especially for bhs')
+
+# Plot_parameter_sample(mstar, 
+#                       marginalise=(mstar.quantity_options['feedback_change_z'],
+#                       [1,2]))
+# Plot_qhmr(mstar, redshift=[0,1,2], sigma=2, , columns='single')
+# Plot_qhmr(mstar, redshift=[4,5,6,7,8], sigma=2, columns='single',
+#           only_data=True, m_halo_range=np.linspace(10, 13.43, 1000))
+
+# https://academic.oup.com/mnras/article/357/1/82/1039256
+
+mstar = load_model('mstar', 'stellar_blackhole')
+muv  = load_model('Muv', 'stellar_blackhole')
+mbh  = load_model('mbh', 'quasar')
+# lbol = load_model('Lbol', 'eddington')
+
+#%%
+# vals where agn becomes important, put in table
+for z in mstar.redshift:
+    par  = mstar.draw_parameter_sample(z, 1000)
+    q_c = []
+    phi_c = []
+    for p in par:
+        q = mstar.physics_model.at_z(z).calculate_log_quantity(p[0], *p)
+        q_c.append(q)
+        phi_c.append(mstar.calculate_log_abundance(q, z, p))
+    q_median = np.median(q_c)
+    phi_median = np.median(phi_c)  
+    print(q_median, phi_median)

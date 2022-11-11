@@ -118,8 +118,8 @@ def get_quantity_specifics(quantity_name):
         # MODEL
         options['model_param_num'] = 3
         options['model_p0'] = np.array([18, 1, 0.5])
-        options['model_bounds'] = np.array([[13, 0, 0],
-                                            [20, 4, 0.99]])
+        options['model_bounds'] = np.array([[13, 0.2, 0],
+                                            [24.5, 4, 0.99]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
@@ -130,7 +130,7 @@ def get_quantity_specifics(quantity_name):
         options['reference_p0_bounds'] = (- np.inf, np.inf)
         options['reference_param_num'] = 3
         # PLOTS AND TABLES
-        options['quantity_range'] = np.linspace(-22.42, -14.46, 100)
+        options['quantity_range'] = np.linspace(-22.21, -14.46, 100)
         options['subplot_grid'] = (4, 3)
         options['ndf_xlabel'] = r'$\mathcal{M}_\mathrm{UV}$'
         options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ mag$^{-1}$]'
@@ -159,8 +159,8 @@ def get_quantity_specifics(quantity_name):
         options['model_p0'] = np.array([5, 1])
         # upper limit for A parameter in model chosen to be minimum observed
         # black hole mass
-        options['model_bounds'] = np.array([[-10,  0],
-                                            [ 10,  5]])
+        options['model_bounds'] = np.array([[  0,  0],
+                                            [ 15, 20]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = False
@@ -203,7 +203,7 @@ def get_quantity_specifics(quantity_name):
         options['model_param_num'] = 4
         options['model_p0'] = np.array([39,   5, -2, 1.9])
         options['model_bounds'] = np.array([[38,  0,  -4,   1],
-                                            [50,  8,  0,  10]])
+                                            [51,  8,  -1,  10]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = False
