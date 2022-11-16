@@ -11,7 +11,7 @@ ytick.labelsize      : 26.0  # fontsize of the tick labels
 font.size            : 18.0  # general fontsize
 
 legend.fontsize      : 14.0  # fontsize of legend entries
-legend.handletextpad : 0.1   # distance between legend symbol and legend text
+legend.handletextpad : 0.3   # distance between symbol and text
 legend.columnspacing : 0.5   # distance between columns
 
 font.family          : serif                 

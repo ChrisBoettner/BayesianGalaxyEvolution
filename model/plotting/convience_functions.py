@@ -12,7 +12,7 @@ from matplotlib.lines import Line2D
 from matplotlib import text as mtext
 from matplotlib.colors import to_rgb
 
-from model.data.load import load_data_points
+from model.data.load import load_data_points, load_JWST_UVLF_points
 from model.helper import make_array, make_list, pick_from_list, \
                          calculate_percentiles
 from model.analysis.calculations import calculate_best_fit_ndf,\
@@ -48,6 +48,44 @@ def plot_group_data(axes, ModelResult, redshift=None):
                         label=g.label,
                         alpha=ModelResult.quantity_options['marker_alpha'])
     return
+
+def plot_ndf_data_simple(axes, ModelResult, redshift, alpha=0.4):
+    ''' 
+    Simple data plotting function.
+    '''
+    axes = make_list(axes)
+    for i, z in enumerate(redshift):
+        try:
+            data = ModelResult.log_ndfs.at_z(z)
+            axes[i].errorbar(data[:,0],
+                             data[:,1],
+                             data[:,2:].T,
+                             capsize=3,
+                             fmt='o',
+                             elinewidth = mpl.rcParams['lines.markersize']/2,
+                             color='black',
+                             alpha=alpha)
+        except:
+            pass
+    return
+
+def plot_JWST_data(axes, ModelResult, axes_start_redshift, alpha=0.4):
+    ''' 
+    Plot JWST Muv data. axes_start_redshift must be redshift that corresponds
+    to axes[0].
+    '''
+    axes = make_list(axes)
+    if ModelResult.quantity_name == 'Muv':
+        all_data = load_JWST_UVLF_points()
+        redshift = list(all_data.keys())
+        for z in redshift:
+            data = all_data[z]
+            axes[z-axes_start_redshift].errorbar(data[:,0], data[:,1],
+                            data[:,2:].T, capsize=3, fmt='o',
+                            elinewidth = mpl.rcParams['lines.markersize']/2,
+                            color='black', alpha=alpha)
+    return
+        
 
 
 def plot_best_fit_ndf(axes, ModelResult, redshift=None, **kwargs):
@@ -419,7 +457,7 @@ def turn_off_frame(axes):
 def turn_off_axes(axes):
     ''' Turn of axes for subplots that are not used. '''
     for ax in axes.flatten():
-        if (not ax.lines) and (not ax.patches):
+        if (not ax.lines) and (not ax.patches) and (not ax.collections):
             ax.axis('off')
     return
 
@@ -504,13 +542,18 @@ def get_sigma_color_alphas():
 ################ TEXT #########################################################
 
 
-def add_redshift_text(axes, redshifts):
-    ''' Add current redshift as text to upper plot corner. '''
-    for z in redshifts:
-        axes[z].text(0.97, 0.94, r'$z \sim$ ' + str(z),
-                     horizontalalignment='right',
-                     verticalalignment='top',
-                     transform=axes[z].transAxes)
+def add_redshift_text(axes, redshift, ind=None):
+    ''' 
+    Add current redshift as text to upper plot corner. If redshift does
+    not coincide with index of axes, use ind.
+    '''
+    if ind == None:
+        ind = redshift
+    for (i, z) in zip(ind, redshift):
+        axes[i].text(0.97, 0.94, r'$z \sim$ ' + str(z),
+                       horizontalalignment='right',
+                       verticalalignment='top',
+                       transform=axes[i].transAxes)
     return
 
 

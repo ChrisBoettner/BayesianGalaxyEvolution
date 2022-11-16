@@ -106,6 +106,15 @@ def load_data_points(quantity_name):
         raise NameError('quantity_name not known.')
     return(data)
 
+def load_JWST_UVLF_points():
+    '''
+    Load JWST UVLF. Currently included are Harrikane2022 (z=12, 17)
+    and Donnan2022 (z=13).
+    '''
+    data = np.load(path + '/UVLF/JWST_UVLF.npz')
+    data = {int(z):data[z] for z in ['12','13','17']}
+    return(data)
+
 ################ NUMBER DENSITY FUNCTION DATASETS #############################
 
 def _load_smf_data(cutoff, data_subset):

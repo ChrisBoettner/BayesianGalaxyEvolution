@@ -25,10 +25,12 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 plot_linear_relationship,\
                                                 plot_q1_q2_additional,\
                                                 plot_feedback_regimes,\
-                                                blend_color
-                                                
+                                                blend_color,\
+                                                plot_ndf_data_simple,\
+                                                plot_JWST_data
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array
+from model.scatter import Joint_distribution, calculate_q1_q2_conditional_pdf
 
 from pathlib import Path
 import warnings
@@ -183,7 +185,6 @@ class Plot_best_fit_ndf(Plot):
             raise AttributeError(
                 'best fit parameter have not been calculated.')
 
-        # general plotting configuration
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
@@ -383,7 +384,7 @@ class Plot_parameter_sample(Plot):
         # add axes labels
         param_labels =  ModelResult.quantity_options['param_y_labels']
         if param_num > ModelResult.quantity_options['model_param_num']:
-            param_labels = [r'$\log M_\mathrm{c}$'] + param_labels
+            param_labels = [r'$M_\mathrm{c}$'] + param_labels
         for i, label in enumerate(param_labels):
             axes[i].set_ylabel(label, multialignment='center')
         axes[-1].set_xlabel(r'Redshift $z$')
@@ -446,6 +447,8 @@ class Plot_parameter_sample(Plot):
                 upper_lim = (1.15*curr_lim[1] 
                              if curr_lim[1]>0 else 0.85*curr_lim[1])
                 ax.set_ylim([curr_lim[0], upper_lim])
+            if (ModelResult.quantity_name in ['mstar','Muv']) and i==3:
+                ax.set_ylim([0, 1.1])
 
         # second axis for time, very experimental
         if len(ModelResult.redshift)==11 and time_axis:
@@ -596,7 +599,7 @@ class Plot_ndf_intervals(Plot):
 
         # add axes labels
         fig.supxlabel(xlabel)
-        fig.supylabel(ylabel, x=0.01)
+        fig.supylabel(ylabel, x=0.001)
         fig.align_ylabels(axes)
 
         # add minor ticks and set number of ticks
@@ -636,6 +639,102 @@ class Plot_ndf_intervals(Plot):
             ax.set_ylim(ModelResult.quantity_options['ndf_y_axis_limit'])
             ax.set_xlim([quantity_range[0],
                          quantity_range[-1]])
+
+        # add legend
+        add_legend(axes, -1, ncol=ncol, loc=legend_loc)
+
+        # turn off unused axes
+        turn_off_axes(axes)
+        return(fig, axes)
+    
+class Plot_ndf_predictions(Plot):
+    def __init__(self, ModelResult, **kwargs):
+        '''
+
+        '''
+        super().__init__(ModelResult,  **kwargs)
+        self.default_filename = self.quantity_name + '_ndf_predicitions'
+
+    def _plot(self, ModelResult, upper_redshift, sigma=1, num=2000,
+              quantity_range = None, additional_color='#a7cc79', 
+              datapoints=True, y_lim=None):
+        if ModelResult.distribution.is_None():
+            raise AttributeError('distributions have not been calculated.')
+            
+        # make redshift space
+        redshift = range(ModelResult.quantity_options['extrapolation_z'][-1],
+                         upper_redshift+1)
+        # get ndf sample
+        ndfs_extrapolate = {} # extrapolated parameter distribution
+        ndfs_fixed       = {} # fixed parameter distribution, evolving HMF
+        for z in redshift:
+            if z>redshift[0]:
+                ndfs_fixed[z]       = calculate_ndf_percentiles(ModelResult, 
+                                                redshift[0], sigma=sigma,
+                                                num=num, hmf_z=z,
+                                                quantity_range=quantity_range,
+                                                extrapolate_if_possible=True)
+            ndfs_extrapolate[z] = calculate_ndf_percentiles(ModelResult, 
+                                                z, sigma=sigma, num=num,
+                                                quantity_range=quantity_range,
+                                                extrapolate_if_possible=True)
+
+        # general plotting configuration
+        subplot_grid = list(ModelResult.quantity_options['subplot_grid'])
+        subplot_grid[0] = np.ceil(len(redshift)/subplot_grid[1]).astype(int)
+        fig, axes = plt.subplots(*subplot_grid, sharey=True)
+        axes = axes.flatten()
+        fig.subplots_adjust(**self.plot_limits)
+
+        # quantity specific settings
+        xlabel, ylabel, ncol  = ModelResult.quantity_options['ndf_xlabel'],\
+                                ModelResult.quantity_options['ndf_ylabel'],\
+                                ModelResult.quantity_options['legend_columns']
+        legend_loc            = ModelResult.quantity_options['ndf_legend_pos']
+
+        # add axes labels
+        fig.supxlabel(xlabel)
+        fig.supylabel(ylabel, x=0.001)
+        fig.align_ylabels(axes)
+
+        # add minor ticks and set number of ticks
+        for ax in axes:
+            ax.xaxis.set_major_locator(MaxNLocator(4))
+            ax.minorticks_on()
+
+        # plot number density functions
+        for i, z in enumerate(redshift):
+            if z==redshift[0]:
+                color = self.color
+            else:
+                color = additional_color
+            if z>redshift[0]:
+                plot_data_with_confidence_intervals(axes[i], ndfs_fixed[z],
+                                                    'lightgrey',
+                                                    median=False, alpha=0.7)         
+            plot_data_with_confidence_intervals(axes[i], 
+                                                ndfs_extrapolate[z],
+                                                color,
+                                                median=False, alpha=0.7)
+
+        # plot group data points
+        if datapoints:
+            plot_ndf_data_simple(axes, ModelResult, redshift)
+
+        # plot JWST data
+        plot_JWST_data(axes, ModelResult, redshift[0])
+
+        # add redshift as text to subplots
+        add_redshift_text(axes, redshift, ind=range(len(redshift)))
+
+        # add axes limits
+        if quantity_range is None:
+            quantity_range = ModelResult.quantity_options['quantity_range']
+        for ax in axes:
+            ax.set_xlim([quantity_range[0], quantity_range[-1]])
+        if y_lim is None:
+            y_lim = ModelResult.quantity_options['ndf_y_axis_limit']
+        ax.set_ylim(y_lim)
 
         # add legend
         add_legend(axes, -1, ncol=ncol, loc=legend_loc)
@@ -1032,6 +1131,66 @@ class Plot_q1_q2_relation(Plot):
             add_legend(ax, 0, fontsize=32, loc='upper left')
         return(fig, ax)
 
+class Plot_q1_q2_relation_evolution(Plot_q1_q2_relation):
+    def __init__(self, ModelResult1, ModelResult2, columns='double',
+                 color = 'C3', additional_color='C3', **kwargs):
+        '''
+        Similar to Plot_q1_q2_relation for multiple redshifts. Does not include
+        the many minor addons the other function has.      
+        redshift must be a list, you can choose the number of sigma equivalents
+        shown using sigma and the q1 range using quantity_range. Also can 
+        adjust number of samples drawn
+        for calculation using num argument. Can fix y limits using y_lims.
+        legend=True adds legend. Main color can be set with color argument.
+        '''
+        super().__init__(ModelResult1, ModelResult2, **kwargs)
+        self.default_filename = (self.quantity_name + '_relation_evo')
+    
+    def _plot(self, ModelResult1, ModelResult2, redshift=[0], sigma=1, 
+              num = 500, quantity_range=None, y_lims=None, legend=False, 
+              linewidth=5):       
+        # sort sigma in reverse order
+        sigma = np.sort(make_array(sigma))[::-1]
+        
+        # if no quantity_range is given, use default
+        if quantity_range is None:
+            log_q1 = ModelResult1.quantity_options['quantity_range']
+            log_q1 = np.linspace(log_q1[0], log_q1[-1], 1000)
+        else:
+            log_q1 = quantity_range
+        
+        # calculate relation and sigmas for all given sigmas, save as array
+        
+        q1_q2_relation = {}
+        for z in redshift:
+            q1_q2_relation[z] = calculate_q1_q2_relation(ModelResult1,
+                                                          ModelResult2,
+                                                          z, log_q1, 
+                                                          sigma=sigma,
+                                                          num=num)
+
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # plot values and confidence interval
+        for z in redshift:
+            ax.plot(q1_q2_relation[z][1][:,0], q1_q2_relation[z][1][:,1],
+                    label=str(z))
+            
+            # plot_data_with_confidence_intervals(ax, q1_q2_relation[z],
+            #                                     self.color,
+            #                                     linewidth=linewidth,
+            #                                     label = r'$z \sim$ ' + str(z))
+        # add axis limits
+        ax.set_xlim((log_q1[0], log_q1[-1]))
+        if y_lims:
+            ax.set_ylim(y_lims)
+        # add legend
+        if legend:
+            add_legend(ax, 0, fontsize=32, loc='upper left')
+        return(fig, ax)
+
 class Plot_conditional_ERDF(Plot):
     def __init__(self, ModelResult, **kwargs):
         '''
@@ -1074,7 +1233,7 @@ class Plot_conditional_ERDF(Plot):
 
         # add axes labels
         ax.set_xlabel(r'log $\lambda$')
-        ax.set_ylabel(r'$\xi (\lambda|L_\mathrm{bol})$', labelpad=40)
+        ax.set_ylabel(r'$\xi (\lambda \vert L_\mathrm{bol})$', labelpad=40)
 
         for i,l in enumerate(lum):
             # plot median
@@ -1110,7 +1269,7 @@ class Plot_black_hole_mass_distribution(Plot):
         self.default_filename = self.quantity_name + '_bh_mass_distribution'
         
     def _plot(self, ModelResult, z=0, lum=45.2, 
-              edd_space=np.linspace(-6, 32.13,10000), num=1000,
+              edd_space=np.linspace(-6, 32.13,10000), num=5000,
               sigma=1, datapoints=True, legend=False, linewidth=5):
         
         if ModelResult.physics_name not in ['eddington','eddington_free_ERDF',
@@ -1163,10 +1322,11 @@ class Plot_black_hole_mass_distribution(Plot):
 
         # add axes labels
         ax.set_xlabel(r'log $M_\bullet$ [$M_\odot$]')
-        ax.set_ylabel(r'$P (M_\bullet|L_\mathrm{bol})$', x=0.01)
+        ax.set_ylabel(r'$P (M_\bullet \vert L_\mathrm{bol})$', x=0.01)
         
         # plot predicted black hole distribution
-        plot_data_with_confidence_intervals(ax, m_bh_dist, self.color, median=True,
+        plot_data_with_confidence_intervals(ax, m_bh_dist, self.color, 
+                                            median=True,
                                             linewidth=linewidth)
         
             
@@ -1195,4 +1355,154 @@ class Plot_black_hole_mass_distribution(Plot):
         # add legend
         if legend:
             add_legend(ax, 0)
+        return(fig, ax)
+    
+class Plot_scatter_ndf(Plot):
+    def __init__(self, ModelResults, **kwargs):
+        '''
+        Plot modelled number density functions and data for comparison. Input
+        can be a single model object or a list of objects.
+        You can turn off the plotting of the data points using 'datapoints' 
+        argument. Choose redshift using 'redshift' argument
+        '''
+        super().__init__(ModelResults, **kwargs)
+        self.default_filename = (self.quantity_name + '_scatter_ndf')
+
+    def _plot(self, ModelResult, scatter_name='lognormal', 
+              scatter_parameter=[0.2, 0.5, 1], redshift=0,
+              quantity_range=None, parameter=None, y_lim=(-6,0),
+              legend=True):
+        # make list if input is scalar
+        scatter_parameter = make_list(scatter_parameter)
+        
+        if quantity_range is None:
+            quantity_range = ModelResult.quantity_options['quantity_range']
+        if parameter is None:
+            parameter = ModelResult.parameter.at_z(redshift)
+        
+        # calculate ndfs
+        ndfs = {}
+        for s in scatter_parameter:
+            ndfs[s] = ModelResult.calculate_log_abundance(
+                            quantity_range, redshift, parameter,
+                            scatter_name=scatter_name, scatter_parameter=s)
+        ndf_no_scatter = ModelResult.calculate_log_abundance(quantity_range, 
+                                                             redshift, 
+                                                             parameter)
+        
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # quantity specific settings
+        xlabel  = ModelResult.quantity_options['ndf_xlabel']
+        ylabel  = ModelResult.quantity_options['ndf_ylabel']
+
+        # add axes labels
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        # add minor ticks and set number of ticks
+        ax.xaxis.set_major_locator(MaxNLocator(4))
+        ax.yaxis.set_major_locator(MaxNLocator(5))
+        #ax.minorticks_on()
+        
+        # create custom color map
+        washed_out_color = blend_color(self.color, 0.5)
+        cm = LinearSegmentedColormap.from_list("Custom", 
+                                               [self.color, washed_out_color],
+                                               N=len(scatter_parameter))
+        
+        # plot ndf without scatter
+        ax.plot(quantity_range, ndf_no_scatter, label='No scatter', 
+                color='grey', zorder=0)
+        # plot modelled ndfs with scatter
+        for i,s in enumerate(scatter_parameter):
+            ax.plot(quantity_range, ndfs[s],
+                     label     = r'$\sigma =$ ' + str(s), 
+                     linewidth = mpl.rcParams['lines.linewidth']/2,
+                     color     = cm(i/len(scatter_parameter)))
+        
+        # axis limits
+        plt.xlim(quantity_range[0], quantity_range[-1])
+        plt.ylim(*y_lim)
+
+        if legend:
+            add_legend(ax, 0, fontsize=32, loc='upper right')
+        return(fig, ax)
+
+
+class Plot_q1_q2_distribution_with_scatter(Plot_q1_q2_relation):
+    def __init__(self, ModelResult1, ModelResult2, columns='double',
+                 color = 'C3', additional_color='C3', **kwargs):
+        '''
+        Plot an illustration of the effect of scatter on the q1-q2 relation.
+        Show for scatter with lognormal distribution in both quantities and
+        no skewness and with skewness for a given input value log_q2_value. 
+        Redshift can be adjusted using redshift, range over which to calculate
+        using log_q1 space. The scatter and skewness can be adjusted using 
+        scatter_1, scatter_2 and skew.
+        '''
+        super().__init__(ModelResult1, ModelResult2, **kwargs)
+        self.default_filename = (self.quantity_name + '_scatter_distribution')
+    
+    def _plot(self, ModelResult1, ModelResult2, log_q2_value,
+              redshift=0, log_q1=np.linspace(8.51,10.41,500), scatter_1=0.05,
+              scatter_2=0.25, skew=-4):
+
+        if (ModelResult1.parameter.is_None() 
+            or ModelResult2.parameter.is_None()):
+            raise AttributeError('best fit parameter '
+                                 'have not been calculated.')
+            
+        # choose parameter
+        parameter_1 = ModelResult1.parameter.at_z(redshift)
+        parameter_2 = ModelResult2.parameter.at_z(redshift)
+        
+        # create distributions
+        JointDistribution1 = Joint_distribution(ModelResult1, 'lognormal', 
+                                                scatter_1)
+        JointDistribution2 = Joint_distribution(ModelResult2, 'lognormal',
+                                                scatter_2)
+
+        JointDistribution2_skew = Joint_distribution(ModelResult2,
+                                'skewlognormal', scatter_parameter=scatter_2,
+                                skew_parameter=skew)
+        # calculate conditional probabilities
+        log_q1_probabilities = []
+        for Distribution2 in [JointDistribution2, JointDistribution2_skew]:
+            log_q1_probabilities.append(calculate_q1_q2_conditional_pdf(
+                                                    JointDistribution1, 
+                                                    Distribution2, 
+                                                    log_q1, 
+                                                    log_q2_value, 
+                                                    parameter_1, 
+                                                    parameter_2, 
+                                                    redshift))
+        no_scatter_value = calculate_q1_q2_relation(ModelResult2, 
+                                                    ModelResult1,
+                                                    redshift, 
+                                                    log_q2_value)[1][0,1]
+
+                  
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1, sharex=True)
+        fig.subplots_adjust(**self.plot_limits)
+
+        # add axes labels
+        y_label = (r'$P ($' 
+                   + ModelResult1.quantity_options['quantity_name_tex']
+                   + r'$\vert$'  
+                   + ModelResult2.quantity_options['quantity_name_tex']
+                   + r' $=$ ' + str(log_q2_value) + r'$)$')  
+        ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])
+        ax.set_ylabel(y_label, x=0.01)
+
+        # plot distributions
+        ax.plot(log_q1, log_q1_probabilities[0], color='lightgrey')
+        ax.plot(log_q1, log_q1_probabilities[1], color=self.color)
+        ax.axvline(no_scatter_value, color='black', alpha=0.8)
+        
+        # set plot limits
+        ax.set_xlim(log_q1[0],log_q1[-1])      
         return(fig, ax)

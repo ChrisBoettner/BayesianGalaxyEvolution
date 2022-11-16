@@ -62,10 +62,7 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
         # add log_m_c to initial guess and bounds
         initial_guess = np.insert(initial_guess, 0, log_m_c)
         log_m_c_range = 3  # +- range in which log_m_c is expected
-        bounds = np.insert(bounds, 0,
-                           [10,
-                            log_m_c+log_m_c_range],
-                            axis=1)
+        bounds = np.insert(bounds, 0, [10, log_m_c+log_m_c_range], axis=1)
 
         if physics_name == 'stellar':
             physics = StellarFeedback_free_m_c(log_m_c,

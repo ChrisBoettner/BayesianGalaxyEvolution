@@ -29,6 +29,13 @@ def save_plots(quantity, show = False, file_format='pdf'):
                                            quantity_options
                                            ['feedback_change_z'], 
                                            [1,2])).save(file_format)
+        if quantity == 'mstar':
+            quantity_range = np.linspace(6.1,10.13,100)
+        else:
+            quantity_range = None
+        Plot_ndf_predictions(model, upper_redshift=16, 
+                             quantity_range=quantity_range,
+                             y_lim=[-6.95,0]).save(file_format)
         
         if quantity == 'mstar':
             # feedback illustration plot
@@ -44,6 +51,8 @@ def save_plots(quantity, show = False, file_format='pdf'):
                                  redshift=redshift)
             Plot_best_fit_ndf([mstar_no, mstar_st, mstar_sb],
                               columns='single').save(file_format)
+            # influence of scatter
+            Plot_scatter_ndf(model, columns='single').save(file_format)
             
             # SHMR
             Plot_qhmr(model, redshift=[0,1,2], sigma=2, columns='single').\
@@ -59,6 +68,8 @@ def save_plots(quantity, show = False, file_format='pdf'):
         
         Plot_ndf_intervals(model, sigma=[1,2,3]).save(file_format)
         Plot_parameter_sample(model, columns='single').save(file_format)
+        Plot_ndf_predictions(model, upper_redshift=8,
+                             y_lim=[-14.9,0]).save(file_format)
         del model
         
     elif quantity == 'Lbol':
@@ -66,19 +77,22 @@ def save_plots(quantity, show = False, file_format='pdf'):
         
         Plot_ndf_intervals(model, sigma=[1,2,3], num=1000).save(file_format)
         Plot_parameter_sample(model, columns='single').save(file_format)
+        Plot_ndf_predictions(model, upper_redshift=10, y_lim=[-14.9,0],
+                             num=1000).save(file_format)
         
         # conditional ERDF example
         Plot_conditional_ERDF(model, parameter = [40 ,  2, -2,  2],
                               columns='single').save(file_format)
         # black hole mass distribution
         Plot_black_hole_mass_distribution(model, 
+                                          sigma=2,
                                           columns='single').save(file_format)
         del model
         
     elif quantity == 'Muv_mstar':
         muv    = load_model('Muv','stellar_blackhole', redshift=range(4,9))
         mstar  = load_model('mstar','stellar_blackhole', redshift=range(4,9))
-        # plot for multiple redshifts
+        # plot main sequence for multiple redshifts
         for z in range(4,8):
             Plot_q1_q2_relation(muv, mstar, z=z, datapoints=True,
                                 quantity_range=np.linspace(-22.24,-17.23,100),
@@ -87,6 +101,10 @@ def save_plots(quantity, show = False, file_format='pdf'):
                                 ).save(file_format, 
                                        file_name=(quantity + '_relation_z' 
                                                   + str(z)))
+        # plot influence of scatter
+        Plot_q1_q2_distribution_with_scatter(mstar, muv, log_q2_value=-20,
+                            redshift=4, columns='single').save(file_format)
+                                       
         del muv
         del mstar
         
@@ -118,8 +136,20 @@ def save_plots(quantity, show = False, file_format='pdf'):
         plt.ion()
     return
 
-if __name__ == '__main__':
+def make_all_plots(show=False, file_format='pdf'):
+    ''' 
+    Make plots for all available quantities.
+    Choose if plots are displayed using show parameter. Default is False.
+    Choose file format with file_format. Default is 'pdf'.
+    '''
     quantities = ['mstar', 'Muv', 'mbh', 'Lbol', 'Muv_mstar',
                   'Lbol_mbh', 'mstar_mbh']
-    [save_plots(quantity) for quantity in quantities]
+    [save_plots(quantity, show=show, file_format=file_format) 
+     for quantity in quantities]
+    return
+
+if __name__ == '__main__':
+    make_all_plots()
+
+    
     

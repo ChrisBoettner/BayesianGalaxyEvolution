@@ -9,6 +9,7 @@ import warnings
 
 import numpy as np
 from scipy.integrate import trapezoid
+from sklearn.linear_model import LinearRegression
 
 from progressbar import ProgressBar, FormatLabel, NullBar
 
@@ -16,7 +17,7 @@ from model.helper import mag_to_lum, lum_to_mag, within_bounds, make_array, \
                          system_path
 from model.data.load import load_hmf_functions
 from model.calibration import mcmc_fitting, leastsq_fitting
-from model.quantity_options import get_quantity_specifics
+from model.quantity_options import get_quantity_specifics, update_bounds
 from model.physics import physics_model
 from model.scatter import Joint_distribution
 from model.calibration.parameter import load_parameter
@@ -46,7 +47,8 @@ class ModelResult():
                  prior_name, fitting_method, saving_mode, ndf_fudge_factor=None,
                  name_addon=None,groups=None, calibrate=True, 
                  paramter_calc=True, progress=True, fixed_m_c=True,
-                 scatter_name='delta', scatter_parameter=None, **kwargs):
+                 scatter_name='delta', scatter_parameter=None, 
+                 skew_parameter=None, extrapolate = True, **kwargs):
         '''
         Main model object. Calibrate the model by fitting parameter to
         observational data.
@@ -101,6 +103,14 @@ class ModelResult():
             parameter in scipy implementation of location-scale distributions.
             The default is 'none', must be set if scatter model other than 
             'delta' is used.
+        skew_parameter: float, optional
+            Value of scatter distribution that describes skewness.
+            The default is 'none', must be set if scatter model with skewness
+            is used.
+        extrapolate : bool, optional
+            If True, enables option to do calculations at redshifts higher
+            than highest input redshift by reusing certain settings at highest
+            redshift and extrapolating parameter. The default is True.
         **kwargs : dict
             Additional arguments that can be passed to the mcmc function.
 
@@ -116,10 +126,13 @@ class ModelResult():
         
         # load hmf related stuff
         hmf_funcs, turnover_halo_mass, halo_number = load_hmf_functions()
-        self.log_hmfs               = Redshift_dict(hmf_funcs) # callable
-                                                               # functions
-        self.log_turnover_halo_mass = Redshift_dict(turnover_halo_mass)
-        self.total_halo_number      = Redshift_dict(halo_number)
+        self.log_hmfs               = Redshift_dict(hmf_funcs, # callable
+                                            extrapolate=False) # functions
+                                                              
+        self.log_turnover_halo_mass = Redshift_dict(turnover_halo_mass,
+                                                    extrapolate=False)
+        self.total_halo_number      = Redshift_dict(halo_number,  
+                                                    extrapolate=False)
         self.hmf_slope              = 0.9  # approximate low mass slope of 
                                            # HMFs (absolute value)
         self.log_min_halo_mass      = 3    # minimum halo mass
@@ -127,6 +140,7 @@ class ModelResult():
         
         self.scatter_name      = scatter_name
         self.scatter_parameter = scatter_parameter
+        self.skew_parameter    = skew_parameter
         
         if ndf_fudge_factor:
             print('Careful: Number densities adjusted by a factor of '
@@ -157,17 +171,18 @@ class ModelResult():
                           + self.physics_name + '/'
 
         # empty dicts to be filled
-        self.physics_model = Redshift_dict({})
-        self.filename = Redshift_dict({})
-        self.parameter = Redshift_dict({})
-        self.distribution = Redshift_dict({})
+        self.physics_model = Redshift_dict({},  extrapolate=extrapolate)
+        self.filename = Redshift_dict({},       extrapolate=False)
+        self.parameter = Redshift_dict({},      extrapolate=extrapolate)
+        self.distribution = Redshift_dict({},   extrapolate=False)
         
         # load parameter
         if (saving_mode == 'loading'):
             try:
                 parameter = load_parameter(self, name_addon)
                 parameter = {int(z): p for z, p in parameter.items()}
-                self.parameter = Redshift_dict(parameter)
+                self.parameter = Redshift_dict(parameter, 
+                                               extrapolate=extrapolate)
                 # automatically determine if m_c is fixed or not
                 if (len(parameter[self.redshift[0]])
                     == self.quantity_options['model_param_num']+1):
@@ -320,8 +335,9 @@ class ModelResult():
         return
 
     def calculate_log_abundance(self, log_quantity, z, parameter,
-                                hmf_z=None, scatter_name='delta',
-                                scatter_parameter=None, **kwargs):
+                                hmf_z=None, scatter_name=None,
+                                scatter_parameter=None, skew_parameter=None,
+                                **kwargs):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
         multiplying HMF function with physics model derivative for a given
@@ -346,6 +362,16 @@ class ModelResult():
             If hmf_z is given, use that reshift for calculating the values of
             the halo mass function. Useful for disentangeling baryonic physics
             and HMF evolution. The default is None.
+        scatter_name: str, optional
+            Name of distribution that describes scatter in quantity-
+            halo mass relation. Defaults to model attribute.
+        scatter_parameter: float, optional
+            Value of scatter distribution that describes spread. scale 
+            parameter in scipy implementation of location-scale distributions.
+            Defaults to model attribute.
+        skew_parameter: float, optional
+            Value of scatter distribution that describes skewness. Defaults to 
+            model attribute.
         **kwargs: dict, optional
             Additional parameter passed to 
             _experimental_log_abundance_with_scatter method.
@@ -359,14 +385,23 @@ class ModelResult():
         log_quantity = make_array(log_quantity)
         
         # check that parameters are within bounds
-        if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
+        bounds = update_bounds(self, parameter, z=z)
+        if not within_bounds(parameter, *bounds):
             raise ValueError('Parameter out of bounds.')
 
         # set hmf redshift
         if hmf_z is None:
             hmf_z = z
+            
+        # choose scatter model
+        if scatter_name is None:
+            scatter_name=self.scatter_name
+        if scatter_parameter is None:
+            scatter_parameter=self.scatter_parameter
+        if skew_parameter is None:
+            skew_parameter=self.skew_parameter
 
-        if self.scatter_name == 'delta':
+        if scatter_name == 'delta':
             # conversion between magnitude and luminosity if needed
             # (for _experimental_log_abundance_with_scatter this is done in
             #  Joint_distribution class)
@@ -389,26 +424,36 @@ class ModelResult():
             log_phi[np.isinf(log_m_h)] = -np.inf
             
         else:
-            if self.scatter_parameter is None:
+            if scatter_parameter is None:
                 raise ValueError('scatter_parameter must be specific if '
                                  'scatter model other than delta is used.')
             log_phi = self._experimental_log_abundance_with_scatter(
                         log_quantity, z, parameter, hmf_z,
-                        self.scatter_name, self.scatter_parameter, **kwargs)
+                        scatter_name, scatter_parameter, skew_parameter,
+                        **kwargs)
             
         return(log_phi)
 
-    def draw_parameter_sample(self, z, num=1):
+    def draw_parameter_sample(self, z, num=1, extrapolate_if_possible=False, 
+                              loop_limit=None):
         '''
         Get a sample from physics model parameter distribution at given 
         redshift.
-
+        If z is larger than largest redshift in model, linearly extrapolate 
+        distribution to this z.
+        
         Parameters
         ----------
         z : int
             Redshift at which value is calculated.
         num : int, optional
             Number of samples to be drawn. The default is 1.
+        extrapolate_if_possible: bool, optional
+            If True, extrapolate parameter sample if possible, even if
+            distribution for redshift is available. The default is False.
+        loop_limit: int, optional
+            Maximum number of iterations for extrapolation sample. If None,
+            value is set to 100*num. The default is None.
 
         Returns
         -------
@@ -419,13 +464,65 @@ class ModelResult():
             raise AttributeError('distribution dictonary is empty. Probably'
                                  ' wasn\'t calculated.')
 
-        # randomly draw from parameter distribution at z
-        random_draw = np.random.choice(self.distribution.at_z(z).shape[0],
-                                       size=num)
-        parameter_sample = self.distribution.at_z(z)[random_draw]
+        if loop_limit is None:
+            loop_limit = int(100*num)
+
+        # randomly draw from parameter distribution at z if distribution is
+        # given and extrapolation flag is false
+        flag_z = z in self.redshift
+        flag_2 = z<=self.quantity_options['extrapolation_z'][-1]
+        flag_extrapolation = (not flag_2) and extrapolate_if_possible
+        
+        if (flag_z and (not flag_extrapolation)): 
+            random_draw = np.random.choice(self.distribution.at_z(z).shape[0],
+                                           size=num)
+            parameter_sample = self.distribution.at_z(z)[random_draw]
+        
+        # else linearly extrapolate to higher redshift
+        else:
+            # determine start and endpoint for parameter draw used for
+            # extrapolation
+            extrapolation_z = self.quantity_options['extrapolation_z']
+            extrapolation_z = extrapolation_z[extrapolation_z
+                                              <np.amax(self.redshift)]
+            if not np.isin(extrapolation_z, self.redshift).all():
+                raise ValueError('Redshift range used for extrapolation not '
+                                 'in redshift of model.')
+            if not extrapolation_z.any():
+                raise ValueError('Extrapolation start point below '
+                                 'highest redshift in model.')
+            
+            ## wrap in while loop so that parameter sample is definitely right
+            ## length, even if some values are discarded bc their out of bounds
+            parameter_sample = []
+            linear_model     = LinearRegression()
+            loop_counter     = 0
+            while len(parameter_sample)<num:
+                # draw samples at every z used for extrapolation
+                samples = []
+                for rs in extrapolation_z:
+                    samples.append(self.draw_parameter_sample(rs)[0,:])
+                # linearly extrapolate to input z by performing multivariate 
+                # linear regression                
+                fit = linear_model.fit(X=extrapolation_z[:,np.newaxis],
+                                       y=np.array(samples))
+                par_sample = fit.predict([[z]])[0,:]
+                # check if within parameter bounds, if yes append
+                bounds = update_bounds(self, par_sample, z=extrapolation_z[-1])
+                if within_bounds(par_sample, *bounds):
+                    parameter_sample.append(par_sample)
+                # make sure the loop finishes at some point
+                loop_counter += 1    
+                if loop_counter >= loop_limit:
+                    raise RuntimeError('While loop exceeded loop limit. It ' 
+                                       'might not be possible to draw '
+                                       'extrapolated parameter that are ' 
+                                       'within parameter bounds.')
+            parameter_sample = np.array(parameter_sample)
         return(parameter_sample)
 
-    def calculate_quantity_distribution(self, log_halo_mass, z, num=int(1e+4)):
+    def calculate_quantity_distribution(self, log_halo_mass, z, num=int(1e+4),
+                                        **kwargs):
         '''
         At a given redshift, calculate distribution of observable quantity
         (mstar/Muv/mbh) for a given halo mass by drawing parameter sample and
@@ -440,6 +537,8 @@ class ModelResult():
             Redshift at which value is calculated.
         num : int, optional
             Number of samples drawn. The default is int(1e+5).
+        kwargs:
+            Extra arguments passed to draw_parameter_sample.
 
         Returns
         -------
@@ -460,7 +559,8 @@ class ModelResult():
                                                  'lum_to_mag')
         return(np.array(log_quantity_dist))
 
-    def calculate_halo_mass_distribution(self, log_quantity, z, num=int(1e+5)):
+    def calculate_halo_mass_distribution(self, log_quantity, z, num=int(1e+5),
+                                         **kwargs):
         '''
         At a given redshift, calculate distribution of halo mass for a given
         observable quantity (mstar/Muv/mbh) by drawing parameter sample and
@@ -475,6 +575,8 @@ class ModelResult():
             Redshift at which value is calculated.
         num : int, optional
             Number of samples drawn. The default is int(1e+5).
+        kwargs:
+            Extra arguments passed to draw_parameter_sample.
 
         Returns
         -------
@@ -485,7 +587,7 @@ class ModelResult():
         # conversion between magnitude and luminosity if needed
         log_quantity = self.unit_conversion(log_quantity, 'mag_to_lum')
         
-        parameter_sample = self.draw_parameter_sample(z, num=num)
+        parameter_sample = self.draw_parameter_sample(z, num=num, **kwargs)
 
         log_halo_mass_dist = []
         for p in parameter_sample:
@@ -494,7 +596,8 @@ class ModelResult():
                     log_quantity, *p))
         return(np.array(log_halo_mass_dist))
 
-    def calculate_abundance_distribution(self, log_quantity, z, num=int(1e+5)):
+    def calculate_abundance_distribution(self, log_quantity, z, num=int(1e+5),
+                                         **kwargs):
         '''
         At a given redshift, calculate distribution of phi for a given
         observable quantity (mstar/Muv) value by drawing parameter sample and
@@ -509,6 +612,8 @@ class ModelResult():
             Redshift at which value is calculated.
         num : int, optional
             Number of samples drawn. The default is int(1e+5).
+        kwargs:
+            Extra arguments passed to draw_parameter_sample.
 
         Returns
         -------
@@ -519,7 +624,7 @@ class ModelResult():
         # conversion between magnitude and luminosity if needed
         log_quantity = self.unit_conversion(log_quantity, 'mag_to_lum')
 
-        parameter_sample = self.draw_parameter_sample(z, num=num)
+        parameter_sample = self.draw_parameter_sample(z, num=num, **kwargs)
 
         log_abundance_dist = []
         for p in parameter_sample:
@@ -556,7 +661,7 @@ class ModelResult():
             quantity_range = self.quantity_options['quantity_range']
 
         ndf = self.calculate_log_abundance(quantity_range, z, parameter,
-                                           hmf_z)
+                                           hmf_z=hmf_z)
         return([quantity_range, ndf])
 
     def calculate_log_hmf(self, log_halo_mass, z):
@@ -589,7 +694,8 @@ class ModelResult():
         log_hmf[np.isnan(log_hmf)] = -np.inf
         return(log_hmf)
 
-    def get_ndf_sample(self, z, num=100, quantity_range=None):
+    def get_ndf_sample(self, z, num=100, quantity_range=None, hmf_z=None, 
+                       **kwargs):
         '''
         Get a sample of ndf curves (as a list) with parameters randomly drawn
         from the distribution.
@@ -601,7 +707,13 @@ class ModelResult():
         num : int, optional
             Number of sample ndfs calculated. The default is 100.
         quantity_range : list, optional
-            Range over which values are supposed to be calculated..
+            Range over which values are supposed to be calculated.
+        hmf_z : int, optional
+            If hmf_z is given, use that reshift for calculating the values of
+            the halo mass function. Useful for disentangeling baryonic physics
+            and HMF evolution. The default is None.
+        kwargs:
+            Extra arguments passed to draw_parameter_sample.
 
         Returns
         -------
@@ -609,16 +721,18 @@ class ModelResult():
             List of calculated number density functions.
 
         '''
-        parameter_sample = self.draw_parameter_sample(z, num=num)
+        parameter_sample = self.draw_parameter_sample(z, num=num, **kwargs)
         ndf_sample = []
         for n in range(num):
             ndf = self.calculate_ndf(z, parameter_sample[n],
-                                     quantity_range=quantity_range)
+                                     quantity_range=quantity_range,
+                                     hmf_z=hmf_z)
             ndf_sample.append(np.array(ndf).T)
         return(ndf_sample)
     
     def calculate_feedback_regimes(self, z, parameter=None, log_epsilon=-1, 
-                                   output='quantity', num=500):
+                                   output='quantity', median=True, num=500,
+                                   **kwargs):
         '''
         Calculate (log of) quantity values at which feedback regime changes.
         For stellar and AGN feedback: Calculate values where one of the 
@@ -641,7 +755,12 @@ class ModelResult():
         output : str, optional
             Choose if 'quantity' or 'halo_mass' should be 
             returned. The default is 'quantity'.
-
+        median : bool, optional
+            Choose if median of results or complete sample should be returned.
+            the default is True.
+        kwargs:
+            Extra arguments passed to draw_parameter_sample.
+            
         Raises
         ------
         NotImplementedError
@@ -653,7 +772,7 @@ class ModelResult():
         regime_values: array
             Array of regime change values in order
             [log_q(log_m_c), log_q(log_m_sn), log_q(log_m_ bh)] (for stellar
-             + AGN feedback model).
+             + AGN feedback model). Either full samples or median.
 
         '''
         if self.quantity_name not in ['mstar', 'Muv']:
@@ -662,13 +781,14 @@ class ModelResult():
         
         # if no parameter are given, draw sample and calculate median
         if parameter is None:
-            parameter_sample = self.draw_parameter_sample(z, num)
+            parameter_sample = self.draw_parameter_sample(z, num, **kwargs)
             regime_values    = []
             for p in parameter_sample:
                 regime_values.append(self.physics_model.at_z(z).
                                          _calculate_feedback_regimes(
                                             *p, log_epsilon=-1, output=output))
-            regime_values = np.median(regime_values,axis=0)
+            if median:
+                regime_values = np.median(regime_values,axis=0)
         
         # else calculate values for given parameter
         else:
@@ -742,10 +862,16 @@ class ModelResult():
             raise NameError('physics_name not known.')
         
         #choose log_m_c
-        if z<self.quantity_options['feedback_change_z']:
-            log_m_c = self.log_m_c[z]
+        if fixed_m_c:
+            if z<self.quantity_options['feedback_change_z']:
+                log_m_c = self.log_m_c[z]
+            else:
+                log_m_c = self.log_m_c[self.quantity_options
+                                       ['feedback_change_z']-1]
         else:
-            log_m_c = self.log_m_c[self.quantity_options['feedback_change_z']-1]
+            log_m_c = self.log_m_c[0] # not terribly imporant since m_c is free
+                                      # anyway, only used for initial guess and
+                                      # bounds
         
         # add model
         self.physics_model.add_entry(z, physics_model(
@@ -758,7 +884,7 @@ class ModelResult():
     
     def _experimental_log_abundance_with_scatter(
             self, log_quantity, z, parameter, hmf_z,
-            scatter_name, scatter_parameter, **kwargs):  
+            scatter_name, scatter_parameter, skew_parameter, **kwargs):  
         '''
         Experimental implementation of including scatter in the quantity-
         halo mass relation. Should be used with caution.
@@ -779,11 +905,15 @@ class ModelResult():
         scatter_name: str, optional
             Name of distribution that describes scatter in quantity-
             halo mass relation. The default is 'delta', which means no scatter.
-        scatter_value: float, optional
+        scatter_parameter: float, optional
             Value of scatter distribution that describes spread. scale 
             parameter in scipy implementation of location-scale distributions.
             The default is 'none', must be set if scatter model other than 
             'delta' is used.
+        skew_parameter: float, optional
+            Value of scatter distribution that describes skewness.
+            The default is 'none', must be set if scatter model with skewness
+            is used.
         num : int, optional
             Number of samples created for integral evaluation. The default 
             is int(1e+5).
@@ -802,7 +932,7 @@ class ModelResult():
         log_quantity = make_array(log_quantity)    
         
         distribution = Joint_distribution(self, scatter_name,
-                                          scatter_parameter)
+                                          scatter_parameter, skew_parameter)
         phi = distribution.quantity_marginal_density(log_quantity, z,
                                                      parameter, 
                                                      **kwargs)
@@ -888,8 +1018,8 @@ class ModelResult_QLF(ModelResult):
                          name_addon, groups, calibrate, paramter_calc,
                          progress, **kwargs)
 
-    def calculate_log_abundance(self, log_L, z, parameter, hmf_z=None,
-                                num=100):
+    def calculate_log_abundance(self, log_L, z, parameter, num=100,
+                                hmf_z=None):
         '''
         Calculate (log of) value (phi) of modelled number density function by 
         integrating (HMF+feedback)*ERDF over eddington_ratios for a given
@@ -905,7 +1035,10 @@ class ModelResult_QLF(ModelResult):
             Model parameter used for calculation.
         num : int
             Number of points evaluating for integral.
-
+        hmf_z : int, optional
+            If hmf_z is given, use that reshift for calculating the values of
+            the halo mass function. Useful for disentangeling baryonic physics
+            and HMF evolution. The default is None.
         Returns
         -------
         log_phi : float
@@ -913,20 +1046,15 @@ class ModelResult_QLF(ModelResult):
 
         '''
         log_L = make_array(log_L)
-
         # check that parameters are within bounds
-        if not within_bounds(parameter, *self.physics_model.at_z(z).bounds):
+        bounds = update_bounds(self, parameter, z=z)
+        if not within_bounds(parameter, *bounds):
             raise ValueError('Parameter out of bounds.')
         
         # set hmf redshift
-        if hmf_z is not None:
-            raise NotImplementedError('Fixing HMF z is not yet implemented for '
-                                      'Lbol model. To do so: Add it to '
-                                      'calculate_log_abundance, '
-                                      'calculate_log_QLF_contribution, '
-                                      'calculate_phi_contribution, so that '
-                                      'hmf_z is called in calculate_log_hmf.')
-        
+        if hmf_z is None:
+            hmf_z = z
+            
         phi = []
         for L in log_L:
             # estimate relevant Eddington ratios that contribute
@@ -938,7 +1066,8 @@ class ModelResult_QLF(ModelResult):
                 calculate_log_QLF_contribution(eddington_ratio_space,
                                                L,
                                                z,
-                                               parameter)
+                                               parameter,
+                                               hmf_z=hmf_z)
             # integrate over the contributions and append to list
             phi.append(trapezoid(np.power(10, log_qlf_contribution),
                        eddington_ratio_space))
@@ -951,7 +1080,7 @@ class ModelResult_QLF(ModelResult):
         return(log_phi)
 
     def calculate_log_QLF_contribution(self, log_eddington_ratio, log_L, z,
-                                       parameter):
+                                       parameter, hmf_z=None):
         '''
         Calculate contribution to QLF for a given eddington ratio.
 
@@ -965,6 +1094,10 @@ class ModelResult_QLF(ModelResult):
             Redshift at which value is calculated.
         parameter : list 
             Model parameter used for calculation.
+        hmf_z : int, optional
+            If hmf_z is given, use that reshift for calculating the values of
+            the halo mass function. Useful for disentangeling baryonic physics
+            and HMF evolution. The default is None.
 
         Raises
         ------
@@ -978,11 +1111,13 @@ class ModelResult_QLF(ModelResult):
             Contribution for given log_eddington_ratio.
 
         '''
+        if hmf_z is None:
+            hmf_z = z
 
         # calculate contribution from HMF+feedback
         log_phi = self.calculate_phi_contribution(log_eddington_ratio,
                                                    log_L, z,
-                                                   parameter)
+                                                   parameter, hmf_z=hmf_z)
         # calculate contribution from ERDF
         log_erdf = self.calculate_ERDF_contribution(log_eddington_ratio,
                                                     z, parameter)
@@ -998,7 +1133,7 @@ class ModelResult_QLF(ModelResult):
     
     def calculate_quantity_distribution(self, log_halo_mass, z, 
                                         log_eddington_ratio=None, 
-                                        num=int(2e+3)):
+                                        num=int(2e+3), **kwargs):
         '''
         At a given redshift, calculate distribution of observable quantity
         (lbol) for a given halo mass by drawing parameter sample and
@@ -1020,6 +1155,8 @@ class ModelResult_QLF(ModelResult):
             randomly from ERDF.
         num : int, optional
             Number of samples drawn. The default is int(1e+5).
+        kwargs:
+            Extra arguments passed to draw_parameter_sample.
 
         Returns
         -------
@@ -1034,7 +1171,7 @@ class ModelResult_QLF(ModelResult):
         # if model has varying Edd distribution: draw one Edd ratio from each
         # distribution per parameter
         
-        parameter_sample = self.draw_parameter_sample(z, num=num)
+        parameter_sample = self.draw_parameter_sample(z, num=num, **kwargs)
         if log_eddington_ratio is not None:
             log_edd_ratio = np.repeat(log_eddington_ratio, num)
             parameter     = parameter_sample[:,:2] # for calculate_log_quantity
@@ -1066,7 +1203,7 @@ class ModelResult_QLF(ModelResult):
     
     def calculate_halo_mass_distribution(self, log_L, z,
                                          log_eddington_ratio=None, 
-                                         num=int(2e+3)):
+                                         num=int(2e+3), **kwargs):
         '''
         At a given redshift, calculate distribution of halo mass for a given
         observable quantity (lbol) by drawing parameter sample and
@@ -1087,7 +1224,9 @@ class ModelResult_QLF(ModelResult):
             randomly from ERDF.
         num : int, optional
             Number of samples drawn. The default is int(1e+5).
-
+        kwargs:
+            Extra arguments passed to draw_parameter_sample.
+            
         Returns
         -------
         log_halo_mass_dist : array
@@ -1099,7 +1238,7 @@ class ModelResult_QLF(ModelResult):
         # if model has fixed Edd distribution: draw from that one
         # if model has varying Edd distribution: draw one Edd ratio from each
         # distribution per parameter
-        parameter_sample = self.draw_parameter_sample(z, num=num)
+        parameter_sample = self.draw_parameter_sample(z, num=num, **kwargs)
         if log_eddington_ratio is not None:
             log_edd_ratio = np.repeat(log_eddington_ratio, num)
             parameter     = parameter_sample[:,:2] # for calculate_log_quantity
@@ -1130,7 +1269,7 @@ class ModelResult_QLF(ModelResult):
         return(np.array(log_quantity_dist))
 
     def calculate_phi_contribution(self, log_eddington_ratio, log_L, z,
-                                    parameter):
+                                    parameter, hmf_z=None):
         '''
         Calculate value of (HMF+feedback) function that will contribute to
         QLF.
@@ -1145,6 +1284,10 @@ class ModelResult_QLF(ModelResult):
             Redshift at which value is calculated.
         parameter : list 
             Model parameter used for calculation.
+        hmf_z : int, optional
+            If hmf_z is given, use that reshift for calculating the values of
+            the halo mass function. Useful for disentangeling baryonic physics
+            and HMF evolution. The default is None.
 
         Returns
         -------
@@ -1153,12 +1296,15 @@ class ModelResult_QLF(ModelResult):
             result.)
 
         '''
+        if hmf_z is None:
+            hmf_z = z
+        
         # calculate halo masses from stellar masses using model
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
             log_L, log_eddington_ratio, *parameter[:2])
 
         # calculate value of halo mass function
-        log_hmf = self.calculate_log_hmf(log_m_h, z)
+        log_hmf = self.calculate_log_hmf(log_m_h, hmf_z)
 
         # calculate physics/feedback effect
         ph_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
@@ -1564,7 +1710,7 @@ class ModelResult_QLF(ModelResult):
 
 
 class Redshift_dict():
-    def __init__(self, input_dict):
+    def __init__(self, input_dict, extrapolate=False):
         '''
         Convience Class to easily retrieve data at certain redshift.
 
@@ -1578,9 +1724,12 @@ class Redshift_dict():
         None.
 
         '''
-        self.dict = input_dict
-        self.data = None
+        self.dict           = input_dict
+        self.avail_redshift = list(input_dict.keys())
+        self.data           = None
         self.update_data()
+        
+        self.extrapolate    = extrapolate
 
     def add_entry(self, z, value):
         '''Add new entry at z to dictonary.'''
@@ -1590,12 +1739,17 @@ class Redshift_dict():
             for i in range(len(z)):
                 self.dict[z[i]] = value[i]
         self.update_data()
+        self.avail_redshift = list(self.dict.keys())
         return
 
     def at_z(self, z):
         ''' Retrieve data at z.'''
-        if z not in list(self.dict.keys()):
-            raise NameError('Redshift not in data.')
+        if z not in self.avail_redshift:
+            if (z>np.amax(self.avail_redshift)) and self.extrapolate:
+                return(self.dict[np.amax(self.avail_redshift)])
+            else:
+                raise NameError('Redshift not in data and cannot be '
+                                'extrapolated.')
         else:
             return(self.dict[z])
 

@@ -7,7 +7,7 @@ Created on Tue Apr 12 14:11:04 2022
 """
 import numpy as np
 
-from model.helper import calculate_percentiles, make_list
+from model.helper import calculate_percentiles, make_list, make_array
 
 ################ MAIN FUNCTIONS ###############################################
 def calculate_expected_black_hole_mass_from_ERDF(ModelResult, lum, z,
@@ -117,7 +117,7 @@ def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 500,
         raise ValueError('Redshift must be scalar quantity.')
 
     sigma     = make_list(sigma)
-    log_q1    = make_list(log_q1)
+    log_q1    = make_array(log_q1)
     
     # calculate halo mass distribution for input quantity q1
     log_mh_dist = q1_model.calculate_halo_mass_distribution(
@@ -139,7 +139,8 @@ def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 500,
     return(log_q1_q2_rel)
 
 def calculate_ndf_percentiles(ModelResult, z, num = 5000,
-                              sigma=1, quantity_range = None):
+                              sigma=1, quantity_range = None, hmf_z=None,
+                              **kwargs):
     '''
     Calculates the distribution of number densities over a quantity range by
     drawing ndf samples from distribution and calculating their percentiles. 
@@ -148,7 +149,8 @@ def calculate_ndf_percentiles(ModelResult, z, num = 5000,
     infos; multiple values can be chosen. Returns dictonary of form 
     (sigma:array) if sigma is an array, where the array contains input 
     quantity 1 value, median quantity 2 value and lower and upper percentile 
-    for every q2 value.
+    for every q2 value. hmf_z chooses z of HMF independently of main z.
+    Extra kwargs can be passed to get_ndf_sample.
     '''  
     if not np.isscalar(z):
         raise ValueError('Redshift must be scalar quantity.')
@@ -157,7 +159,8 @@ def calculate_ndf_percentiles(ModelResult, z, num = 5000,
     
     # calculate halo mass distribution for input quantity q1
     ndf_sample   = ModelResult.get_ndf_sample(z, num=num,
-                                              quantity_range=quantity_range)
+                                              quantity_range=quantity_range,
+                                              hmf_z=hmf_z, **kwargs)
     log_quantity = ndf_sample[0][:,0]
     
     # get list of all number density for every quantity value

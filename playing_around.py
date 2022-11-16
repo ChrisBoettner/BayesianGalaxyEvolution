@@ -79,9 +79,12 @@ from model.plotting.plotting import *
 
 #%%
 # mstar = save_model('mstar', 'stellar_blackhole', fixed_m_c=False)
-# muv = save_model('Muv', 'stellar_blackhole', fixed_m_c=False)
-# mbh = save_model('mbh', 'quasar')
-# lbol = save_model('Lbol', 'eddington', num_walker=10)
+# muv   = save_model('Muv', 'stellar_blackhole', fixed_m_c=False)
+# mbh   = save_model('mbh', 'quasar')
+# lbol  = save_model('Lbol', 'eddington')
+
+# from make_plots import make_all_plots
+# make_all_plots()
 
 # print('make plots, see if stuff still works, especially for bhs')
 
@@ -92,23 +95,50 @@ from model.plotting.plotting import *
 # Plot_qhmr(mstar, redshift=[4,5,6,7,8], sigma=2, columns='single',
 #           only_data=True, m_halo_range=np.linspace(10, 13.43, 1000))
 
-# https://academic.oup.com/mnras/article/357/1/82/1039256
-
 mstar = load_model('mstar', 'stellar_blackhole')
-muv  = load_model('Muv', 'stellar_blackhole')
-mbh  = load_model('mbh', 'quasar')
-# lbol = load_model('Lbol', 'eddington')
+muv   = load_model('Muv', 'stellar_blackhole')
+mbh   = load_model('mbh', 'quasar')
+lbol  = load_model('Lbol', 'eddington')
 
 #%%
 # vals where agn becomes important, put in table
-for z in mstar.redshift:
-    par  = mstar.draw_parameter_sample(z, 1000)
-    q_c = []
-    phi_c = []
-    for p in par:
-        q = mstar.physics_model.at_z(z).calculate_log_quantity(p[0], *p)
-        q_c.append(q)
-        phi_c.append(mstar.calculate_log_abundance(q, z, p))
-    q_median = np.median(q_c)
-    phi_median = np.median(phi_c)  
-    print(q_median, phi_median)
+
+# model = mstar
+
+# for z in model.redshift:
+#     if z<model.quantity_options['feedback_change_z']:
+#         z_i = z
+#         par  = model.draw_parameter_sample(z_i, 1000)
+#     else:
+#         z_i = model.quantity_options['feedback_change_z']-1
+#         par = model.draw_parameter_sample(z, 1000)
+#         # par[:,0] = model.parameter.at_z(z_i)[0]  
+#         # par[:,-1] = model.parameter.at_z(z_i)[-1] 
+#     q_c = []
+#     phi_c = []
+#     for p in par:
+#         q = model.calculate_feedback_regimes(z, log_epsilon=-1, 
+#                                              parameter=p)[-1]
+#         q_c.append(q)
+#         phi_c.append(model.calculate_log_abundance(q, z, p, hmf_z=z))
+#     q_median = np.nanmedian(q_c)
+#     phi_median = np.nanmedian(phi_c)  
+#     print(q_median, phi_median)
+
+# print('changed feedback_z for mstar and muv')
+# print('https://academic.oup.com/mnras/article/357/1/82/1039256')
+
+#%%
+# from model.analysis.calculations import calculate_expected_black_hole_mass_from_ERDF
+
+# for z in range(8):
+#     mbh_dict = calculate_expected_black_hole_mass_from_ERDF(lbol, np.linspace(43,52,100),
+#                                                             z, sigma=1)
+#     plt.plot(mbh_dict[1][:,0],mbh_dict[1][:,1], label=str(z), linewidth=5)
+
+#%%
+print('have to change to log space for this to work')
+print('change how quantity range is done for Muv in makeplots')
+print('change marker for JWST data and add labels')
+Plot_ndf_predictions(muv, upper_redshift=17, quantity_range= np.linspace(-23.71, -17.84, 100),
+                     y_lim=[-6.95,0])

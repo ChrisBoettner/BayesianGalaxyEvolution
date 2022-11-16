@@ -6,7 +6,7 @@ Created on Wed Nov  2 16:16:39 2022
 @author: chris
 """
 import numpy as np
-from scipy.stats import norm, cauchy
+from scipy.stats import norm, cauchy, skewnorm
 from scipy.integrate import trapezoid
 
 import warnings
@@ -79,7 +79,8 @@ def calculate_q1_q2_conditional_pdf(Jointdist1, Jointdist2,
 
 
 class Joint_distribution():
-    def __init__(self, model, scatter_name, scatter_parameter=None):
+    def __init__(self, model, scatter_name, scatter_parameter=None, 
+                 skew_parameter=None):
         '''
         Class to calculate quantities related to scatter in the quantity 
         - halo mass relation. Distributions are specified through location and 
@@ -109,14 +110,20 @@ class Joint_distribution():
         scatter_parameter: float, optional
             Value for the scale parameter of the scatter model. The default
             value is None, but then must be specified for every method call.
+        skew_parameter: float, optional
+            Value for the skew parameter of the scatter model, if skew is
+            included. The default value is None, but then must be specified 
+            for every method call if scatter_model requires that parameter.
                 
         '''
         self.model             = model
         self.scatter_name      = scatter_name
         self.scatter_parameter = scatter_parameter
+        self.skew_parameter    = skew_parameter
     
     def joint_number_density(self, log_quantity, log_halo_mass, z, 
-                        parameter,  scatter_parameter=None):
+                        parameter,  scatter_parameter=None,
+                        skew_parameter=None):
         '''
         Calculate value of joint number density function for given log_quantity
         and log_halo_mass value. z and parameter needed for quantity - halo 
@@ -124,23 +131,29 @@ class Joint_distribution():
         '''
         if scatter_parameter is None:
             scatter_parameter=self.scatter_parameter
+        if skew_parameter is None:
+            skew_parameter=self.skew_parameter
             
         # calculate value of distribution
         scatter =  self.quantity_conditional_density(log_quantity,  
                                                      log_halo_mass,
                                                      z, parameter,
-                                                     scatter_parameter)
+                                                     scatter_parameter,
+                                                     skew_parameter)
         hmf     = self.halo_mass_marginal_density(log_halo_mass, z)
         return(scatter*hmf)
     
     def quantity_marginal_density(self, log_quantity, z, parameter,
-                                            scatter_parameter=None, **kwargs):
+                                  scatter_parameter=None, 
+                                  skew_parameter=None, **kwargs):
         '''
         Calculate value of marginal quantity ndf by integrating over all
         m_h space. kwargs are passed to make_log_m_h_space.
         '''
         if scatter_parameter is None:
             scatter_parameter=self.scatter_parameter
+        if skew_parameter is None:
+            skew_parameter=self.skew_parameter
         
         # create points sampled in m_h_space
         log_m_h_space = self.make_log_m_h_space(log_quantity, z, parameter,
@@ -149,21 +162,28 @@ class Joint_distribution():
         number_densities = self.joint_number_density(log_quantity, 
                                                      log_m_h_space,
                                                      z, parameter,
-                                                     scatter_parameter)
+                                                     scatter_parameter,
+                                                     skew_parameter)
         # integrate over sample
         marginal_density = trapezoid(y=number_densities, x=log_m_h_space,
                                      axis=0)
         return(marginal_density)
     
     def quantity_conditional_density(self, log_quantity, log_halo_mass, z, 
-                                     parameter, scatter_parameter=None):
+                                     parameter, scatter_parameter=None,
+                                     skew_parameter=None, 
+                                     skew_correction='median'):
         '''
         Calculate value of conditional density p(q|m_h).
+        Use skew_correction for skewlognormal distribution to make log_Q
+        desired central quantity.
         '''
         log_quantity = self.model.unit_conversion(log_quantity, 'mag_to_lum')
         
         if scatter_parameter is None:
             scatter_parameter=self.scatter_parameter
+        if skew_parameter is None:
+            skew_parameter=self.skew_parameter
         
         # calculate location parameter for distribution for the input halo
         # masses
@@ -173,6 +193,18 @@ class Joint_distribution():
             pdf_values =  norm.pdf(x     = log_quantity,
                                    loc   = log_Q,
                                    scale = scatter_parameter)
+        elif self.scatter_name == 'skewlognormal':
+            if skew_parameter is None:
+                raise ValueError('skew_parameter must be specified for '
+                                 'skewlognormal model.')
+            # correction factor to create the desired central value
+            correction_factor = self._skewlognormal_correction_factor(
+                                        scatter_parameter, skew_parameter,
+                                        skew_correction)
+            pdf_values =  skewnorm.pdf(x     = log_quantity,
+                                       a     = skew_parameter,
+                                       loc   = log_Q + correction_factor,
+                                       scale = scatter_parameter)
         elif self.scatter_name == 'normal':
             # linear space
             pdf_values =  norm.pdf(x     = 10**log_quantity,
@@ -197,18 +229,26 @@ class Joint_distribution():
     
     def halo_mass_conditional_density(self, log_halo_mass, log_quantity, z, 
                                      parameter, scatter_parameter=None,
+                                     skew_parameter=None,
                                      **kwargs):
         '''
         Calculate value of conditional density p(m_h|q) using Bayes' theorem.
         **kwargs are passed to quantity_marginal_density.
         '''
+        if scatter_parameter is None:
+            scatter_parameter=self.scatter_parameter
+        if skew_parameter is None:
+            skew_parameter=self.skew_parameter
+        
         joint_dens         = self.joint_number_density(self, log_quantity, 
                                                        log_halo_mass, z, 
                                                        parameter, 
-                                                       scatter_parameter)
+                                                       scatter_parameter,
+                                                       skew_parameter)
         quantity_marg_dens = self.quantity_marginal_density(log_quantity, 
                                                             z, parameter,
                                                             scatter_parameter,
+                                                            skew_parameter,
                                                             **kwargs)
         halo_cond_dens     = joint_dens/quantity_marg_dens
         return(halo_cond_dens)
@@ -234,7 +274,7 @@ class Joint_distribution():
         return(log_m_h)
         
     
-    def make_log_m_h_space(self, log_quantity, z, parameter, num=int(1e+2),
+    def make_log_m_h_space(self, log_quantity, z, parameter, num=int(1e+3),
                            epsilon=1e-8):
         '''
         Create samples in log_m_h space in order to calculate quantity 
@@ -290,3 +330,46 @@ class Joint_distribution():
         if log_m_h_space.ndim == 1:
             log_m_h_space = log_m_h_space[:, np.newaxis]
         return(log_m_h_space)
+    
+    def _skewlognormal_correction_factor(self, scatter_parameter=None, 
+                                        skew_parameter=None, 
+                                        statistic='median'):
+        '''
+        Correction factor for skewnormal distribution, since scale parameter
+        does not coincide with either mean, median or mode of distribution.
+        Choose one of the three statistics using statistic argument and 
+        add to loc parameter to create distribution with desired central value.
+        The default is median.
+        '''
+        
+        if scatter_parameter is None:
+            scatter_parameter=self.scatter_parameter
+        if skew_parameter is None:
+            skew_parameter=self.skew_parameter
+        
+        skewnormal_dist = skewnorm(a=skew_parameter, scale=scatter_parameter)
+        
+        if statistic == 'mean':
+            correction_factor = -skewnormal_dist.mean()
+        elif statistic == 'median':
+            correction_factor = -skewnormal_dist.median()
+        elif statistic == 'mode':
+            warnings.warn('statistic=mode not properly tested.')
+            # approximation taken from Wikipedia  
+            delta   = scatter_parameter/np.sqrt(1+scatter_parameter**2)
+            mu_z    = np.sqrt(2/np.pi)*delta
+            sigma_z = np.sqrt(1-mu_z**2)
+            gamma_1 = (4-np.pi)/2 * (mu_z**3/np.power(1-mu_z**2, 1.5)) 
+            term_2  = gamma_1*sigma_z/2
+            term_3  = (np.sign(skew_parameter)/2
+                       * np.exp(2*np.pi/np.abs(skew_parameter)))                   
+            correction_factor = skew_parameter*(mu_z - term_2 - term_3)
+        else:
+            raise NotImplementedError('statistic must be either mean, median '
+                                      ' or mode')
+        return(correction_factor)
+    
+    
+    
+    
+    

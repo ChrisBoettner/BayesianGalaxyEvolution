@@ -22,8 +22,7 @@ def get_quantity_specifics(quantity_name):
         cutoff                  : Lowest allowed value for phi in ndf.
         log_m_c                 : Value for critical mass 
                                   (obtained from fitting at z=0).
-        feedback_change_z       : Redshift at which feedback changes from
-                                  stellar+blackhole to stellar.
+        feedback_change_z       : Redshift at which feedback model changes.
 
         model_param_num         : (Maximum) number of model parameter.
         model_p0                : Initial conditions for fitting the model.
@@ -31,7 +30,9 @@ def get_quantity_specifics(quantity_name):
         fitting_space           : Choose if quantity is fit in 'linear' or 
                                   'log' space.
         relative_weights        : Choose if relative or absolute uncertainties
-                                  are used as weights (True/False).          
+                                  are used as weights (True/False).     
+        extrapolation_z         : Range of redshifts used for extrapolation to
+                                  higher redshift.
 
         reference_function_name : Name of reference function used.
         reference_function      : Callable reference function adapted to 
@@ -72,8 +73,8 @@ def get_quantity_specifics(quantity_name):
         options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
         options['cutoff'] = -9
-        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41, 3: 12.94}
-        options['feedback_change_z'] = 4
+        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41}
+        options['feedback_change_z'] = 3
         # MODEL
         options['model_param_num'] = 3
         options['model_p0'] = np.array([-2, 1, 0.5])
@@ -82,6 +83,7 @@ def get_quantity_specifics(quantity_name):
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
+        options['extrapolation_z'] = np.array([5,6,7,8,9,10])
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function
@@ -113,8 +115,8 @@ def get_quantity_specifics(quantity_name):
         options['physics_models'] = ['none', 'stellar',
                                      'stellar_blackhole', 'changing']
         options['cutoff'] = -9
-        options['log_m_c'] = {0: 11.73,1: 11.51, 2: 11.4, 3: 11.47}
-        options['feedback_change_z'] = 4
+        options['log_m_c'] = {0: 11.73,1: 11.51, 2: 11.4, 3: 11.47, 4: 11.15}
+        options['feedback_change_z'] = 5
         # MODEL
         options['model_param_num'] = 3
         options['model_p0'] = np.array([18, 1, 0.5])
@@ -123,6 +125,7 @@ def get_quantity_specifics(quantity_name):
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
+        options['extrapolation_z'] = np.array([5,6,7,8,9,10])
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function_mag
@@ -133,7 +136,7 @@ def get_quantity_specifics(quantity_name):
         options['quantity_range'] = np.linspace(-22.21, -14.46, 100)
         options['subplot_grid'] = (4, 3)
         options['ndf_xlabel'] = r'$\mathcal{M}_\mathrm{UV}$'
-        options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ mag$^{-1}$]'
+        options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-6, 3]
         options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
@@ -152,8 +155,8 @@ def get_quantity_specifics(quantity_name):
         options['ndf_name'] = 'BHMF'
         options['physics_models'] = ['none', 'quasar']
         options['cutoff'] = -13
-        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41, 3: 12.94}
-        options['feedback_change_z'] = 4
+        options['log_m_c'] = {0: 12.1, 1: 12.25, 2: 12.41}
+        options['feedback_change_z'] = 3
         # MODE
         options['model_param_num'] = 2
         options['model_p0'] = np.array([5, 1])
@@ -164,6 +167,7 @@ def get_quantity_specifics(quantity_name):
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = False
+        options['extrapolation_z'] = np.array([1,2,3,4,5])
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
@@ -197,8 +201,8 @@ def get_quantity_specifics(quantity_name):
                                      'eddington_free_ERDF',
                                      'eddington_changing']
         options['cutoff'] = -12
-        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41, 3: 12.94}
-        options['feedback_change_z'] = 4
+        options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41}
+        options['feedback_change_z'] = 3
         # MODE
         options['model_param_num'] = 4
         options['model_p0'] = np.array([39,   5, -2, 1.9])
@@ -207,6 +211,7 @@ def get_quantity_specifics(quantity_name):
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = False
+        options['extrapolation_z'] = np.array([2,3,4,5,6,7])
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
@@ -238,15 +243,18 @@ def get_quantity_specifics(quantity_name):
     return(options)
 
 
-def update_bounds(model, parameter):
+def update_bounds(model, parameter, z=None):
     '''
     Calculate and update bounds for parameter where bounds depend on each other.
     (For lbol model.)
     ''' 
-    bounds = np.copy(model.physics_model.at_z(model._z).bounds).astype(float)
+    if z is None:
+        z = model._z
+    
+    bounds = np.copy(model.physics_model.at_z(z).bounds).astype(float)
     # for lbol model, the parameter rho (slope of ERDF) must be larger
     # than the 1+(slope of the HMF/eta) to converge.
-    if model.physics_model.at_z(model._z).name == 'eddington_free_ERDF':
+    if model.physics_model.at_z(z).name == 'eddington_free_ERDF':
         eta = parameter[1]
         rho_bound = 1 + model.hmf_slope/eta
         bounds[0, 3] = rho_bound
