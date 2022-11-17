@@ -1514,8 +1514,8 @@ class Plot_quantity_density_evolution(Plot):
         super().__init__(ModelResults, **kwargs)
         self.default_filename = (self.quantity_name + '_density_evolution')
 
-    def _plot(self, ModelResult, redshift=None, num=500, 
-              additional_color='#a7cc79', sigma=1):
+    def _plot(self, ModelResult, redshift=None, num_samples=1000, 
+              num_integral_points=100, additional_color='#a7cc79'):
         
         if redshift is None:
             redshift = np.arange(ModelResult.redshift[0],
@@ -1523,18 +1523,12 @@ class Plot_quantity_density_evolution(Plot):
                                  ['extrapolation_end']+1)
         # make list if input is scalar
         redshift = make_list(redshift)
-        if not np.isscalar(sigma):
-            raise ValueError('sigma must be scalar.')
 
         # calculate quantity densities
         densities = calculate_quantity_density(ModelResult, redshift, 
-                                               num = num, sigma=sigma)[sigma]
-        # convert UV luminosities to star formation rate
-        if ModelResult.quantity_name == 'Muv':
-            densities[:,1:] = log_L_uv_to_log_sfr(densities[:,1:])
-        # switch percentiles to error bars for plot
-        densities[:,2] = densities[:,1] - densities[:,2]
-        densities[:,3] = densities[:,3] - densities[:,1]
+                                    sigma=1, return_samples=True,
+                                    num_samples=num_samples, 
+                                    num_integral_points=num_integral_points)
 
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
@@ -1547,24 +1541,35 @@ class Plot_quantity_density_evolution(Plot):
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel, labelpad=20)
         
-        # distinguish between observations and predictions
-        ind    = np.argmin(densities[:,0]<=np.amax(ModelResult.redshift))
-        ind    = ModelResult.redshift[-1]+1 if ind==0 else ind
-        obs    = densities[:ind]
-        pred   = densities[ind:]
-        colors = [self.color, additional_color] 
+        # create custom color maps
+        washed_out_color_obs = blend_color(self.color, 0.2)
+        cm_obs = LinearSegmentedColormap.from_list("Custom", 
+                                        [washed_out_color_obs, self.color],
+                                        N=num_samples)
+        washed_out_color_pred = blend_color(additional_color, 0.2)
+        cm_pred = LinearSegmentedColormap.from_list("Custom", 
+                                               [washed_out_color_pred, 
+                                                additional_color],
+                                               N=num_samples)
         
         # plot quantity densities
-        for i, data in enumerate([obs, pred]):
-            ax.errorbar(data[:,0], data[:,1], data[:,2:].T,
-                             capsize=mpl.rcParams['lines.markersize']/1.5, 
-                             fmt='o', 
-                             markersize = mpl.rcParams['lines.markersize']/1.5,
-                             elinewidth = mpl.rcParams['lines.markersize']/2,
-                             color=colors[i],
-                             alpha=1)
+        for z in redshift:
+            sample          = densities[z]            
+            sample, color = sort_by_density(sample)
+            # create xvalues and add scatter for easier visibility
+            x = (np.repeat(z, num_samples) 
+                  + np.random.normal(scale=0.06, size=num_samples))
+            
+            cm = cm_obs if z in ModelResult.redshift else cm_pred
+            ax.scatter(x, sample, c=color, s=0.1, cmap=cm)
+            
         # add y ticks
         ax.yaxis.set_major_locator(MaxNLocator(5))
+        # set y lim by calculating percentiles of all available samples
+        y_lims = np.percentile(np.array([densities[z] 
+                                         for z in redshift]).flatten(),
+                               [0.05,99.5])
+        ax.set_ylim(*y_lims)
         # add x tick for every redshift
         ax.set_xticks(redshift)
         xticklabels = list(redshift[::2])
@@ -1580,17 +1585,15 @@ class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
         super().__init__(mstar, muv, **kwargs)
         self.default_filename = (self.quantity_name + '_SMD_evolution')
 
-    def _plot(self, mstar, muv, num=500, sigma=2, linewidth=5, alpha=1,
-              median=False):
-
-        if not np.isscalar(sigma):
-            raise ValueError('sigma must be scalar.')
-        
+    def _plot(self, mstar, muv, num_samples=1000, num_integral_points=100,
+              legend=True):
         # calculate stellar mass densities
         smd_dict, inferred_smd_dict = calculate_stellar_mass_density(mstar,
-                                                            muv, sigma=sigma,
-                                                            num=num)
-        redshift = (smd_dict[sigma][:,0]).astype(int)
+                                       muv, sigma=1, return_samples=True,
+                                       num_samples=num_samples, 
+                                       num_integral_points=num_integral_points)
+        
+        redshift = list(smd_dict.keys())
         
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
@@ -1603,25 +1606,47 @@ class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel, labelpad=20)
         
-        # plot quantity densities
-        plot_data_with_confidence_intervals(ax, smd_dict, 'grey',
-                                            median=median,
-                                            linewidth=linewidth,
-                                            alpha=alpha)
-        plot_data_with_confidence_intervals(ax, inferred_smd_dict, self.color,
-                                            median=median,
-                                            linewidth=linewidth,
-                                            alpha=alpha*0.75)
+        # create custom color map
+        washed_out_color = blend_color(self.color, 0.2)
+        cm = LinearSegmentedColormap.from_list("Custom", 
+                                               [washed_out_color,self.color],
+                                               N=num_samples)
+        # plot stellar mass densities
+        for z in redshift:
+            smd_sample          = smd_dict[z]
+            inferred_smd_sample = inferred_smd_dict[z]
+            
+            smd_sample, smd_color = sort_by_density(smd_sample)
+            inferred_smd_sample, inferred_smd_color = sort_by_density(
+                                                        inferred_smd_sample)
+            # create xvalues and add scatter for easier visibility
+            x1 = (np.repeat(z, num_samples) 
+                  + np.random.normal(scale=0.06, size=num_samples))
+            x2 = (np.repeat(z, num_samples) 
+                  + np.random.normal(scale=0.02, size=num_samples))
+
+            ax.scatter(x1[:-1], smd_sample[:-1], c=smd_color[:-1], s=0.1, 
+                       cmap='Greys')
+            ax.scatter(x2[:-1], inferred_smd_sample[:-1], 
+                       c=inferred_smd_color[:-1], s=0.1, cmap=cm)
+            # last points drawn seperately just to get the colors for the 
+            # legend right
+            ax.scatter(x1[-1], smd_sample[-1], c='black', s=0.1, 
+                       label='obtained from GSMF')
+            ax.scatter(x2[-1], inferred_smd_sample[-1], c=self.color, s=0.1,
+                       label='integrated SFR')
     
         # add y ticks
         ax.yaxis.set_major_locator(MaxNLocator(5))
+        # set y lim by calculating percentiles of all available samples
+        y_lims = np.percentile(np.array([inferred_smd_dict[z] 
+                                         for z in redshift]).flatten(),
+                               [0.05,99.5])
+        ax.set_ylim(*y_lims)
         # add x tick for every redshift
         ax.set_xticks(redshift)
-        xticklabels = list(redshift[::2])
-        for i in range(1,len(xticklabels)+1):
-            xticklabels.insert(2*i-1,'')
-        ax.set_xticklabels(xticklabels[:len(redshift)])
+        ax.set_xticklabels(redshift)
         
-        # add lims
-        ax.set_xlim([redshift[0],redshift[-1]])
+        if legend:
+            add_legend(ax, 0, markersize=128, fontsize=32, loc='lower left')
         return(fig, ax)

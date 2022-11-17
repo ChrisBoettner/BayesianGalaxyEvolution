@@ -246,7 +246,7 @@ def calculate_quantity_density(ModelResult, redshift, num_samples=500,
     
     # return complete samples
     if return_samples:
-        quantity_dict = {}, {}
+        quantity_dict = {}
         for i, z in enumerate(redshift):
             quantity_dict[z] = np.log10(quantity_density[:,i])
         return(quantity_dict)

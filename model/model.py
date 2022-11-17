@@ -1564,10 +1564,10 @@ class ModelResult_QLF(ModelResult):
         upper_L_limit    = self.physics_model.at_z(z).calculate_log_quantity(
                             self.log_max_halo_mass, eddington_ratio,
                             *parameter[:2])[0]
-        log_q_space   = np.linspace(lower_L_limit,
-                                    upper_L_limit,
+        log_q_space   = np.linspace(35,
+                                    55,
                                     num=num)
-        
+
         # calculate ndf values and convert back
         log_phi     = self.calculate_log_abundance(log_q_space, z, 
                                                    parameter, **kwargs)

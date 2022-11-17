@@ -387,10 +387,10 @@ def plot_feedback_regimes(axes, ModelResult, color, redshift=None,
 ################ LEGEND #######################################################
 
 
-def add_legend(axes, ind, sort=False, **kwargs):
+def add_legend(axes, ind, sort=False, markersize=None, **kwargs):
     '''
     Add legend at axis given by ind. If sort is true, sort labels before
-    displaying legend.
+    displaying legend. Size of marker can be adjusted using markersize.
     '''
     axes = make_array(axes)
 
@@ -398,10 +398,14 @@ def add_legend(axes, ind, sort=False, **kwargs):
     if sort:
         labels = dict(sorted(labels.items()))
 
-    axes[ind].legend(list(labels.values()),
-                     list(labels.keys()),
-                     frameon=False,
-                      **kwargs)
+    legend = axes[ind].legend(list(labels.values()),
+                              list(labels.keys()),
+                              frameon=False,
+                              **kwargs)
+    
+    if markersize:
+        for handle in legend.legendHandles:
+            handle._sizes = [markersize]
     return
 
 

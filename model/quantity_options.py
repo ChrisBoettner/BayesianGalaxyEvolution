@@ -240,7 +240,7 @@ def get_quantity_specifics(quantity_name):
                                      r'$\theta$',
                                      r'$ \log \lambda_\mathrm{c}$',
                                      r'$\rho$']
-        options['density_ylabel'] = r'log $\rho_{L_\mathrm{bol}}$ [erg s$^{-1}$ cMpc$^{-3}$]'
+        options['density_ylabel'] = r'log $\rho_{L_\mathrm{bol}}$  [erg s$^{-1}$ cMpc$^{-3}$]'
         options['ndf_legend_pos'] = 3
         options['marker_alpha'] = 0.1
         options['legend_columns'] = 1
