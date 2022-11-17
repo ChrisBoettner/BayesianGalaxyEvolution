@@ -32,9 +32,8 @@ def save_plots(quantity, show = False, file_format='pdf'):
         if quantity == 'mstar':
             quantity_range = np.linspace(6.1,10.13,100)
         else:
-            quantity_range = None
-        Plot_ndf_predictions(model, upper_redshift=16, 
-                             quantity_range=quantity_range,
+            quantity_range = np.linspace(-24.41, -18.01, 100)
+        Plot_ndf_predictions(model, quantity_range=quantity_range,
                              y_lim=[-6.95,0]).save(file_format)
         
         if quantity == 'mstar':
@@ -68,8 +67,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
         
         Plot_ndf_intervals(model, sigma=[1,2,3]).save(file_format)
         Plot_parameter_sample(model, columns='single').save(file_format)
-        Plot_ndf_predictions(model, upper_redshift=8,
-                             y_lim=[-14.9,0]).save(file_format)
+        Plot_ndf_predictions(model, y_lim=[-14.9,0]).save(file_format)
         del model
         
     elif quantity == 'Lbol':
@@ -77,8 +75,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
         
         Plot_ndf_intervals(model, sigma=[1,2,3], num=1000).save(file_format)
         Plot_parameter_sample(model, columns='single').save(file_format)
-        Plot_ndf_predictions(model, upper_redshift=10, y_lim=[-14.9,0],
-                             num=1000).save(file_format)
+        Plot_ndf_predictions(model, y_lim=[-14.9,0], num=1000).save(file_format)
         
         # conditional ERDF example
         Plot_conditional_ERDF(model, parameter = [40 ,  2, -2,  2],

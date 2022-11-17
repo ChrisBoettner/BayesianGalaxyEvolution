@@ -33,6 +33,8 @@ def get_quantity_specifics(quantity_name):
                                   are used as weights (True/False).     
         extrapolation_z         : Range of redshifts used for extrapolation to
                                   higher redshift.
+        extrapolation_end       : redshift up to which quantities are 
+                                  extrapolated.
 
         reference_function_name : Name of reference function used.
         reference_function      : Callable reference function adapted to 
@@ -48,6 +50,7 @@ def get_quantity_specifics(quantity_name):
         ndf_ylabel              : Default ylabel for ndf plots.     
         ndf_y_axis_limit        : y-axis limit for ndf plots.
         param_y_labels          : Labels for the model parameter.
+        density_ylabel          : Label for quantity density.
         ndf_legend_pos          : Location of (first) legend in ndf plots.
         marker_alpha            : Transparency for data points. 
         legend_colums           : Default number of columns for legend of groups.
@@ -84,6 +87,7 @@ def get_quantity_specifics(quantity_name):
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
         options['extrapolation_z'] = np.array([5,6,7,8,9,10])
+        options['extrapolation_end'] = 17
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function
@@ -99,6 +103,7 @@ def get_quantity_specifics(quantity_name):
         options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
                                      r'$\delta$']
+        options['density_ylabel'] = r'log $\rho_\star$ [$M_\odot$ cMpc$^{-3}$]'
         options['ndf_legend_pos'] = 8
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 2
@@ -126,6 +131,7 @@ def get_quantity_specifics(quantity_name):
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
         options['extrapolation_z'] = np.array([5,6,7,8,9,10])
+        options['extrapolation_end'] = 17
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function_mag
@@ -141,6 +147,8 @@ def get_quantity_specifics(quantity_name):
         options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
                                      r'$\delta$']
+        options['density_ylabel'] = (r'log $\psi$' +
+                                     r' [$M_\odot$yr$^{-1}$ cMpc$^{-3}$]')
         options['ndf_legend_pos'] = 8
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 3
@@ -168,6 +176,7 @@ def get_quantity_specifics(quantity_name):
         options['relative_weights'] = True
         options['systematic_uncertainties'] = False
         options['extrapolation_z'] = np.array([1,2,3,4,5])
+        options['extrapolation_end'] = 8
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
@@ -183,6 +192,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_y_axis_limit'] = [-15, 3]
         options['param_y_labels'] = [r'$\log B$',
                                      r'$\eta$']
+        options['density_ylabel'] = r'log $\rho_\bullet$ [$M_\odot$ cMpc$^{-3}$]'
         options['ndf_legend_pos'] = 3
         options['marker_alpha'] = 0.4
         options['legend_columns'] = 1
@@ -212,6 +222,7 @@ def get_quantity_specifics(quantity_name):
         options['relative_weights'] = True
         options['systematic_uncertainties'] = False
         options['extrapolation_z'] = np.array([2,3,4,5,6,7])
+        options['extrapolation_end'] = 10
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
@@ -229,6 +240,7 @@ def get_quantity_specifics(quantity_name):
                                      r'$\theta$',
                                      r'$ \log \lambda_\mathrm{c}$',
                                      r'$\rho$']
+        options['density_ylabel'] = r'log $\rho_{L_\mathrm{bol}}$ [erg s$^{-1}$ cMpc$^{-3}$]'
         options['ndf_legend_pos'] = 3
         options['marker_alpha'] = 0.1
         options['legend_columns'] = 1

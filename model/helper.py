@@ -19,6 +19,15 @@ from astropy.cosmology import Planck18, z_at_value
 
 ################ PHYSICS ######################################################
 
+def get_uv_lum_sfr_factor():
+    '''
+    Conversion factor between UV luminosity and star formation rate for
+    Chabrier IMF. 
+    '''
+    return(1.4*1e-28)
+def get_return_fraction():
+    ''' Get return fraction for Chabrier IMF. '''
+    return(0.41)
 
 def lum_to_mag(L_nu):
     '''
@@ -29,8 +38,6 @@ def lum_to_mag(L_nu):
     flux = L_nu / (4 * np.pi * d**2)
     M_uv = -2.5 * np.log10(flux) - 48.6  # definition in AB magnitude system
     return(M_uv)
-
-
 def mag_to_lum(M_uv):
     '''
     Convert Absolute Magnitude to luminosity (ergs s^-1 Hz^-1).
@@ -40,24 +47,49 @@ def mag_to_lum(M_uv):
     log_L = (M_uv + 48.6) / (-2.5) + np.log10(4 * np.pi * d**2)
     return(np.power(10, log_L))
 
+def log_L_uv_to_log_sfr(log_L_uv):
+    '''
+    Convert log luminosity (ergs s^-1 Hz^-1) to log star formation rate.
+    '''
+    log_L_uv = make_array(log_L_uv)
+    k_uv     = get_uv_lum_sfr_factor()
+    return(log_L_uv+np.log10(k_uv))
+def log_sfr_to_log_L_uv(log_sfr):
+    '''
+    Convert log star formation rate to log luminosity (ergs s^-1 Hz^-1).
+    '''
+    log_sfr = make_array(log_sfr)
+    k_uv    = get_uv_lum_sfr_factor()
+    return(log_sfr-np.log10(k_uv))
 
-def z_to_t(z):
+def z_to_t(redshift, mode='lookback_time'):
     '''
-    Convert redshift to lookback time (in Gyr) in Planck18 cosmology.
+    Convert redshift to time (in Gyr) in Planck18 cosmology. You can choose 
+    between lookback time and age.
     '''
-    z = make_list(z)
-    t = np.array([Planck18.lookback_time(k).value for k in z])
+    redshift = make_list(redshift)
+    if mode == 'lookback_time':
+        t = np.array([Planck18.lookback_time(z).value for z in redshift])
+    elif mode == 'age':
+        t = np.array([Planck18.age(z).value for z in redshift])     
+    else:
+        raise NotImplementedError('mode not known.')
     return(t)
-
-
-def t_to_z(t):
+def t_to_z(t, mode='lookback_time'):
     '''
-    Convert lookback time (in Gyr) to redshift in Planck18 cosmology.
+    Convert time (in Gyr) to redshift in Planck18 cosmology. You can choose 
+    between lookback time and age.
     '''
     t = make_list(t)
-    z = np.array(
-        [z_at_value(Planck18.lookback_time, k * u.Gyr).value for k in t])
-    return(z)
+    if mode == 'lookback_time':
+        redshift = np.array([z_at_value(Planck18.lookback_time,
+                                        k * u.Gyr).value for k in t])
+    if mode == 'lookback_time':
+        redshift = np.array([z_at_value(Planck18.age,
+                                        k * u.Gyr).value for k in t])
+    else:
+        raise NotImplementedError('mode not known.')
+    return(redshift)
 
 ################ MATH #########################################################
 

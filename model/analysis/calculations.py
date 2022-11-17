@@ -7,7 +7,9 @@ Created on Tue Apr 12 14:11:04 2022
 """
 import numpy as np
 
-from model.helper import calculate_percentiles, make_list, make_array
+from model.helper import calculate_percentiles, make_list, make_array,\
+                         get_uv_lum_sfr_factor, get_return_fraction, z_to_t
+from scipy.integrate import cumulative_trapezoid
 
 ################ MAIN FUNCTIONS ###############################################
 def calculate_expected_black_hole_mass_from_ERDF(ModelResult, lum, z,
@@ -184,8 +186,7 @@ def calculate_qhmr(ModelResult, z,
     model.helper.calculate_percentiles for more infos). Returns array
     of form (sigma:array) if sigma is an array, where the array contains 
     input halo mass, median quantity and lower and upper  percentile for
-    every halo mass. If sigma is scalar, array is returned directly.
-    If ratio is True, return q/m_h, else return q.
+    every halo mass. If ratio is True, return q/m_h, else return q.
     '''
     if not np.isscalar(z):
         raise ValueError('Redshift must be scalar quantity.')
@@ -212,18 +213,148 @@ def calculate_qhmr(ModelResult, z,
         qhmr[s]              = np.array([log_m_halos, *log_q_percentiles]).T
     return(qhmr)
 
-def calculate_best_fit_ndf(ModelResult, redshifts, quantity_range=None):
+def calculate_quantity_density(ModelResult, redshift, num_samples=500,
+                               num_integral_points=500, sigma=1,
+                               return_samples=False):
+    '''
+    Calculates the quantity density by integrating over ndf at the given 
+    redshift values by drawing a parameter sample at z and integrating over
+    resulting ndfs. You can input different sigma equivalents (see 
+    model.helper.calculate_percentiles for more infos). Returns dictonary
+    of form (sigma:array) if sigma is an array, where the array contains 
+    input redshift, median density and lower and upper percentile for
+    every redshift. The number of samples can be adjusted using num_samples, 
+    while the number of points calculated for the integral can be adjusted 
+    using num_integral_points.
+    If return_samples is True, return dictonaries (z:sample) instead.
+    '''  
+    redshift        = make_array(redshift)
+    sigma           = make_list(sigma)
+    
+    # calculate densities at every redshift for parameter samples
+    quantity_density = [] 
+    for z in redshift:
+        parameter_sample = ModelResult.draw_parameter_sample(z,
+                                                             num=num_samples)
+        quantity_density_at_z = []
+        for p in parameter_sample:
+            quantity_density_at_z.append(ModelResult.
+                                         calculate_quantity_density(z, p,
+                                                    num=num_integral_points))
+        quantity_density.append(np.array(quantity_density_at_z))
+    quantity_density=np.array(quantity_density).T
+    
+    # return complete samples
+    if return_samples:
+        quantity_dict = {}, {}
+        for i, z in enumerate(redshift):
+            quantity_dict[z] = np.log10(quantity_density[:,i])
+        return(quantity_dict)
+    # or return percentiles
+    else:
+        density_percentiles = {}
+        for s in sigma:
+            log_densities = np.log10(calculate_percentiles(quantity_density,
+                                                           sigma_equiv=s))
+            density_percentiles[s]   = np.array([redshift, *log_densities]).T    
+    return(density_percentiles)
+
+def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
+                                   end_redshift=0, num_samples=500,
+                                   num_integral_points=500,
+                                   return_samples=False):
+    '''
+    Calculates the stellar mass density by integrating the SMF. Done in two
+    ways, one calculates the stellar mass density directly from the modelled
+    SMFs, the other approach estimates a star formation rate density from the
+    UV luminosity function which is then integrated. Returns two dictonary
+    of form (sigma:array) if sigma is an array, where the array contains 
+    input redshift, median density and lower and upper percentile for
+    every redshift, first array is for direct method, second array is for
+    UVLF method. Start and stop redshift for integration can be chosen using 
+    start_redshift and end_redshift arguments. The number of samples can
+    be adjusted using num_samples, while the number of points calculated
+    for the integral can be adjusted using num_integral_points.
+    If return_samples is True, return dictonaries (z:sample) instead.
+    '''  
+    if not (mstar.quantity_name=='mstar' and muv.quantity_name=='Muv'):
+        raise ValueError('First entry must be mstar model and second '
+                         'muv model.')
+    sigma           = make_list(sigma)
+    
+    # get conversion factor
+    k_uv = get_uv_lum_sfr_factor()
+    R    = get_return_fraction()
+    
+    redshift = np.arange(end_redshift, start_redshift+1)[::-1]
+    t        = z_to_t(redshift, mode='age') * 1e+9 # age in Gyr
+    
+    ## CALCULATE STELLAR MASS DENSITY FROM SMF
+    # get sample of stellar mass density at every z
+    rho_mstar = []
+    for z in redshift:
+        par_sample = mstar.draw_parameter_sample(z, num=num_samples)
+        rho_mstar_at_z = []
+        for p in par_sample:
+            rho_mstar_at_z.append(mstar.calculate_quantity_density(z, p,
+                                                    num=num_integral_points))
+        rho_mstar.append(rho_mstar_at_z)
+    rho_mstar = np.array(rho_mstar)
+    
+    ## CALCULATE STELLAR MASS DENSITY FROM UVLF
+    # get sample of UV luminosity density at every z
+    rho_muv = []
+    for z in muv.redshift:
+        par_sample = muv.draw_parameter_sample(z, num=num_samples)
+        rho_muv_at_z = []
+        for p in par_sample:
+            rho_muv_at_z.append(muv.calculate_quantity_density(z, p, 
+                                                    num=num_integral_points))
+        rho_muv.append(rho_muv_at_z)
+    # convert to star formation rate density
+    sfr_density = np.array(rho_muv) * k_uv
+    # integrate SFR density to get stellar mass density
+    inferred_rho_mstar = (1-R) * cumulative_trapezoid(sfr_density, t, axis=0)
+    # add integration constant at start_redshift so that values coincide there
+    inferred_rho_mstar = inferred_rho_mstar + rho_mstar[0]
+    inferred_rho_mstar = np.insert(inferred_rho_mstar, 0, rho_mstar[0],
+                                   axis=0)
+    
+    # return complete samples
+    if return_samples:
+        rho_dict, inferred_rho_dict = {}, {}
+        for i, z in enumerate(redshift):
+            rho_dict[z]          = np.log10(rho_mstar[i,:])
+            inferred_rho_dict[z] = np.log10(inferred_rho_mstar[i,:])
+        return(rho_dict, inferred_rho_dict)
+    # or return percentiles
+    else:
+        density_percentiles          = {}
+        inf_density_percentiles      = {}
+        for s in sigma:
+            log_densities      = np.log10(calculate_percentiles(rho_mstar.T,
+                                                                sigma_equiv=s))
+            log_inf_densities  = np.log10(calculate_percentiles(
+                                            inferred_rho_mstar.T, 
+                                            sigma_equiv=s))
+            
+            density_percentiles[s]     = np.array([redshift, 
+                                                   *log_densities]).T[::-1]  
+            inf_density_percentiles[s] = np.array([redshift, 
+                                                   *log_inf_densities]).T[::-1] 
+        return(density_percentiles, inf_density_percentiles)
+
+def calculate_best_fit_ndf(ModelResult, redshift, quantity_range=None):
     '''
     Calculate best fit number density function by passing calculated best fit
     parameter to calculate_ndf method. Returns array of form {redshift:ndf}
     '''
 
-    redshifts = make_list(redshifts)
+    redshift = make_list(redshift)
     best_fit_ndfs = {}
-    for z in redshifts:
+    for z in redshift:
         quantity, phi = ModelResult.calculate_ndf(
             z, ModelResult.parameter.at_z(z),
             quantity_range=quantity_range)
         best_fit_ndfs[z] = np.array([quantity, phi]).T
     return(best_fit_ndfs)
-

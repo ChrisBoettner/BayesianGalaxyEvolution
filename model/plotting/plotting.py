@@ -14,7 +14,9 @@ from model.analysis.reference_parametrization import get_reference_function_samp
 from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf,\
                                         calculate_q1_q2_relation,\
                                         calculate_ndf_percentiles,\
-                                        calculate_conditional_ERDF_distribution
+                                        calculate_conditional_ERDF_distribution,\
+                                        calculate_quantity_density,\
+                                        calculate_stellar_mass_density
 from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
                                                 plot_data_with_confidence_intervals,\
                                                 add_redshift_text, add_legend,\
@@ -29,7 +31,7 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 plot_ndf_data_simple,\
                                                 plot_JWST_data
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
-                         make_array
+                         make_array, log_L_uv_to_log_sfr
 from model.scatter import Joint_distribution, calculate_q1_q2_conditional_pdf
 
 from pathlib import Path
@@ -89,7 +91,7 @@ class Plot(object):
         if columns == 'single':
             mpl.rcParams['axes.labelsize']  *= 1.4
             mpl.rcParams['xtick.labelsize'] *= 1.8
-            mpl.rcParams['ytick.labelsize'] *= 1.8
+            mpl.rcParams['ytick.labelsize'] *= 1.65
             mpl.rcParams['font.size']       *= 2.2
             self.plot_limits = {'top': 0.965, 'bottom': 0.175,
                                 'left': 0.135, 'right': 0.995,
@@ -172,7 +174,7 @@ class Plot_best_fit_ndf(Plot):
         Plot modelled number density functions and data for comparison. Input
         can be a single model object or a list of objects.
         You can turn off the plotting of the data points using 'datapoints' 
-        argument. Choose redshift using 'redshift' argument
+        argument. Choose redshift using 'redshift' argument.
         '''
         super().__init__(ModelResults, **kwargs)
         self.default_filename = (self.quantity_name + '_ndf_best_fit')
@@ -499,9 +501,7 @@ class Plot_qhmr(Plot):
         for z in redshift:
             qhmr[z] = calculate_qhmr(ModelResult, z, sigma=sigma, ratio=ratio,
                                      log_m_halos=m_halo_range)
-            
-        # calculate masks where data is outside of 
-
+        
         # general plotting configuration
         fig, ax = plt.subplots(1, 1)
         fig.subplots_adjust(**self.plot_limits)
@@ -511,7 +511,6 @@ class Plot_qhmr(Plot):
         y_label = 'log '+ModelResult.quantity_options['quantity_name_tex']
         if ratio:
             y_label = y_label + r'/$M_\mathrm{h}$'
-        #breakpoint()
         ax.set_ylabel(y_label, x=0.01)
 
         # create custom color map
@@ -540,7 +539,6 @@ class Plot_qhmr(Plot):
                                                 only_data=only_data,
                                                 label = r'$z \sim$ ' + str(z))
             
-        # add axis limits
         # add axis limits
         ax.set_xlim((m_halo_range[0], m_halo_range[-1]))
         if y_lims:
@@ -653,14 +651,16 @@ class Plot_ndf_predictions(Plot):
 
         '''
         super().__init__(ModelResult,  **kwargs)
-        self.default_filename = self.quantity_name + '_ndf_predicitions'
+        self.default_filename = self.quantity_name + '_ndf_predictions'
 
-    def _plot(self, ModelResult, upper_redshift, sigma=1, num=2000,
+    def _plot(self, ModelResult, upper_redshift=None, sigma=1, num=2000,
               quantity_range = None, additional_color='#a7cc79', 
               datapoints=True, y_lim=None):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
-            
+        
+        if upper_redshift is None:
+            upper_redshift = ModelResult.quantity_options['extrapolation_end']
         # make redshift space
         redshift = range(ModelResult.quantity_options['extrapolation_z'][-1],
                          upper_redshift+1)
@@ -1505,4 +1505,123 @@ class Plot_q1_q2_distribution_with_scatter(Plot_q1_q2_relation):
         
         # set plot limits
         ax.set_xlim(log_q1[0],log_q1[-1])      
+        return(fig, ax)
+    
+class Plot_quantity_density_evolution(Plot):
+    def __init__(self, ModelResults, **kwargs):
+        '''
+        '''
+        super().__init__(ModelResults, **kwargs)
+        self.default_filename = (self.quantity_name + '_density_evolution')
+
+    def _plot(self, ModelResult, redshift=None, num=500, 
+              additional_color='#a7cc79', sigma=1):
+        
+        if redshift is None:
+            redshift = np.arange(ModelResult.redshift[0],
+                                 ModelResult.quantity_options
+                                 ['extrapolation_end']+1)
+        # make list if input is scalar
+        redshift = make_list(redshift)
+        if not np.isscalar(sigma):
+            raise ValueError('sigma must be scalar.')
+
+        # calculate quantity densities
+        densities = calculate_quantity_density(ModelResult, redshift, 
+                                               num = num, sigma=sigma)[sigma]
+        # convert UV luminosities to star formation rate
+        if ModelResult.quantity_name == 'Muv':
+            densities[:,1:] = log_L_uv_to_log_sfr(densities[:,1:])
+        # switch percentiles to error bars for plot
+        densities[:,2] = densities[:,1] - densities[:,2]
+        densities[:,3] = densities[:,3] - densities[:,1]
+
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # quantity specific settings
+        xlabel = 'Redshift'
+        ylabel = ModelResult.quantity_options['density_ylabel']
+        # add axes labels
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel, labelpad=20)
+        
+        # distinguish between observations and predictions
+        ind    = np.argmin(densities[:,0]<=np.amax(ModelResult.redshift))
+        ind    = ModelResult.redshift[-1]+1 if ind==0 else ind
+        obs    = densities[:ind]
+        pred   = densities[ind:]
+        colors = [self.color, additional_color] 
+        
+        # plot quantity densities
+        for i, data in enumerate([obs, pred]):
+            ax.errorbar(data[:,0], data[:,1], data[:,2:].T,
+                             capsize=mpl.rcParams['lines.markersize']/1.5, 
+                             fmt='o', 
+                             markersize = mpl.rcParams['lines.markersize']/1.5,
+                             elinewidth = mpl.rcParams['lines.markersize']/2,
+                             color=colors[i],
+                             alpha=1)
+        # add y ticks
+        ax.yaxis.set_major_locator(MaxNLocator(5))
+        # add x tick for every redshift
+        ax.set_xticks(redshift)
+        xticklabels = list(redshift[::2])
+        for i in range(1,len(xticklabels)+1):
+            xticklabels.insert(2*i-1,'')
+        ax.set_xticklabels(xticklabels[:len(redshift)])
+        return(fig, ax)
+    
+class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
+    def __init__(self, mstar, muv, **kwargs):
+        '''
+        '''
+        super().__init__(mstar, muv, **kwargs)
+        self.default_filename = (self.quantity_name + '_SMD_evolution')
+
+    def _plot(self, mstar, muv, num=500, sigma=2, linewidth=5, alpha=1,
+              median=False):
+
+        if not np.isscalar(sigma):
+            raise ValueError('sigma must be scalar.')
+        
+        # calculate stellar mass densities
+        smd_dict, inferred_smd_dict = calculate_stellar_mass_density(mstar,
+                                                            muv, sigma=sigma,
+                                                            num=num)
+        redshift = (smd_dict[sigma][:,0]).astype(int)
+        
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # quantity specific settings
+        xlabel = 'Redshift'
+        ylabel = mstar.quantity_options['density_ylabel']
+        # add axes labels
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel, labelpad=20)
+        
+        # plot quantity densities
+        plot_data_with_confidence_intervals(ax, smd_dict, 'grey',
+                                            median=median,
+                                            linewidth=linewidth,
+                                            alpha=alpha)
+        plot_data_with_confidence_intervals(ax, inferred_smd_dict, self.color,
+                                            median=median,
+                                            linewidth=linewidth,
+                                            alpha=alpha*0.75)
+    
+        # add y ticks
+        ax.yaxis.set_major_locator(MaxNLocator(5))
+        # add x tick for every redshift
+        ax.set_xticks(redshift)
+        xticklabels = list(redshift[::2])
+        for i in range(1,len(xticklabels)+1):
+            xticklabels.insert(2*i-1,'')
+        ax.set_xticklabels(xticklabels[:len(redshift)])
+        
+        # add lims
+        ax.set_xlim([redshift[0],redshift[-1]])
         return(fig, ax)

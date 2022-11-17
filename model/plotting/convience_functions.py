@@ -69,21 +69,34 @@ def plot_ndf_data_simple(axes, ModelResult, redshift, alpha=0.4):
             pass
     return
 
-def plot_JWST_data(axes, ModelResult, axes_start_redshift, alpha=0.4):
+def plot_JWST_data(axes, ModelResult, axes_start_redshift, alpha=0.65, 
+                   markersize=15, color='#ce943a'):
     ''' 
     Plot JWST Muv data. axes_start_redshift must be redshift that corresponds
     to axes[0].
     '''
     axes = make_list(axes)
+    
     if ModelResult.quantity_name == 'Muv':
         all_data = load_JWST_UVLF_points()
         redshift = list(all_data.keys())
         for z in redshift:
-            data = all_data[z]
+            data   = all_data[z]
+            # distinguish between actual data points and upper limits
+            limits_flag = ~np.isfinite(data).all(axis=1)
+            limits = data[limits_flag]
+            data   = data[~limits_flag]
+            # plot points
             axes[z-axes_start_redshift].errorbar(data[:,0], data[:,1],
-                            data[:,2:].T, capsize=3, fmt='o',
+                            data[:,2:].T, capsize=3, fmt='H',
+                            markersize = markersize, color=color,
                             elinewidth = mpl.rcParams['lines.markersize']/2,
-                            color='black', alpha=alpha)
+                            alpha=alpha)
+            axes[z-axes_start_redshift].errorbar(limits[:,0], limits[:,1],
+                            yerr=0.5, capsize=3, fmt='H',
+                            markersize = markersize, color=color,
+                            elinewidth = mpl.rcParams['lines.markersize']/2,
+                            alpha=alpha, uplims=True)
     return
         
 

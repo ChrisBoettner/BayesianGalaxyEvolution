@@ -100,6 +100,9 @@ muv   = load_model('Muv', 'stellar_blackhole')
 mbh   = load_model('mbh', 'quasar')
 lbol  = load_model('Lbol', 'eddington')
 
+Plot_stellar_mass_density_evolution(mstar, muv, columns='single',
+                                    num_samples=int(1e+4))
+
 #%%
 # vals where agn becomes important, put in table
 
@@ -137,8 +140,62 @@ lbol  = load_model('Lbol', 'eddington')
 #     plt.plot(mbh_dict[1][:,0],mbh_dict[1][:,1], label=str(z), linewidth=5)
 
 #%%
-print('have to change to log space for this to work')
-print('change how quantity range is done for Muv in makeplots')
-print('change marker for JWST data and add labels')
-Plot_ndf_predictions(muv, upper_redshift=17, quantity_range= np.linspace(-23.71, -17.84, 100),
-                     y_lim=[-6.95,0])
+# model = muv
+
+# vals = []
+
+# for z in model.redshift:
+#     par_sample = model.draw_parameter_sample(z,500)
+#     o = []
+#     for p in par_sample:
+#         o.append(model.calculate_total_number_density(z, p, num=500))
+#     vals.append(np.median(o))
+    
+# #vals = np.log10(np.array(vals) * 1.4 * 1e-28)
+# vals = np.log10(np.array(vals))
+
+# from model.helper import z_to_t
+# plt.plot(model.redshift, np.log10(vals))
+
+
+#%%
+Plot_quantity_density_evolution(mstar, columns='single')
+Plot_quantity_density_evolution(muv,   columns='single')
+Plot_quantity_density_evolution(mbh,   columns='single')
+Plot_quantity_density_evolution(lbol,  columns='single')
+
+#%%
+import numpy as np
+from model.helper import z_to_t
+from scipy.integrate import cumulative_trapezoid
+
+rho_mstar = []
+for z in mstar.redshift:
+    par_sample = mstar.draw_parameter_sample(z,500)
+    o = []
+    for p in par_sample:
+        o.append(mstar.calculate_quantity_density(z, p, num=500))
+    rho_mstar.append(np.median(o))
+    
+log_rho_mstar=np.log10(rho_mstar)
+
+rho_muv = []
+for z in muv.redshift:
+    par_sample = muv.draw_parameter_sample(z,500)
+    o = []
+    for p in par_sample:
+        o.append(muv.calculate_quantity_density(z, p, num=500))
+    rho_muv.append(np.median(o))
+    
+sfrd = np.array(rho_muv) * 1.4 * 1e-28
+
+R=0.41
+ts = z_to_t(muv.redshift, mode='age')*10**9 #Gyr
+
+inferred_rho_mstar = (1-R) * cumulative_trapezoid(sfrd[::-1], ts[::-1])
+
+inferred_rho_mstar = inferred_rho_mstar + rho_mstar[-1]
+inferred_rho_mstar = np.insert(inferred_rho_mstar, 0, rho_mstar[-1])[::-1]
+
+log_rho_mstar = np.log10(rho_mstar)
+log_inferred_rho_mstar = np.log10(inferred_rho_mstar)
