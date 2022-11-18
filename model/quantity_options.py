@@ -35,6 +35,7 @@ def get_quantity_specifics(quantity_name):
                                   higher redshift.
         extrapolation_end       : redshift up to which quantities are 
                                   extrapolated.
+        density_bounds          : integration space for ndf integral
 
         reference_function_name : Name of reference function used.
         reference_function      : Callable reference function adapted to 
@@ -82,12 +83,13 @@ def get_quantity_specifics(quantity_name):
         options['model_param_num'] = 3
         options['model_p0'] = np.array([-2, 1, 0.5])
         options['model_bounds'] = np.array([[-5, 0, 0],
-                                            [np.log10(0.1), 4, 0.96]])
+                                            [np.log10(0.4), 4, 0.96]])
         options['fitting_space'] = 'log'
         options['relative_weights'] = True
         options['systematic_uncertainties'] = True
         options['extrapolation_z'] = np.array([5,6,7,8,9,10])
         options['extrapolation_end'] = 17
+        options['density_bounds'] = np.linspace(8, 13, 50)
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function
@@ -132,6 +134,7 @@ def get_quantity_specifics(quantity_name):
         options['systematic_uncertainties'] = True
         options['extrapolation_z'] = np.array([5,6,7,8,9,10])
         options['extrapolation_end'] = 17
+        options['density_bounds'] = np.linspace(26, 30.64, 50) # M_UV = [-13.5, -25]
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function_mag
@@ -177,6 +180,7 @@ def get_quantity_specifics(quantity_name):
         options['systematic_uncertainties'] = False
         options['extrapolation_z'] = np.array([1,2,3,4,5])
         options['extrapolation_end'] = 8
+        options['density_bounds'] = np.linspace(5, 13, 50)
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
@@ -223,6 +227,7 @@ def get_quantity_specifics(quantity_name):
         options['systematic_uncertainties'] = False
         options['extrapolation_z'] = np.array([2,3,4,5,6,7])
         options['extrapolation_end'] = 10
+        options['density_bounds'] = np.linspace(38, 55, 25)
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Double power law'
         options['reference_function'] = log_double_power_law
@@ -240,7 +245,7 @@ def get_quantity_specifics(quantity_name):
                                      r'$\theta$',
                                      r'$ \log \lambda_\mathrm{c}$',
                                      r'$\rho$']
-        options['density_ylabel'] = r'log $\rho_{L_\mathrm{bol}}$  [erg s$^{-1}$ cMpc$^{-3}$]'
+        options['density_ylabel'] = r'log $\rho_\mathrm{bol}$  [erg s$^{-1}$ cMpc$^{-3}$]'
         options['ndf_legend_pos'] = 3
         options['marker_alpha'] = 0.1
         options['legend_columns'] = 1

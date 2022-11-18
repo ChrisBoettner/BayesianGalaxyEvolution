@@ -29,6 +29,10 @@ def save_plots(quantity, show = False, file_format='pdf'):
                                            quantity_options
                                            ['feedback_change_z'], 
                                            [1,2])).save(file_format)
+        Plot_quantity_density_evolution(model, 
+                        log_q_space = model.quantity_options['density_bounds'],
+                        columns='single').save(file_format)
+        
         if quantity == 'mstar':
             quantity_range = np.linspace(6.1,10.13,100)
         else:
@@ -68,6 +72,9 @@ def save_plots(quantity, show = False, file_format='pdf'):
         Plot_ndf_intervals(model, sigma=[1,2,3]).save(file_format)
         Plot_parameter_sample(model, columns='single').save(file_format)
         Plot_ndf_predictions(model, y_lim=[-14.9,0]).save(file_format)
+        Plot_quantity_density_evolution(model, 
+                        log_q_space = model.quantity_options['density_bounds'],
+                        columns='single').save(file_format)
         del model
         
     elif quantity == 'Lbol':
@@ -75,7 +82,11 @@ def save_plots(quantity, show = False, file_format='pdf'):
         
         Plot_ndf_intervals(model, sigma=[1,2,3], num=1000).save(file_format)
         Plot_parameter_sample(model, columns='single').save(file_format)
-        Plot_ndf_predictions(model, y_lim=[-14.9,0], num=1000).save(file_format)
+        Plot_ndf_predictions(model, y_lim=[-14.9,0], 
+                             num=1000).save(file_format)
+        Plot_quantity_density_evolution(model,
+                        log_q_space = model.quantity_options['density_bounds'],
+                        columns='single').save(file_format)
         
         # conditional ERDF example
         Plot_conditional_ERDF(model, parameter = [40 ,  2, -2,  2],
@@ -87,8 +98,8 @@ def save_plots(quantity, show = False, file_format='pdf'):
         del model
         
     elif quantity == 'Muv_mstar':
-        muv    = load_model('Muv','stellar_blackhole', redshift=range(4,9))
-        mstar  = load_model('mstar','stellar_blackhole', redshift=range(4,9))
+        muv    = load_model('Muv','stellar_blackhole')
+        mstar  = load_model('mstar','stellar_blackhole')
         # plot main sequence for multiple redshifts
         for z in range(4,8):
             Plot_q1_q2_relation(muv, mstar, z=z, datapoints=True,
@@ -98,6 +109,10 @@ def save_plots(quantity, show = False, file_format='pdf'):
                                 ).save(file_format, 
                                        file_name=(quantity + '_relation_z' 
                                                   + str(z)))
+        # plot stellar mass density
+        Plot_stellar_mass_density_evolution(mstar, muv, 
+                                            columns='single').save(file_format)
+        
         # plot influence of scatter
         Plot_q1_q2_distribution_with_scatter(mstar, muv, log_q2_value=-20,
                             redshift=4, columns='single').save(file_format)

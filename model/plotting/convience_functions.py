@@ -93,8 +93,8 @@ def plot_JWST_data(axes, ModelResult, axes_start_redshift, alpha=0.65,
                             elinewidth = mpl.rcParams['lines.markersize']/2,
                             alpha=alpha)
             axes[z-axes_start_redshift].errorbar(limits[:,0], limits[:,1],
-                            yerr=0.5, capsize=3, fmt='H',
-                            markersize = markersize, color=color,
+                            yerr=0.8, capsize=5, fmt='H',
+                            markersize = 0, color=color,
                             elinewidth = mpl.rcParams['lines.markersize']/2,
                             alpha=alpha, uplims=True)
     return

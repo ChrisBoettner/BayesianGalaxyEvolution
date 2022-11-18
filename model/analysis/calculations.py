@@ -11,6 +11,9 @@ from model.helper import calculate_percentiles, make_list, make_array,\
                          get_uv_lum_sfr_factor, get_return_fraction, z_to_t
 from scipy.integrate import cumulative_trapezoid
 
+import warnings
+from joblib import Parallel, delayed
+
 ################ MAIN FUNCTIONS ###############################################
 def calculate_expected_black_hole_mass_from_ERDF(ModelResult, lum, z,
                                                  num = 500, sigma=1):
@@ -213,9 +216,9 @@ def calculate_qhmr(ModelResult, z,
         qhmr[s]              = np.array([log_m_halos, *log_q_percentiles]).T
     return(qhmr)
 
-def calculate_quantity_density(ModelResult, redshift, num_samples=500,
-                               num_integral_points=500, sigma=1,
-                               return_samples=False):
+def calculate_quantity_density(ModelResult, redshift, log_q_space=None, 
+                               num_samples=500, num_integral_points=500, 
+                               sigma=1, return_samples=False):
     '''
     Calculates the quantity density by integrating over ndf at the given 
     redshift values by drawing a parameter sample at z and integrating over
@@ -225,7 +228,8 @@ def calculate_quantity_density(ModelResult, redshift, num_samples=500,
     input redshift, median density and lower and upper percentile for
     every redshift. The number of samples can be adjusted using num_samples, 
     while the number of points calculated for the integral can be adjusted 
-    using num_integral_points.
+    using num_integral_points. You can also manually choose points where ndf 
+    should be evaluated using log_q_space.
     If return_samples is True, return dictonaries (z:sample) instead.
     '''  
     redshift        = make_array(redshift)
@@ -237,18 +241,27 @@ def calculate_quantity_density(ModelResult, redshift, num_samples=500,
         parameter_sample = ModelResult.draw_parameter_sample(z,
                                                              num=num_samples)
         quantity_density_at_z = []
-        for p in parameter_sample:
-            quantity_density_at_z.append(ModelResult.
-                                         calculate_quantity_density(z, p,
-                                                    num=num_integral_points))
+        
+        # calculate densities parallelized because it's really slow for lbol
+        def calc_quantity_density(p):
+            dens = ModelResult.calculate_quantity_density(z, p,
+                                                    log_q_space=log_q_space,                
+                                                    num=num_integral_points)
+            return(dens)
+        quantity_density_at_z = Parallel(n_jobs=4)(delayed
+                                                   (calc_quantity_density)(p) 
+                                                   for p in parameter_sample)
         quantity_density.append(np.array(quantity_density_at_z))
     quantity_density=np.array(quantity_density).T
-    
+
     # return complete samples
     if return_samples:
         quantity_dict = {}
         for i, z in enumerate(redshift):
-            quantity_dict[z] = np.log10(quantity_density[:,i])
+            # fill dicts, ignore division by 0
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                quantity_dict[z] = np.log10(quantity_density[:,i])
         return(quantity_dict)
     # or return percentiles
     else:
@@ -260,8 +273,8 @@ def calculate_quantity_density(ModelResult, redshift, num_samples=500,
     return(density_percentiles)
 
 def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
-                                   end_redshift=0, num_samples=500,
-                                   num_integral_points=500,
+                                   end_redshift=0, log_q_space=None,
+                                   num_samples=500, num_integral_points=500,
                                    return_samples=False):
     '''
     Calculates the stellar mass density by integrating the SMF. Done in two
@@ -274,13 +287,21 @@ def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
     UVLF method. Start and stop redshift for integration can be chosen using 
     start_redshift and end_redshift arguments. The number of samples can
     be adjusted using num_samples, while the number of points calculated
-    for the integral can be adjusted using num_integral_points.
+    for the integral can be adjusted using num_integral_points. You can also
+    manually choose points where ndf should be evaluated using log_q_space.
     If return_samples is True, return dictonaries (z:sample) instead.
     '''  
     if not (mstar.quantity_name=='mstar' and muv.quantity_name=='Muv'):
         raise ValueError('First entry must be mstar model and second '
                          'muv model.')
     sigma           = make_list(sigma)
+    
+    if log_q_space:
+        raise NotImplementedError('If you want to use a custom log_q_space, '
+                                  'change the code so you have same halo '
+                                  'mass space for both quantities. Currently '
+                                  'it uses the same log_q_space for both.')
+        
     
     # get conversion factor
     k_uv = get_uv_lum_sfr_factor()
@@ -297,6 +318,7 @@ def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
         rho_mstar_at_z = []
         for p in par_sample:
             rho_mstar_at_z.append(mstar.calculate_quantity_density(z, p,
+                                                    log_q_space=log_q_space,
                                                     num=num_integral_points))
         rho_mstar.append(rho_mstar_at_z)
     rho_mstar = np.array(rho_mstar)
@@ -309,6 +331,7 @@ def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
         rho_muv_at_z = []
         for p in par_sample:
             rho_muv_at_z.append(muv.calculate_quantity_density(z, p, 
+                                                    log_q_space=log_q_space,
                                                     num=num_integral_points))
         rho_muv.append(rho_muv_at_z)
     # convert to star formation rate density
@@ -324,8 +347,11 @@ def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
     if return_samples:
         rho_dict, inferred_rho_dict = {}, {}
         for i, z in enumerate(redshift):
-            rho_dict[z]          = np.log10(rho_mstar[i,:])
-            inferred_rho_dict[z] = np.log10(inferred_rho_mstar[i,:])
+            # fill dicts, ignore division by 0
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                rho_dict[z]          = np.log10(rho_mstar[i,:])
+                inferred_rho_dict[z] = np.log10(inferred_rho_mstar[i,:])
         return(rho_dict, inferred_rho_dict)
     # or return percentiles
     else:

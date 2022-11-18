@@ -730,7 +730,8 @@ class ModelResult():
             ndf_sample.append(np.array(ndf).T)
         return(ndf_sample)
     
-    def calculate_quantity_density(self, z, parameter, num=500, **kwargs):
+    def calculate_quantity_density(self, z, parameter, num=500,
+                                   log_q_space=None, **kwargs):
         '''
         Calculate the total quantity density at redshift z by integrating
         over the ndf for all included halo masses.
@@ -744,6 +745,10 @@ class ModelResult():
         num : int, optional
             Number of points calculated for the ndf calculated. The default is
             500.
+        log_q_space : array, optional
+            Space over which ndf should be calculated for integration. The 
+            default is none, which defaults to q(M_h_min) to q(M_h_max) with
+            num points.
         kwargs:
             Extra arguments passed to calculate_log_abundance.
 
@@ -754,12 +759,13 @@ class ModelResult():
         '''
         # create m_h space over all allowed values and transform to quantity 
         # space
-        log_m_h_space = np.linspace(self.log_min_halo_mass,
-                                    self.log_max_halo_mass,
-                                    num=num)
-        log_q_space   = self.physics_model.at_z(z).calculate_log_quantity(
-                                                        log_m_h_space, 
-                                                        *parameter)
+        if log_q_space is None:
+            log_m_h_space = np.linspace(self.log_min_halo_mass,
+                                        self.log_max_halo_mass,
+                                        num=num)
+            log_q_space   = self.physics_model.at_z(z).calculate_log_quantity(
+                                                            log_m_h_space, 
+                                                            *parameter)
         
         # convert units if necessary, calculate ndf values and convert back
         log_q_space = self.unit_conversion(log_q_space, 'lum_to_mag')
@@ -767,7 +773,7 @@ class ModelResult():
                                                    parameter, **kwargs)
         log_q_space = self.unit_conversion(log_q_space, 'mag_to_lum')
         
-        # integrate over ndf
+        # integrate over ndf * value
         quantity_density = trapezoid(y=10**(log_q_space+log_phi), 
                                      x=log_q_space)
         return(quantity_density)
@@ -1532,7 +1538,8 @@ class ModelResult_QLF(ModelResult):
             mean_log_black_hole_mass = mean_log_black_hole_mass[0]
         return(mean_log_black_hole_mass)
     
-    def calculate_quantity_density(self, z, parameter, num=200, **kwargs):
+    def calculate_quantity_density(self, z, parameter, num=200, 
+                                   log_q_space=None, **kwargs):
         '''
         Calculate the total quantity density at redshift z by integrating
         over the ndf for all included halo masses (within reasonable 
@@ -1547,6 +1554,10 @@ class ModelResult_QLF(ModelResult):
         num : int, optional
             Number of points calculated for the ndf calculated. The default is
             500.
+        log_q_space : array, optional
+            Space over which ndf should be calculated for integration. The 
+            default is none, which defaults to L=38 to L=55 with
+            num points.
         kwargs:
             Extra arguments passed to calculate_log_abundance.
 
@@ -1555,24 +1566,15 @@ class ModelResult_QLF(ModelResult):
         quantitiy_density : float
             Quantity density at z.
         '''
-        # create m_h space over all allowed values and transform to quantity 
-        # space
-        eddington_ratio = 1
-        lower_L_limit    = self.physics_model.at_z(z).calculate_log_quantity(
-                            self.log_min_halo_mass, eddington_ratio,
-                            *parameter[:2])[0]
-        upper_L_limit    = self.physics_model.at_z(z).calculate_log_quantity(
-                            self.log_max_halo_mass, eddington_ratio,
-                            *parameter[:2])[0]
-        log_q_space   = np.linspace(35,
-                                    55,
-                                    num=num)
-
-        # calculate ndf values and convert back
+        # create luminosity space
+        if log_q_space is None:
+            log_q_space = np.linspace(38, # L_edd for one solar mass black hole
+                                      55,
+                                      num=num)
+        # calculate ndf values
         log_phi     = self.calculate_log_abundance(log_q_space, z, 
                                                    parameter, **kwargs)
-        
-        # integrate over ndf
+        # integrate over ndf * value
         quantity_density = trapezoid(y=10**(log_q_space+log_phi), 
                                      x=log_q_space)
         return(quantity_density)

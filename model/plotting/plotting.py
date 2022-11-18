@@ -367,12 +367,14 @@ class Plot_parameter_sample(Plot):
         use marginalise argument that has to be of the form (marg_z, columns),
         where marg_z is the redshift at which marginalisation is supposed to 
         start and columns is a list of the columns that are meant to be kept. 
+        If rasterized=False, create vector graphic, otherwise fixed resolution
+        graphic.
         '''
         super().__init__(ModelResult, **kwargs)
         self.default_filename = self.quantity_name + '_parameter'
 
     def _plot(self, ModelResult, num=int(1e+4), time_axis=False,
-              marginalise=None):
+              marginalise=None, rasterized=True):
         # general plotting configuration
         param_num = ModelResult.distribution.at_z(ModelResult.
                                                   redshift[0]).shape[1]        
@@ -386,7 +388,7 @@ class Plot_parameter_sample(Plot):
         # add axes labels
         param_labels =  ModelResult.quantity_options['param_y_labels']
         if param_num > ModelResult.quantity_options['model_param_num']:
-            param_labels = [r'$M_\mathrm{c}$'] + param_labels
+            param_labels = param_labels + [r'log $M_\mathrm{c}$'] 
         for i, label in enumerate(param_labels):
             axes[i].set_ylabel(label, multialignment='center')
         axes[-1].set_xlabel(r'Redshift $z$')
@@ -405,6 +407,7 @@ class Plot_parameter_sample(Plot):
         # check if log_m_c is kept free at any redshift
         free_m_c = False in [ModelResult.physics_model.at_z(z).
                              fixed_m_c_flag for z in ModelResult.redshift]
+        
         # draw and plot parameter samples
         for z in ModelResult.redshift:
             # draw parameter sample
@@ -422,19 +425,29 @@ class Plot_parameter_sample(Plot):
             # if some parameter are marginalised, only plot remaining ones
             if z>=marg_z:
                 for i,j in enumerate(columns):
-                    axes[j].scatter(x, parameter_sample[:, i],
-                                    c=color, s=0.1, cmap=cm)
+                    if free_m_c:
+                        # put log_m_c on last axis
+                        k = j-1 if j>0 else parameter_sample.shape[-1]-1
+                    else:
+                        k = j
+                    axes[k].scatter(x, parameter_sample[:, i],
+                                    c=color, s=0.1, cmap=cm,
+                                    rasterized=rasterized)
             else:
                 # otherwise plot all, but make destinction where depending
                 # of if theres a log_m_c column or not
                 for i,j in enumerate(ModelResult.physics_model.at_z(z).
                                      parameter_used):
                     if free_m_c:
-                        axes[j].scatter(x, parameter_sample[:, i],
-                                        c=color, s=0.1, cmap=cm)
+                        # put log_m_c on last axis
+                        k = j-1 if j>0 else parameter_sample.shape[-1]-1
+                        axes[k].scatter(x, parameter_sample[:, i],
+                                        c=color, s=0.1, cmap=cm,
+                                        rasterized=rasterized)
                     else:
                         axes[i].scatter(x, parameter_sample[:, i],
-                                        c=color, s=0.1, cmap=cm)
+                                        c=color, s=0.1, cmap=cm,
+                                        rasterized=rasterized)
 
         # add tick for every redshift
         axes[-1].set_xticks(ModelResult.redshift)
@@ -444,13 +457,18 @@ class Plot_parameter_sample(Plot):
         for i, ax in enumerate(axes.flatten()):
             ax.tick_params(axis='y', which='minor')
             ax.yaxis.set_major_locator(MaxNLocator(2))
-            if i>0:
-                curr_lim  = ax.get_ylim()
-                upper_lim = (1.15*curr_lim[1] 
-                             if curr_lim[1]>0 else 0.85*curr_lim[1])
-                ax.set_ylim([curr_lim[0], upper_lim])
-            if (ModelResult.quantity_name in ['mstar','Muv']) and i==3:
-                ax.set_ylim([0, 1.1])
+            
+            if free_m_c and ax==(axes.flatten()[-1]):
+                continue
+            
+            curr_lim  = ax.get_ylim()
+            upper_lim = (1.15*curr_lim[1] if curr_lim[1]>0 
+                         else 0.85*curr_lim[1])
+            ax.set_ylim([curr_lim[0], upper_lim])
+            
+            if (ModelResult.quantity_name in ['mstar','Muv']):
+                if (i==2 and free_m_c) or (i==3 and (not free_m_c)):
+                    ax.set_ylim([-0.03, 1.1])
 
         # second axis for time, very experimental
         if len(ModelResult.redshift)==11 and time_axis:
@@ -1097,8 +1115,8 @@ class Plot_q1_q2_relation(Plot):
                 # # add (curved) text
                 text = ( f'{fudge_factor}x ' 
                         + AltModel.quantity_options['ndf_name'])
-                CurvedText(x = alt_relations[fudge_factor][:,0],
-                           y = alt_relations[fudge_factor][:,1],
+                CurvedText(x = alt_relations[fudge_factor][1:,0],
+                           y = alt_relations[fudge_factor][1:,1],
                            text=text,
                            va = 'bottom',
                            axes = ax,
@@ -1106,7 +1124,7 @@ class Plot_q1_q2_relation(Plot):
                 
 
         # add axis limits
-        ax.set_xlim((log_q1[0], log_q1[-1]))
+        ax.set_xlim((log_q1[1], log_q1[-2]))
         if y_lims:
             ax.set_ylim(y_lims)
 
@@ -1357,6 +1375,194 @@ class Plot_black_hole_mass_distribution(Plot):
             add_legend(ax, 0)
         return(fig, ax)
     
+class Plot_quantity_density_evolution(Plot):
+    def __init__(self, ModelResults, **kwargs):
+        '''
+        Plot evolution of integrated ndfs by drawing samples and integrating
+        the resulting ndfs. The range of redshift can be chosen using redshift
+        argument. The number of samples drawn can be adjusted using num_samples
+        and the number of points calculated for integrating the ndf can be
+        controlled using num_integral_points. You can also manually choose 
+        points where ndf should be evaluated using log_q_space. 
+        Color for points that are extrapolated is chosen using 
+        additional_color. If rasterized=False, create vector graphic, 
+        otherwise fixed resolution graphic.
+        '''
+        super().__init__(ModelResults, **kwargs)
+        self.default_filename = (self.quantity_name + '_density_evolution')
+
+    def _plot(self, ModelResult, redshift=None, num_samples=int(1e+4), 
+              num_integral_points=100, log_q_space=None, 
+              additional_color='#a7cc79', rasterized=True):
+        
+        if redshift is None:
+            redshift = np.arange(ModelResult.redshift[0],
+                                 ModelResult.quantity_options
+                                 ['extrapolation_end']+1)
+        # make list if input is scalar
+        redshift = make_list(redshift)
+
+        # calculate quantity densities
+        densities = calculate_quantity_density(ModelResult, redshift, 
+                                    sigma=1, return_samples=True,
+                                    log_q_space=log_q_space,
+                                    num_samples=num_samples, 
+                                    num_integral_points=num_integral_points)
+
+        # for UVLF, convert to SFR
+        if ModelResult.quantity_name == 'Muv':
+            for z in redshift:
+                densities[z] = log_L_uv_to_log_sfr(densities[z])
+
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # quantity specific settings
+        xlabel = 'Redshift'
+        ylabel = ModelResult.quantity_options['density_ylabel']
+        # add axes labels
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel, labelpad=20)
+        
+        # create custom color maps
+        washed_out_color_obs = blend_color(self.color, 0.2)
+        cm_obs = LinearSegmentedColormap.from_list("Custom", 
+                                        [washed_out_color_obs, self.color],
+                                        N=num_samples)
+        washed_out_color_pred = blend_color(additional_color, 0.2)
+        cm_pred = LinearSegmentedColormap.from_list("Custom", 
+                                               [washed_out_color_pred, 
+                                                additional_color],
+                                               N=num_samples)
+        
+        # plot quantity densities
+        for z in redshift:
+            sample          = densities[z]
+            sample          = sample[np.isfinite(sample)]
+            sample, color   = sort_by_density(sample)
+            
+            # create xvalues and add scatter for easier visibility
+            x = (np.repeat(z, len(sample)) 
+                  + np.random.normal(scale=0.06, size=len(sample)))
+            
+            cm = cm_obs if z in ModelResult.redshift else cm_pred
+            ax.scatter(x, sample, c=color, s=0.1, cmap=cm, 
+                       rasterized=rasterized)
+            
+        # add y ticks
+        #ax.yaxis.set_major_locator(MaxNLocator(10))
+        ax.yaxis.grid(True, which='minor')
+        # set y lim by calculating percentiles of all available samples
+        all_points = np.array([densities[z] for z in redshift]).flatten()
+        y_lims = np.percentile(all_points[np.isfinite(all_points)], 
+                               [5,99.95])
+        ax.set_ylim(y_lims[0], 1.05*y_lims[1])
+        # add x tick for every redshift
+        ax.set_xticks(redshift)
+        xticklabels = list(redshift[::2])
+        for i in range(1,len(xticklabels)+1):
+            xticklabels.insert(2*i-1,'')
+        ax.set_xticklabels(xticklabels[:len(redshift)])
+        return(fig, ax)
+    
+    
+class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
+    def __init__(self, mstar, muv, **kwargs):
+        '''
+        Plot evolution of integrated stellar mass density calculated directly
+        from GSMF and by integrating SFR. The two models must be mstar and
+        muv. The number of samples drawn can be adjusted using num_samples
+        and the number of points calculated for integrating the ndf can be
+        controlled using num_integral_points. You can also manually choose 
+        points where ndf should be evaluated using log_q_space.
+        Color for points that are extrapolated is chosen using 
+        additional_color. Legend can be toggled using legend argument. If 
+        rasterized=False, create vector graphic, otherwise fixed resolution
+        graphic.
+        '''
+        super().__init__(mstar, muv, **kwargs)
+        self.default_filename = (self.quantity_name + '_SMD_evolution')
+
+    def _plot(self, mstar, muv, num_samples=int(1e+4), num_integral_points=100,
+              log_q_space=None, legend=True, rasterized=True):
+        # calculate stellar mass densities
+        smd_dict, inferred_smd_dict = calculate_stellar_mass_density(mstar,
+                                       muv, sigma=1, return_samples=True,
+                                       log_q_space=log_q_space,
+                                       num_samples=num_samples, 
+                                       num_integral_points=num_integral_points)
+        
+        redshift = list(smd_dict.keys())
+        
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # quantity specific settings
+        xlabel = 'Redshift'
+        ylabel = mstar.quantity_options['density_ylabel']
+        # add axes labels
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel, labelpad=20)
+        
+        # create custom color map
+        washed_out_color = blend_color(self.color, 0.2)
+        cm = LinearSegmentedColormap.from_list("Custom", 
+                                               [washed_out_color,self.color],
+                                               N=num_samples)
+        cm_greys = LinearSegmentedColormap.from_list("Custom", 
+                                                     ['lightgrey','grey'],
+                                                     N=num_samples)
+        # plot stellar mass densities
+        for z in redshift:
+            smd_sample          = smd_dict[z]
+            smd_sample          = smd_sample[np.isfinite(smd_sample)]
+            inferred_smd_sample = inferred_smd_dict[z]
+            inferred_smd_sample = inferred_smd_sample[np.isfinite(
+                                                          inferred_smd_sample)]
+            
+            smd_sample, smd_color = sort_by_density(smd_sample)
+            inferred_smd_sample, inferred_smd_color = sort_by_density(
+                                                        inferred_smd_sample)
+            # create xvalues and add scatter for easier visibility
+            x1 = (np.repeat(z, len(smd_sample)) 
+                  + np.random.normal(scale=0.06, size=len(smd_sample)))
+            x2 = (np.repeat(z, len(inferred_smd_sample)) 
+                  + np.random.normal(scale=0.02, 
+                                     size=len(inferred_smd_sample)))
+
+            ax.scatter(x1[:-1], smd_sample[:-1], c=smd_color[:-1], s=0.1, 
+                       cmap=cm_greys, rasterized=rasterized)
+            ax.scatter(x2[:-1], inferred_smd_sample[:-1], 
+                       c=inferred_smd_color[:-1], s=0.1, cmap=cm,
+                       rasterized=rasterized)
+            # last points drawn seperately just to get the colors for the 
+            # legend right
+            ax.scatter(x1[-1], smd_sample[-1], c='grey', s=0.1, 
+                       label='obtained from GSMF', rasterized=rasterized)
+            ax.scatter(x2[-1], inferred_smd_sample[-1], c=self.color, s=0.1,
+                       label='integrated SFR', rasterized=rasterized)
+    
+        # add y ticks
+        #ax.yaxis.set_major_locator(MaxNLocator(5))
+        ax.yaxis.grid(True, which='minor')
+        ax.tick_params(axis='x', which='minor', bottom=False)
+        # set y lim by calculating percentiles of all available samples
+        all_points = np.array([inferred_smd_dict[z] 
+                               for z in redshift]).flatten()
+        y_lims = np.percentile(all_points[np.isfinite(all_points)],
+                               [0.05,99.99])
+        ax.set_ylim(*y_lims)
+        # add x tick for every redshift
+        ax.set_xticks(redshift)
+        ax.set_xticklabels(redshift)
+        
+        if legend:
+            add_legend(ax, 0, markersize=128, fontsize=32, loc='lower left')
+        return(fig, ax)
+    
+    
 class Plot_scatter_ndf(Plot):
     def __init__(self, ModelResults, **kwargs):
         '''
@@ -1448,7 +1654,7 @@ class Plot_q1_q2_distribution_with_scatter(Plot_q1_q2_relation):
     
     def _plot(self, ModelResult1, ModelResult2, log_q2_value,
               redshift=0, log_q1=np.linspace(8.51,10.41,500), scatter_1=0.05,
-              scatter_2=0.25, skew=-4):
+              scatter_2=0.25, skew=-40):
 
         if (ModelResult1.parameter.is_None() 
             or ModelResult2.parameter.is_None()):
@@ -1505,148 +1711,4 @@ class Plot_q1_q2_distribution_with_scatter(Plot_q1_q2_relation):
         
         # set plot limits
         ax.set_xlim(log_q1[0],log_q1[-1])      
-        return(fig, ax)
-    
-class Plot_quantity_density_evolution(Plot):
-    def __init__(self, ModelResults, **kwargs):
-        '''
-        '''
-        super().__init__(ModelResults, **kwargs)
-        self.default_filename = (self.quantity_name + '_density_evolution')
-
-    def _plot(self, ModelResult, redshift=None, num_samples=1000, 
-              num_integral_points=100, additional_color='#a7cc79'):
-        
-        if redshift is None:
-            redshift = np.arange(ModelResult.redshift[0],
-                                 ModelResult.quantity_options
-                                 ['extrapolation_end']+1)
-        # make list if input is scalar
-        redshift = make_list(redshift)
-
-        # calculate quantity densities
-        densities = calculate_quantity_density(ModelResult, redshift, 
-                                    sigma=1, return_samples=True,
-                                    num_samples=num_samples, 
-                                    num_integral_points=num_integral_points)
-
-        # general plotting configuration
-        fig, ax = plt.subplots(1, 1)
-        fig.subplots_adjust(**self.plot_limits)
-        
-        # quantity specific settings
-        xlabel = 'Redshift'
-        ylabel = ModelResult.quantity_options['density_ylabel']
-        # add axes labels
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel, labelpad=20)
-        
-        # create custom color maps
-        washed_out_color_obs = blend_color(self.color, 0.2)
-        cm_obs = LinearSegmentedColormap.from_list("Custom", 
-                                        [washed_out_color_obs, self.color],
-                                        N=num_samples)
-        washed_out_color_pred = blend_color(additional_color, 0.2)
-        cm_pred = LinearSegmentedColormap.from_list("Custom", 
-                                               [washed_out_color_pred, 
-                                                additional_color],
-                                               N=num_samples)
-        
-        # plot quantity densities
-        for z in redshift:
-            sample          = densities[z]            
-            sample, color = sort_by_density(sample)
-            # create xvalues and add scatter for easier visibility
-            x = (np.repeat(z, num_samples) 
-                  + np.random.normal(scale=0.06, size=num_samples))
-            
-            cm = cm_obs if z in ModelResult.redshift else cm_pred
-            ax.scatter(x, sample, c=color, s=0.1, cmap=cm)
-            
-        # add y ticks
-        ax.yaxis.set_major_locator(MaxNLocator(5))
-        # set y lim by calculating percentiles of all available samples
-        y_lims = np.percentile(np.array([densities[z] 
-                                         for z in redshift]).flatten(),
-                               [0.05,99.5])
-        ax.set_ylim(*y_lims)
-        # add x tick for every redshift
-        ax.set_xticks(redshift)
-        xticklabels = list(redshift[::2])
-        for i in range(1,len(xticklabels)+1):
-            xticklabels.insert(2*i-1,'')
-        ax.set_xticklabels(xticklabels[:len(redshift)])
-        return(fig, ax)
-    
-class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
-    def __init__(self, mstar, muv, **kwargs):
-        '''
-        '''
-        super().__init__(mstar, muv, **kwargs)
-        self.default_filename = (self.quantity_name + '_SMD_evolution')
-
-    def _plot(self, mstar, muv, num_samples=1000, num_integral_points=100,
-              legend=True):
-        # calculate stellar mass densities
-        smd_dict, inferred_smd_dict = calculate_stellar_mass_density(mstar,
-                                       muv, sigma=1, return_samples=True,
-                                       num_samples=num_samples, 
-                                       num_integral_points=num_integral_points)
-        
-        redshift = list(smd_dict.keys())
-        
-        # general plotting configuration
-        fig, ax = plt.subplots(1, 1)
-        fig.subplots_adjust(**self.plot_limits)
-        
-        # quantity specific settings
-        xlabel = 'Redshift'
-        ylabel = mstar.quantity_options['density_ylabel']
-        # add axes labels
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel, labelpad=20)
-        
-        # create custom color map
-        washed_out_color = blend_color(self.color, 0.2)
-        cm = LinearSegmentedColormap.from_list("Custom", 
-                                               [washed_out_color,self.color],
-                                               N=num_samples)
-        # plot stellar mass densities
-        for z in redshift:
-            smd_sample          = smd_dict[z]
-            inferred_smd_sample = inferred_smd_dict[z]
-            
-            smd_sample, smd_color = sort_by_density(smd_sample)
-            inferred_smd_sample, inferred_smd_color = sort_by_density(
-                                                        inferred_smd_sample)
-            # create xvalues and add scatter for easier visibility
-            x1 = (np.repeat(z, num_samples) 
-                  + np.random.normal(scale=0.06, size=num_samples))
-            x2 = (np.repeat(z, num_samples) 
-                  + np.random.normal(scale=0.02, size=num_samples))
-
-            ax.scatter(x1[:-1], smd_sample[:-1], c=smd_color[:-1], s=0.1, 
-                       cmap='Greys')
-            ax.scatter(x2[:-1], inferred_smd_sample[:-1], 
-                       c=inferred_smd_color[:-1], s=0.1, cmap=cm)
-            # last points drawn seperately just to get the colors for the 
-            # legend right
-            ax.scatter(x1[-1], smd_sample[-1], c='black', s=0.1, 
-                       label='obtained from GSMF')
-            ax.scatter(x2[-1], inferred_smd_sample[-1], c=self.color, s=0.1,
-                       label='integrated SFR')
-    
-        # add y ticks
-        ax.yaxis.set_major_locator(MaxNLocator(5))
-        # set y lim by calculating percentiles of all available samples
-        y_lims = np.percentile(np.array([inferred_smd_dict[z] 
-                                         for z in redshift]).flatten(),
-                               [0.05,99.5])
-        ax.set_ylim(*y_lims)
-        # add x tick for every redshift
-        ax.set_xticks(redshift)
-        ax.set_xticklabels(redshift)
-        
-        if legend:
-            add_legend(ax, 0, markersize=128, fontsize=32, loc='lower left')
         return(fig, ax)
