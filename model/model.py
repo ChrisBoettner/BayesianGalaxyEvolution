@@ -1223,7 +1223,7 @@ class ModelResult_QLF(ModelResult):
         parameter_sample = self.draw_parameter_sample(z, num=num, **kwargs)
         if log_eddington_ratio is not None:
             log_edd_ratio = np.repeat(log_eddington_ratio, num)
-            parameter     = parameter_sample[:,:2] # for calculate_log_quantity
+            parameter     = parameter_sample[:,:-2] # for calculate_log_quantity
                                                    # only first two parameter 
                                                    # are used
         else:
@@ -1232,13 +1232,14 @@ class ModelResult_QLF(ModelResult):
                                           draw_eddington_ratio(), num)
                 parameter     = parameter_sample # should only contain the two
                                                  # parameter
-            elif self.physics_model.at_z(z).name == 'eddington_free_ERDF':
+            elif (self.physics_model.at_z(z).name in 
+                  ['eddington_free_ERDF', 'eddington_free_m_c_free_ERDF']):
                 log_edd_ratio = np.array([])
-                for p in parameter_sample[:,2:]:
+                for p in parameter_sample[:,-2:]:
                     log_edd_ratio = np.append(log_edd_ratio, 
                                               self.physics_model.at_z(z).\
                                                    draw_eddington_ratio(*p))
-                parameter     = parameter_sample[:,:2]
+                parameter     = parameter_sample[:,:-2]
             else:
                 raise NameError('physics_name not known.')
         
@@ -1290,7 +1291,7 @@ class ModelResult_QLF(ModelResult):
         parameter_sample = self.draw_parameter_sample(z, num=num, **kwargs)
         if log_eddington_ratio is not None:
             log_edd_ratio = np.repeat(log_eddington_ratio, num)
-            parameter     = parameter_sample[:,:2] # for calculate_log_quantity
+            parameter     = parameter_sample[:,:-2] # for calculate_log_quantity
                                                    # only first two parameter 
                                                    # are used
         else:
@@ -1299,13 +1300,14 @@ class ModelResult_QLF(ModelResult):
                                           draw_eddington_ratio(), num)
                 parameter     = parameter_sample # should only contain the two
                                                  # parameter
-            elif self.physics_model.at_z(z).name == 'eddington_free_ERDF':
+            elif (self.physics_model.at_z(z).name in 
+                  ['eddington_free_ERDF', 'eddington_free_m_c_free_ERDF']):
                 log_edd_ratio = np.array([])
-                for p in parameter_sample[:,2:]:
+                for p in parameter_sample[:,-2:]:
                     log_edd_ratio = np.append(log_edd_ratio, 
                                               self.physics_model.at_z(z).\
                                                    draw_eddington_ratio(*p))
-                parameter     = parameter_sample[:,:2]
+                parameter     = parameter_sample[:,:-2]
             else:
                 raise NameError('physics_name not known.')
         
@@ -1350,14 +1352,14 @@ class ModelResult_QLF(ModelResult):
         
         # calculate halo masses from stellar masses using model
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
-            log_L, log_eddington_ratio, *parameter[:2])
+            log_L, log_eddington_ratio, *parameter[:-2])
 
         # calculate value of halo mass function
         log_hmf = self.calculate_log_hmf(log_m_h, hmf_z)
 
         # calculate physics/feedback effect
         ph_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
-            log_m_h, log_eddington_ratio, *parameter[:2])
+            log_m_h, log_eddington_ratio, *parameter[:-2])
 
         # calculate final result, deal with raised warnings
         with warnings.catch_warnings():
@@ -1415,10 +1417,11 @@ class ModelResult_QLF(ModelResult):
         # if the model is 'eddington_free_ERDF', the ERDF parameter are part
         # of the model parameter (last two parameter). In that case, call
         # physics function with these parameter.
-        elif self.physics_model.at_z(z).name == 'eddington_free_ERDF':
+        elif (self.physics_model.at_z(z).name in 
+              ['eddington_free_ERDF', 'eddington_free_m_c_free_ERDF']):
             log_erdf = self.physics_model.at_z(z).calculate_log_erdf(
                 log_eddington_ratio,
-                *parameter[2:])
+                *parameter[-2:])
         else:
             raise NameError('physics_name not known.')
         return(log_erdf)
@@ -1726,9 +1729,6 @@ class ModelResult_QLF(ModelResult):
         None.
 
         '''
-        if not fixed_m_c:
-            raise NotImplementedError('free m_c not yet implemented for QLF.')
-        
         # create physics model
         if self.physics_name == 'none':
             ph_name = self.physics_name
@@ -1750,7 +1750,7 @@ class ModelResult_QLF(ModelResult):
                     # use parameter at first redshift
                     try:
                         eddington_erdf_params = self.parameter.at_z(
-                                                        self.redshift[0])[2:]
+                                                        self.redshift[0])[-2:]
                     except:
                         raise NameError('Cannot look up MAP estimate for ERDF '
                                         'parameter because parameter have not '
@@ -1769,7 +1769,7 @@ class ModelResult_QLF(ModelResult):
                 if self.calibrate:
                     # use parameter last free ERDF redshift
                     eddington_erdf_params = self.parameter.at_z(
-                                                    feedback_change_z-1)[2:]
+                                                    feedback_change_z-1)[-2:]
                 else:
                     eddington_erdf_params = None
         else:
@@ -1781,13 +1781,13 @@ class ModelResult_QLF(ModelResult):
         else:
             log_m_c = self.log_m_c[self.quantity_options['feedback_change_z']
                                    -1]
-                    
         # add model
         self.physics_model.add_entry(z, physics_model(
             ph_name,
             log_m_c,
             initial_guess=self.quantity_options['model_p0'],
             bounds=self.quantity_options['model_bounds'],
+            fixed_m_c=fixed_m_c,
             eddington_erdf_params=eddington_erdf_params))
 
         # calculate initial erdf (which is reused for fixed ERDF model)

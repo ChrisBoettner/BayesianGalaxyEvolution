@@ -29,15 +29,13 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
                               (need erdf parameter as additional input)
     '''
     if physics_name not in ['none', 'stellar', 'stellar_blackhole', 'quasar',
+                            'eddington_free_m_c_free_ERDF',
                             'eddington_free_ERDF', 'eddington']:
         raise NameError('physics_name not known.')
 
     if physics_name == 'none':
         return(NoFeedback(log_m_c, initial_guess[:1],
                           bounds[:, :1]))
-
-    if physics_name == 'eddington_free_ERDF':
-        return(QuasarLuminosity_free_ERDF(log_m_c, initial_guess, bounds))
 
     if physics_name == 'eddington':
         if eddington_erdf_params is None:
@@ -57,6 +55,16 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
         elif physics_name == 'quasar':
             physics = QuasarGrowth(log_m_c, initial_guess,
                                    bounds)
+        elif physics_name == 'eddington_free_ERDF':
+            physics = QuasarLuminosity_free_ERDF(log_m_c, initial_guess,
+                                                 bounds)
+        elif physics_name == 'eddington':
+            if eddington_erdf_params is None:
+                raise ValueError('Eddington model with fixed ERDF needs ERDF '
+                                 'parameter passed via eddington_erdf_params '
+                                 'argument.')
+            physics = QuasarLuminosity(log_m_c, initial_guess[:-2], 
+                                    bounds[:, :-2], eddington_erdf_params)
 
     else:
         # add log_m_c to initial guess and bounds
@@ -75,6 +83,13 @@ def physics_model(physics_name, log_m_c, initial_guess, bounds,
         elif physics_name == 'quasar':
             physics = QuasarGrowth_free_m_c(log_m_c, initial_guess,
                                             bounds)
+        elif physics_name == 'eddington_free_ERDF':
+            physics = QuasarLuminosity_free_m_c_free_ERDF(log_m_c,
+                                                          initial_guess,
+                                                          bounds)
+        elif physics_name in 'eddington':
+            raise NotImplementedError('physics model with free m_c but fixed '
+                                      'ERDF not implemented.')
     return(physics)
 
 ################ MODEL WITH FREE CRITICAL MASS ################################
@@ -420,13 +435,13 @@ class QuasarGrowth_free_m_c(StellarBlackholeFeedback_free_m_c):
         '''
         return(np.full_like(log_m_h, eta))
 
-class QuasarLuminosity_free_ERDF(object):
+class QuasarLuminosity_free_m_c_free_ERDF(object):
     def __init__(self, log_m_c, initial_guess, bounds):
         '''
-        Black hole bolometric luminosity model with free ERDF.
+        Black hole bolometric luminosity model with free m_c and ERDF.
 
         '''
-        self.name = 'eddington_free_ERDF'
+        self.name = 'eddington_free_m_c_free_ERDF'
         self.initial_guess = initial_guess   # initial guess for least_squares
         # fit
         self.bounds = bounds                 # parameter bounds
@@ -434,33 +449,33 @@ class QuasarLuminosity_free_ERDF(object):
         self.log_m_c = log_m_c
         
         # parameter used compared to the unconstrained model
-        self.parameter_used = [0,1,2,3]
-        self.fixed_m_c_flag = True
+        self.parameter_used = [0,1,2,3,4]
+        self.fixed_m_c_flag = False
 
         # latest parameter used
         self.parameter = None
         self.eddington_distribution = None
 
-    def calculate_log_quantity(self, log_m_h, log_eddington_ratio, log_C,
-                               eta):
+    def calculate_log_quantity(self, log_m_h, log_eddington_ratio, log_m_c,
+                               log_C, eta):
         '''
         Calculate (log of) bolometric luminosity from input halo mass, 
         model parameter and chosen log_eddington_ratio.
         '''
         log_m_h = make_array(log_m_h)
-        return(log_eddington_ratio + log_C + eta*(log_m_h - self.log_m_c))
+        return(log_eddington_ratio + log_C + eta*(log_m_h - log_m_c))
 
-    def calculate_log_halo_mass(self, log_L, log_eddington_ratio, log_C,
-                                eta):
+    def calculate_log_halo_mass(self, log_L, log_eddington_ratio, log_m_c,
+                                log_C, eta):
         '''
         Calculate (log of) halo mass from input bolometric luminosity, 
         model parameter and chosen log_eddington_ratio.
         '''
         log_L = make_array(log_L)
-        return((log_L-(log_eddington_ratio + log_C))/eta + self.log_m_c)
+        return((log_L-(log_eddington_ratio + log_C))/eta + log_m_c)
 
     def calculate_dlogquantity_dlogmh(self, log_m_h, log_eddington_ratio,
-                                      log_C, eta):
+                                      log_m_c, log_C, eta):
         '''
         Calculate d/d(log m_h) log_quantity.
         '''
@@ -690,6 +705,57 @@ class QuasarGrowth(QuasarGrowth_free_m_c):
                                              log_B=log_B,
                                              eta=eta))
 
+class QuasarLuminosity_free_ERDF(QuasarLuminosity_free_m_c_free_ERDF):
+    def __init__(self, log_m_c, initial_guess, bounds):
+        '''
+        Black hole bolometric luminosity model with free ERDF.
+
+        '''
+        self.name = 'eddington_free_ERDF'
+        self.initial_guess = initial_guess   # initial guess for least_squares
+        # fit
+        self.bounds = bounds                 # parameter bounds
+
+        self.log_m_c = log_m_c
+        
+        # parameter used compared to the unconstrained model
+        self.parameter_used = [1,2,3,4]
+        self.fixed_m_c_flag = True
+
+        # latest parameter used
+        self.parameter = None
+        self.eddington_distribution = None
+
+    def calculate_log_quantity(self, log_m_h, log_eddington_ratio, 
+                               log_C, eta):
+        return(QuasarLuminosity_free_m_c_free_ERDF.calculate_log_quantity(
+                                self,
+                                log_m_h=log_m_h,
+                                log_eddington_ratio=log_eddington_ratio,
+                                log_m_c=self.log_m_c,
+                                log_C=log_C,
+                                eta=eta))
+
+    def calculate_log_halo_mass(self, log_L, log_eddington_ratio, 
+                                log_C, eta):
+        return(QuasarLuminosity_free_m_c_free_ERDF.calculate_log_halo_mass(
+                                self,
+                                log_L=log_L,
+                                log_eddington_ratio=log_eddington_ratio,
+                                log_m_c=self.log_m_c,
+                                log_C=log_C,
+                                eta=eta))
+    
+    def calculate_dlogquantity_dlogmh(self, log_m_h, log_eddington_ratio,
+                                      log_C, eta):
+        return(QuasarLuminosity_free_m_c_free_ERDF.calculate_dlogquantity_dlogmh(
+                                self,
+                                log_m_h=log_m_h,
+                                log_eddington_ratio=log_eddington_ratio,
+                                log_m_c=self.log_m_c,
+                                log_C=log_C,
+                                eta=eta))
+    
 
 class QuasarLuminosity(QuasarLuminosity_free_ERDF):
     def __init__(self, log_m_c, initial_guess, bounds, eddington_erdf_params):
@@ -704,7 +770,7 @@ class QuasarLuminosity(QuasarLuminosity_free_ERDF):
 
         self.log_m_c = log_m_c
         
-        self.parameter_used = [0,1]
+        self.parameter_used = [1,2]
         self.fixed_m_c_flag = True
 
         # parameter used
