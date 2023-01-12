@@ -45,7 +45,7 @@ class ModelResult():
 
     def __init__(self, redshifts, log_ndfs, quantity_name, physics_name,
                  prior_name, fitting_method, saving_mode, ndf_fudge_factor=None,
-                 name_addon=None,groups=None, calibrate=True, 
+                 name_addon=None, groups=None, calibrate=True, 
                  paramter_calc=True, progress=True, fixed_m_c=True,
                  scatter_name='delta', scatter_parameter=None, 
                  skew_parameter=None, extrapolate = True, sfr=False, 
@@ -171,6 +171,7 @@ class ModelResult():
         self.saving_mode = saving_mode
         self.name_addon = name_addon
         self.progress = progress
+        self.fixed_m_c = fixed_m_c
         
         # load options related to the quantity
         self.quantity_options = get_quantity_specifics(self.quantity_name)
@@ -1368,16 +1369,23 @@ class ModelResult_QLF(ModelResult):
         if hmf_z is None:
             hmf_z = z
         
+        # all parameter needed to calculate halo mass, depends on
+        #if m_c is needed
+        if self.fixed_m_c:
+            parameter = parameter[:2]
+        else:
+            parameter = parameter[:3]
+        
         # calculate halo masses from stellar masses using model
         log_m_h = self.physics_model.at_z(z).calculate_log_halo_mass(
-            log_L, log_eddington_ratio, *parameter[:-2])
+            log_L, log_eddington_ratio, *parameter)
 
         # calculate value of halo mass function
         log_hmf = self.calculate_log_hmf(log_m_h, hmf_z)
 
         # calculate physics/feedback effect
         ph_factor = self.physics_model.at_z(z).calculate_dlogquantity_dlogmh(
-            log_m_h, log_eddington_ratio, *parameter[:-2])
+            log_m_h, log_eddington_ratio, *parameter)
 
         # calculate final result, deal with raised warnings
         with warnings.catch_warnings():

@@ -101,7 +101,7 @@ def get_quantity_specifics(quantity_name):
         options['subplot_grid'] = (4, 3)
         options['ndf_xlabel'] = r'log $M_\star$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\star)$ [cMpc$^{-3}$ dex$^{-1}$]'
-        options['ndf_y_axis_limit'] = [-6, 1]
+        options['ndf_y_axis_limit'] = [-6.1, 1.1]
         options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
                                      r'$\delta$']
@@ -142,11 +142,11 @@ def get_quantity_specifics(quantity_name):
         options['reference_p0_bounds'] = (- np.inf, np.inf)
         options['reference_param_num'] = 3
         # PLOTS AND TABLES
-        options['quantity_range'] = np.linspace(-22.21, -14.46, 100)
+        options['quantity_range'] = np.linspace(-22.51, -14.46, 100)
         options['subplot_grid'] = (4, 3)
         options['ndf_xlabel'] = r'$\mathcal{M}_\mathrm{UV}$'
         options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ dex$^{-1}$]'
-        options['ndf_y_axis_limit'] = [-6, 3]
+        options['ndf_y_axis_limit'] = [-6.1, 1.1]
         options['param_y_labels'] = [r'$\log A$',
                                      r'$\gamma$',
                                      r'$\delta$']
@@ -193,7 +193,7 @@ def get_quantity_specifics(quantity_name):
         options['subplot_grid'] = (3, 2)
         options['ndf_xlabel'] = r'log $M_\bullet$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\bullet)$ [cMpc$^{-3}$ dex$^{-1}$]'
-        options['ndf_y_axis_limit'] = [-15, 3]
+        options['ndf_y_axis_limit'] = [-15.1, 3.1]
         options['param_y_labels'] = [r'$\log B$',
                                      r'$\eta$']
         options['density_ylabel'] = r'log $\rho_\bullet$ [$M_\odot$ cMpc$^{-3}$]'
@@ -240,7 +240,7 @@ def get_quantity_specifics(quantity_name):
         options['subplot_grid'] = (4, 2)
         options['ndf_xlabel'] = r'log $L_\mathrm{bol}$ [erg s$^{-1}$]'
         options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
-        options['ndf_y_axis_limit'] = [-15, 3]
+        options['ndf_y_axis_limit'] = [-15.1, 3.1]
         options['param_y_labels'] = [r'$\log C$',
                                      r'$\theta$',
                                      r'$ \log \lambda_\mathrm{c}$',

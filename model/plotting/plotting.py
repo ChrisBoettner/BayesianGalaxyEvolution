@@ -42,7 +42,6 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
-mpl.style.use('model/plotting/settings.rc')
 
 ################ MAIN FUNCTIONS AND CLASSES ###################################
 
@@ -55,14 +54,14 @@ def get_list_of_plots():
 class Plot(object):
     def __init__(self, ModelResult, columns='double', color='C3', **kwargs):
         ''' General Configurations '''
+        mpl.style.use('model/plotting/settings.rc') # return to original 
+                                                    # plot style parameter
+        
         self.adjust_style_parameter(columns) # adjust plot style parameter
         self.color = color
 
         self.make_plot(ModelResult, columns, **kwargs)
         self.default_filename = None
-        
-        mpl.style.use('model/plotting/settings.rc') # return to original 
-                                                    # plot style parameter
     
     def make_plot(self, ModelResult, columns, **kwargs):
         ModelResult = make_list(ModelResult)
@@ -97,7 +96,7 @@ class Plot(object):
                                 'left': 0.135, 'right': 0.995,
                                 'hspace': 0.0, 'wspace': 0.0}
         elif columns == 'double':
-            mpl.rcParams['lines.markersize'] /= 2
+            mpl.rcParams['lines.markersize']   /= 1.2
             self.plot_limits = {'top': 0.984, 'bottom': 0.130,
                                 'left': 0.078, 'right': 0.994,
                                 'hspace': 0.0, 'wspace': 0.0}
@@ -588,7 +587,7 @@ class Plot_ndf_intervals(Plot):
 
     def _plot(self, ModelResult, sigma=1, num=10000, best_fit=False, 
               datapoints=True, feedback_regimes=True, 
-              additional_models = None):
+              additional_color ='#ccc979', additional_models = None):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
 
@@ -598,6 +597,8 @@ class Plot_ndf_intervals(Plot):
             ndfs[z] = calculate_ndf_percentiles(ModelResult, z, sigma=sigma,
                                                 num=num)
 
+        # change aspect ratio
+        mpl.rcParams['figure.figsize'][1]  *= 1.35
         # general plotting configuration
         subplot_grid = ModelResult.quantity_options['subplot_grid']
         fig, axes = plt.subplots(*subplot_grid, sharey=True)
@@ -620,7 +621,8 @@ class Plot_ndf_intervals(Plot):
 
         # add minor ticks and set number of ticks
         for ax in axes:
-            ax.xaxis.set_major_locator(MaxNLocator(4))
+            ax.xaxis.set_major_locator(MaxNLocator(5))
+            ax.yaxis.set_major_locator(MaxNLocator(4))
             ax.minorticks_on()
 
         # plot number density functions
@@ -638,7 +640,8 @@ class Plot_ndf_intervals(Plot):
         
         # add feedback regimes
         if feedback_regimes:
-            plot_feedback_regimes(axes, ModelResult, color=self.color)
+            plot_feedback_regimes(axes, ModelResult, color=additional_color,
+                                  alpha=0.25)
             
         # add best fits for other models as comparison
         if additional_models:
@@ -672,7 +675,7 @@ class Plot_ndf_predictions(Plot):
         self.default_filename = self.quantity_name + '_ndf_predictions'
 
     def _plot(self, ModelResult, upper_redshift=None, sigma=1, num=2000,
-              quantity_range = None, additional_color='#a7cc79', 
+              quantity_range = None, additional_color='#7dcc79', 
               datapoints=True, y_lim=None):
         if ModelResult.distribution.is_None():
             raise AttributeError('distributions have not been calculated.')
@@ -1406,7 +1409,7 @@ class Plot_quantity_density_evolution(Plot):
 
     def _plot(self, ModelResult, redshift=None, num_samples=int(1e+4), 
               num_integral_points=100, log_q_space=None, 
-              additional_color='#a7cc79', rasterized=True):
+              additional_color='#7dcc79', rasterized=True):
         
         if redshift is None:
             redshift = np.arange(ModelResult.redshift[0],

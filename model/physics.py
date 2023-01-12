@@ -770,7 +770,7 @@ class QuasarLuminosity(QuasarLuminosity_free_ERDF):
 
         self.log_m_c = log_m_c
         
-        self.parameter_used = [1,2]
+        self.parameter_used = [0,1]
         self.fixed_m_c_flag = True
 
         # parameter used
