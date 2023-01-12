@@ -316,8 +316,9 @@ def plot_q1_q2_additional(ax, ModelResult1, ModelResult2, z, log_q1, sigma,
                       loc='upper left',
                       fontsize=mpl.rcParams['font.size']*1.3)
     
-    elif (ModelResult1.quantity_name == 'Muv' and
-          ModelResult2.quantity_name == 'mstar'):     
+    elif ((ModelResult1.quantity_name == 'Muv') and
+          (ModelResult2.quantity_name == 'mstar') and
+          (z in [4,5,6,7])):     
         
         # calculate ranges from Song
         median, lower, upper = song_relation_ranges(z, log_q1)

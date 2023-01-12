@@ -105,8 +105,8 @@ def calculate_conditional_ERDF_distribution(
     return(erdf)
 
 
-def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 500,
-                             sigma=1):
+def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 100,
+                             sigma=1, ratio=False):
     '''
     Calculates the distribution of an observable quantity q2 for a given
     input observable q1 by first calculating a distribution of halo masses
@@ -116,7 +116,8 @@ def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 500,
     argument, see model.helper.calculate_percentiles for more infos; multiple
     values can be chosen. Returns dictonary of form (sigma:array) if sigma is 
     an array, where the array contains input quantity 1 value, median 
-    quantity 2 value and lower and upper percentile for every q2 value. 
+    quantity 2 value and lower and upper percentile for every q2 value. If 
+    ratio is True, return q2/q1, else return q2.
     '''  
     if not np.isscalar(z):
         raise ValueError('Redshift must be scalar quantity.')
@@ -127,18 +128,22 @@ def calculate_q1_q2_relation(q1_model, q2_model, z, log_q1, num = 500,
     # calculate halo mass distribution for input quantity q1
     log_mh_dist = q1_model.calculate_halo_mass_distribution(
                   log_q1, z, num=num)
-
     # calculate quantity q2 distribution for every halo mass
     # (you get num halo masses for a q1 and then num q2 values 
     # for each halo mass, so for every q1 you get num^2 
     # q2 values, the array is reshaped accordingly)
     log_q2_dist = q2_model.calculate_quantity_distribution(
                   log_mh_dist, z, num=num).reshape(num**2,len(log_q1))
+    
     log_q1_q2_rel = {}
     for s in sigma:
+        if ratio:
+            values = log_q2_dist - log_q1
+        else:
+            values = log_q2_dist 
         # calculate percentiles (median, lower, upper) and add input
         # q1 to list: (q1 value, median q2 value, lower bound, upper bound)
-        log_q2_percentiles = calculate_percentiles(log_q2_dist,
+        log_q2_percentiles = calculate_percentiles(values,
                                                    sigma_equiv=s)
         log_q1_q2_rel[s]   = np.array([log_q1, *log_q2_percentiles]).T    
     return(log_q1_q2_rel)

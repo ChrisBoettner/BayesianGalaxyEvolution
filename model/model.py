@@ -14,7 +14,7 @@ from sklearn.linear_model import LinearRegression
 from progressbar import ProgressBar, FormatLabel, NullBar
 
 from model.helper import mag_to_lum, lum_to_mag, within_bounds, make_array, \
-                         system_path
+                         system_path, get_uv_lum_sfr_factor
 from model.data.load import load_hmf_functions
 from model.calibration import mcmc_fitting, leastsq_fitting
 from model.quantity_options import get_quantity_specifics, update_bounds
@@ -48,7 +48,8 @@ class ModelResult():
                  name_addon=None,groups=None, calibrate=True, 
                  paramter_calc=True, progress=True, fixed_m_c=True,
                  scatter_name='delta', scatter_parameter=None, 
-                 skew_parameter=None, extrapolate = True, **kwargs):
+                 skew_parameter=None, extrapolate = True, sfr=False, 
+                 **kwargs):
         '''
         Main model object. Calibrate the model by fitting parameter to
         observational data.
@@ -111,6 +112,9 @@ class ModelResult():
             If True, enables option to do calculations at redshifts higher
             than highest input redshift by reusing certain settings at highest
             redshift and extrapolating parameter. The default is True.
+        sfr: bool, optional
+            If True, return star formation rate rather than UV magnitude,
+            only works for Muv model. The default is False.
         **kwargs : dict
             Additional arguments that can be passed to the mcmc function.
 
@@ -153,7 +157,16 @@ class ModelResult():
         self.quantity_name = quantity_name
         self.physics_name = physics_name
         self.prior_name = prior_name
-
+        
+         # sfr or UV mag for Muv model   
+        self.sfr = sfr
+        if self.sfr and self.quantity_name!='Muv':
+            raise NotImplementedError('sfr only works for Muv model.')
+        elif self.sfr and (self.quantity_name=='Muv'):
+            self.lum_conversion = 'lum_to_sfr'
+        else:
+            self.lum_conversion = 'lum_to_mag'    
+        
         self.fitting_method = fitting_method
         self.saving_mode = saving_mode
         self.name_addon = name_addon
@@ -554,9 +567,9 @@ class ModelResult():
                 self.physics_model.at_z(z).calculate_log_quantity(
                     log_halo_mass, *p))
             
-        # conversion between magnitude and luminosity if needed
+        # conversion between magnitude/sfr and luminosity if needed
         log_quantity_dist = self.unit_conversion(log_quantity_dist,
-                                                 'lum_to_mag')
+                                                 self.lum_conversion)
         return(np.array(log_quantity_dist))
 
     def calculate_halo_mass_distribution(self, log_quantity, z, num=int(1e+5),
@@ -845,9 +858,10 @@ class ModelResult():
                                  _calculate_feedback_regimes(
                                      *parameter, log_epsilon=-1, output=output)
         
-        # conversion between magnitude and luminosity if needed
+        # conversion between magnitude/sfr and luminosity if needed
         if output == 'quantity':
-            regime_values = self.unit_conversion(regime_values, 'lum_to_mag')
+            regime_values = self.unit_conversion(regime_values, 
+                                                 self.lum_conversion)
         return(regime_values)
                                 
     
@@ -860,19 +874,23 @@ class ModelResult():
         ----------
         log_quantity : float
             Input (log of) observable quantity.
+        mode: str
+            Conversion mode, can be 'mag_to_lum', 'lum_to_mag' or 'lum_to_sfr'
 
         Returns
         -------
         log_quantity : float
-            Converted quantity (magnitude or luminosity).
+            Converted quantity (magnitude, sfr or luminosity).
 
-        '''
+        '''        
         if self.quantity_name == 'Muv':
-            # convert magnitude to luminosity
+            # convert between magnitude and luminosity
             if mode == 'mag_to_lum' and np.any(log_quantity<=0):
                 log_quantity = np.log10(mag_to_lum(log_quantity))
             elif mode == 'lum_to_mag' and np.any(log_quantity>=0):
                 log_quantity = lum_to_mag(np.power(10,log_quantity))
+            elif mode == 'lum_to_sfr':
+                log_quantity = log_quantity + np.log10(get_uv_lum_sfr_factor())
             else:
                 raise RuntimeError('Something went wrong in unit conversion.')
         return(log_quantity)

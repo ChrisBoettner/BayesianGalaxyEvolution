@@ -979,7 +979,8 @@ class Plot_q1_q2_relation(Plot):
         Plot relation between two observable quantities according to Model.
         Works by using ModelResult1 to calculate halo mass distribution and
         then ModelResult2 to calculate quantity distribution for these 
-        halo masses.
+        halo masses. Choose if relation should be shown directly or as a ratio 
+        using ratio argument.
         You can plot additional relations with manipulated number densities 
         functions (see model for definition of fudge factor) by rerunning the 
         model with the adjusted values. The scaled_ndf parameter needs to 
@@ -1017,17 +1018,17 @@ class Plot_q1_q2_relation(Plot):
         self.axes = axes
         return
     
-    def _plot(self, ModelResult1, ModelResult2, z=0, sigma=1, num = 500,
-              datapoints=False, scaled_ndf=None, quantity_range=None,
-              log_slopes=None, log_slope_labels=None, masks=False, 
-              y_lims=None, legend=False, linewidth=5):       
+    def _plot(self, ModelResult1, ModelResult2, z=0, ratio = False, sigma=1, 
+              num = 100, datapoints=False, scaled_ndf=None, 
+              quantity_range=None, log_slopes=None, log_slope_labels=None, 
+              masks=False, y_lims=None, legend=False, linewidth=5):       
         # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
         
         # if no quantity_range is given, use default
         if quantity_range is None:
             log_q1 = ModelResult1.quantity_options['quantity_range']
-            log_q1 = np.linspace(log_q1[0], log_q1[-1], 1000)
+            log_q1 = np.linspace(log_q1[0], log_q1[-1], 100)
         else:
             log_q1 = quantity_range
         
@@ -1035,7 +1036,7 @@ class Plot_q1_q2_relation(Plot):
         q1_q2_relation = calculate_q1_q2_relation(ModelResult1,
                                                   ModelResult2,
                                                   z, log_q1, sigma=sigma,
-                                                  num=num)
+                                                  num=num, ratio=ratio)
 
         # calculate additional relations with ndf fudge factor
         if scaled_ndf:
@@ -1129,8 +1130,20 @@ class Plot_q1_q2_relation(Plot):
             ax.set_ylim(y_lims)
 
         # add axis labels
+        #ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])
+        #ax.set_ylabel(ModelResult2.quantity_options['ndf_xlabel'])
+        
+        # add axes labels
         ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])
-        ax.set_ylabel(ModelResult2.quantity_options['ndf_xlabel'])
+        if ModelResult2.quantity_name=='Muv' and ModelResult2.sfr:
+            print('label ugly implemented, also sfr or psi?')
+            y_label = 'log SFR'
+        else:
+            y_label = 'log '+ ModelResult2.quantity_options['quantity_name_tex']
+        if ratio:
+            y_label = (y_label + '/' 
+                       + ModelResult1.quantity_options['quantity_name_tex'])
+        ax.set_ylabel(y_label, x=0.01)
         
         ## add stuff to plot
         # add measured datapoints
