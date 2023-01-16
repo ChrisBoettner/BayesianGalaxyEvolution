@@ -62,6 +62,9 @@ class Plot(object):
 
         self.make_plot(ModelResult, columns, **kwargs)
         self.default_filename = None
+        
+        mpl.style.use('model/plotting/settings.rc') # return to original 
+                                                    # plot style parameter
     
     def make_plot(self, ModelResult, columns, **kwargs):
         ModelResult = make_list(ModelResult)

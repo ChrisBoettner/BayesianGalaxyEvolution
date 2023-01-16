@@ -10,12 +10,14 @@ from model.plotting.plotting import *
 
 #%%
 mstar = load_model('mstar', 'stellar_blackhole')
-#muv   = load_model('Muv', 'stellar_blackhole',
-#                   sfr=True)
-#mbh   = load_model('mbh', 'quasar')
-#lbol  = load_model('Lbol', 'eddington')
+muv   = load_model('Muv', 'stellar_blackhole')
+mbh   = load_model('mbh', 'quasar')
+lbol  = load_model('Lbol', 'eddington')
 
 #%%
+# muv   = load_model('Muv', 'stellar_blackhole',
+#                   sfr=True)
+
 # plt.close('all')
 
 # # Plot_q1_q2_relation(mstar, muv, z=0, ratio=True,
@@ -37,6 +39,9 @@ mstar = load_model('mstar', 'stellar_blackhole')
 
 #%%
 # from model.analysis.calculations import calculate_q1_q2_relation
+
+# muv   = load_model('Muv', 'stellar_blackhole',
+#                   sfr=True)
 
 # ms = [8.5,10, 11, 12]
 # zs = range(9)
@@ -74,3 +79,14 @@ mstar = load_model('mstar', 'stellar_blackhole')
 # ax.set_xlabel('Redshift')
 # ax.set_ylabel(r'sSFR [1/yr$^{-1}$]')
 # fig.tight_layout()
+
+#%%
+from model.analysis.parameter import tabulate_parameter
+
+#par_dict = calculate_parameter_with_uncertainties([mstar])
+
+
+gal_table = tabulate_parameter([mstar, muv])
+bh_table  = tabulate_parameter([mbh, lbol], redshift=np.arange(8))
+
+tables = gal_table+bh_table

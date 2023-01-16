@@ -200,7 +200,7 @@ class ModelResult():
                 # automatically determine if m_c is fixed or not
                 if (len(parameter[self.redshift[0]])
                     == self.quantity_options['model_param_num']+1):
-                    fixed_m_c = False
+                    self.fixed_m_c=False
                 elif (len(parameter[self.redshift[0]])
                       == self.quantity_options['model_param_num']):
                     pass
@@ -215,10 +215,10 @@ class ModelResult():
         # choose if fitting should be done or not
         self.calibrate = calibrate
         if self.calibrate:
-            self.fit_model(self.redshift, fixed_m_c=fixed_m_c, **kwargs)
+            self.fit_model(self.redshift, fixed_m_c=self.fixed_m_c, **kwargs)
         else:
             for z in self.redshift:
-                self._add_physics_model(z, fixed_m_c=fixed_m_c)
+                self._add_physics_model(z, fixed_m_c=self.fixed_m_c)
 
 
         # default plot parameter per physics_model

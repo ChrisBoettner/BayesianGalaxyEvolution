@@ -137,7 +137,7 @@ def invert_function(func, fprime, fprime2, x0_func, y, args, **kwargs):
     return(x)
 
 
-def calculate_percentiles(data, axis=0, sigma_equiv=1):
+def calculate_percentiles(data, axis=0, sigma_equiv=1, mode='percentiles'):
     '''
     Returns median, lower and upper percentile of data. The exact percentiles
     are chosen using sigma_equiv, which is the corresponding probability for 
@@ -145,6 +145,9 @@ def calculate_percentiles(data, axis=0, sigma_equiv=1):
     sigma_equiv=1 -> 68%
     sigma_equiv=2 -> 95%
     sigma_equiv=3 -> 99.7%
+    If mode=='percentiles' return percentiles directly, if 
+    mode=='uncertainties', return difference between upper/lower percentile
+    and mean.
     
     IMPORTANT: inf values are converted to NaN, and NaN are ignored in 
                percentile calculation.
@@ -157,13 +160,28 @@ def calculate_percentiles(data, axis=0, sigma_equiv=1):
     try:
         sigma = sigmas[sigma_equiv]
     except KeyError:
-        raise KeyError('sigma_equiv must be value list [1,2,3,4,5].')
+        raise KeyError('sigma_equiv must be value in [1,2,3,4,5].')
 
     data = make_array(data)  # turn into numpy array if not already
     data[~np.isfinite(data)] = np.nan # ignore inf values
-    
+        
     # percentiles in order: median, lower, upper
     percentiles = np.nanpercentile(data, sigma, axis=axis)
+    
+    # return percentiles or errors depending on mode
+    if mode == 'percentiles':
+        pass
+    elif mode == 'uncertainties':
+        if axis == 0:
+            percentiles[1] = percentiles[0] - percentiles[1]
+            percentiles[2] = percentiles[2] - percentiles[0]
+        else:
+            raise NotImplementedError('uncertainties mode currently only '
+                                      'supports percentile calculation along '
+                                      'axis=0')
+    else:
+        raise ValueError('mode must be either \'percentiles\' or'
+                         ' \'uncertainties\'')
     return(percentiles)
 
 

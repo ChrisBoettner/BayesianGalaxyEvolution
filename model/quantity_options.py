@@ -23,7 +23,10 @@ def get_quantity_specifics(quantity_name):
         log_m_c                 : Value for critical mass 
                                   (obtained from fitting at z=0).
         feedback_change_z       : Redshift at which feedback model changes.
-
+        marg_z                  : Redshift at which marginalisation is done
+                                  (Currently only for parameter table)
+        marg_keep               : Columns to keep for marginalisation (assumes
+                                  m_c is free.)
         model_param_num         : (Maximum) number of model parameter.
         model_p0                : Initial conditions for fitting the model.
         model_bounds            : Bounds for model parameter.
@@ -47,6 +50,7 @@ def get_quantity_specifics(quantity_name):
         quantity_range          : Representative list over which ndf can be 
                                   calculated. 
         subplot_grid            : Layout of subplots.
+        quantity_subscript      : Subscript for given physical quantity.
         ndf_xlabel              : Default xlabel for ndf plots.
         ndf_ylabel              : Default ylabel for ndf plots.     
         ndf_y_axis_limit        : y-axis limit for ndf plots.
@@ -79,6 +83,8 @@ def get_quantity_specifics(quantity_name):
         options['cutoff'] = -9
         options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41}
         options['feedback_change_z'] = 3
+        options['marg_z'] = 3
+        options['marg_keep'] = [1,2]
         # MODEL
         options['model_param_num'] = 3
         options['model_p0'] = np.array([-2, 1, 0.5])
@@ -99,12 +105,13 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(7.02, 12.48, 100)
         options['subplot_grid'] = (4, 3)
+        options['quantity_subscript'] = r'\star'
         options['ndf_xlabel'] = r'log $M_\star$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\star)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-6.1, 1.1]
-        options['param_y_labels'] = [r'$\log A$',
-                                     r'$\gamma$',
-                                     r'$\delta$']
+        options['param_y_labels'] = [r'$\log A_\star$',
+                                     r'$\gamma_\star$',
+                                     r'$\delta_\star$']
         options['density_ylabel'] = r'log $\rho_\star$ [$M_\odot$ cMpc$^{-3}$]'
         options['ndf_legend_pos'] = 8
         options['marker_alpha'] = 0.4
@@ -124,6 +131,8 @@ def get_quantity_specifics(quantity_name):
         options['cutoff'] = -9
         options['log_m_c'] = {0: 11.73,1: 11.51, 2: 11.4, 3: 11.47, 4: 11.15}
         options['feedback_change_z'] = 5
+        options['marg_z'] = 5
+        options['marg_keep'] = [1,2]
         # MODEL
         options['model_param_num'] = 3
         options['model_p0'] = np.array([18, 1, 0.5])
@@ -144,12 +153,13 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(-22.51, -14.46, 100)
         options['subplot_grid'] = (4, 3)
+        options['quantity_subscript'] = r'\mathrm{UV}'
         options['ndf_xlabel'] = r'$\mathcal{M}_\mathrm{UV}$'
         options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-6.1, 1.1]
-        options['param_y_labels'] = [r'$\log A$',
-                                     r'$\gamma$',
-                                     r'$\delta$']
+        options['param_y_labels'] = [r'$\log A_\mathrm{UV}$',
+                                     r'$\gamma_\mathrm{UV}$',
+                                     r'$\delta_\mathrm{UV}$']
         options['density_ylabel'] = (r'log $\psi$' +
                                      r' [$M_\odot$yr$^{-1}$ cMpc$^{-3}$]')
         options['ndf_legend_pos'] = 8
@@ -168,6 +178,8 @@ def get_quantity_specifics(quantity_name):
         options['cutoff'] = -13
         options['log_m_c'] = {0: 12.1, 1: 12.25, 2: 12.41}
         options['feedback_change_z'] = 3
+        options['marg_z'] = 100
+        options['marg_keep'] = None
         # MODE
         options['model_param_num'] = 2
         options['model_p0'] = np.array([5, 1])
@@ -191,6 +203,7 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(6.87, 10.73, 100)
         options['subplot_grid'] = (3, 2)
+        options['quantity_subscript'] = r'\bullet'
         options['ndf_xlabel'] = r'log $M_\bullet$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\bullet)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15.1, 3.1]
@@ -217,6 +230,8 @@ def get_quantity_specifics(quantity_name):
         options['cutoff'] = -12
         options['log_m_c'] = {0: 12.1,1: 12.25,2: 12.41}
         options['feedback_change_z'] = 3
+        options['marg_z'] = 100
+        options['marg_keep'] = None
         # MODE
         options['model_param_num'] = 4
         options['model_p0'] = np.array([39,   5, -2, 1.9])
@@ -238,6 +253,7 @@ def get_quantity_specifics(quantity_name):
         # PLOTS AND TABLES
         options['quantity_range'] = np.linspace(41.49, 50.91, 100)
         options['subplot_grid'] = (4, 2)
+        options['quantity_subscript'] = r'\mathrm{bol}'
         options['ndf_xlabel'] = r'log $L_\mathrm{bol}$ [erg s$^{-1}$]'
         options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15.1, 3.1]
