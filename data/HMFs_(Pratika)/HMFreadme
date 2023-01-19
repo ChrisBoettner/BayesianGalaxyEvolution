@@ -1,0 +1,10 @@
+Data processed to npz files
+
+Extended Press Schecher HMFs
+ by Pratika
+
+Rows: log(masses)  value(dn/dlogm, not log)
+
+z = 0-19
+
+! ALTERNATIVELY CREATE THEM YOURSELF USING FUNCTION IN model.hmf FOLDER, THAT'S WHAT I'M DOING ATM
