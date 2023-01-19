@@ -1,6 +1,9 @@
 # h5 files (in practise, these are the MCMC chain with may be too large in size)
 *.h5
 
+# publications related to data sources
+data/*.pdf
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
