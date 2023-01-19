@@ -329,11 +329,7 @@ def system_path():
     Choose path to save files depending on if code is run on cluster of my 
     laptop.
     '''
-    path = '/data/p305250/mcmc_runs/'
-    if os.path.isdir(path):  # if path exists use this one (cluster structure)
-        pass
-    else:  # else use path for home computer
-        path = '/home/chris/Desktop/mcmc_runs/'
+    path = os.getcwd() + '/model/data/MCMC_chains/'
     return(path)
 
 ################ TIMING #######################################################

@@ -390,7 +390,10 @@ class Plot_parameter_sample(Plot):
         # add axes labels
         param_labels =  ModelResult.quantity_options['param_y_labels']
         if param_num > ModelResult.quantity_options['model_param_num']:
-            param_labels = param_labels + [r'log $M_\mathrm{c}$'] 
+            m_c_label = (r'$\log M_\mathrm{c}^'
+                        + ModelResult.quantity_options[
+                                        'quantity_subscript'] + r'$')
+            param_labels = param_labels + [m_c_label]
         for i, label in enumerate(param_labels):
             axes[i].set_ylabel(label, multialignment='center')
         axes[-1].set_xlabel(r'Redshift $z$')

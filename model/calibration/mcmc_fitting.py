@@ -201,7 +201,7 @@ def mcmc_fit(model, prior, saving_mode,
     
     # discard burn-in of mcmc walk
     posterior_samp = sampler.get_chain(
-                      discard= autocorr_discard*np.amax(tau).astype(int),
+                      discard=autocorr_discard*np.amax(tau).astype(int),
                       flat=True)
 
     # calculate best fit parameter (MAP) using annealing

@@ -489,7 +489,7 @@ class ModelResult():
         
         if (flag_z and (not flag_extrapolation)): 
             random_draw = np.random.choice(self.distribution.at_z(z).shape[0],
-                                           size=num)
+                                           size=num, replace=False)
             parameter_sample = self.distribution.at_z(z)[random_draw]
         
         # else linearly extrapolate to higher redshift

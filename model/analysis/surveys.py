@@ -57,7 +57,7 @@ def tabulate_expected_number(model, instrument, to_latex=True, caption=''):
                                     area_arcmin2=survey_properties[0],
                                     limiting_magnitude=survey_properties[1], 
                                     sigma=2, 
-                                    num_samples=int(1e+4),                                      
+                                    num_samples=int(2e+4),                                      
                                     percentiles_mode='percentiles'
                                     )[2]
         number_limits = np.rint(numbers[:,3]).astype(int) # number limits as 
