@@ -2,7 +2,7 @@
 *.h5
 
 # publications related to data sources
-data/*.pdf
+data/**.pdf
 
 ##############################################################
 ## GitHub boilerplate
