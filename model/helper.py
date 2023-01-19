@@ -161,7 +161,7 @@ def calculate_percentiles(data, axis=0, sigma_equiv=1, mode='percentiles'):
         sigma = sigmas[sigma_equiv]
     except KeyError:
         raise KeyError('sigma_equiv must be value in [1,2,3,4,5].')
-
+    
     data = make_array(data)  # turn into numpy array if not already
     data[~np.isfinite(data)] = np.nan # ignore inf values
         
@@ -292,8 +292,8 @@ def make_list(variable):
     Makes input variable into a list if it is not one already. Needed for
     functions that may take scalars or arrays.
     '''
-    if isinstance(variable, (list, pd.core.series.Series, np.ndarray)):
-        return(variable)
+    if isinstance(variable, (list, range, pd.core.series.Series, np.ndarray)):
+        return(list(variable))
     else:
         return([variable])
 

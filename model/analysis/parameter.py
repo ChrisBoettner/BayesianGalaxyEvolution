@@ -61,9 +61,9 @@ def tabulate_parameter(models, precision=2, caption='',
     
     # turn into latex
     column_format = 'r'*(parameter_num+1)
-    latex_table = formatted_DataFrame.to_latex(index = False,
+    latex_table = formatted_DataFrame.to_latex(index=False,
                                                escape=False,
-                                               column_format = column_format,
+                                               column_format=column_format,
                                                caption=caption)
     
     return(latex_table)   

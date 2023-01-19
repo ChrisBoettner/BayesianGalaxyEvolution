@@ -93,6 +93,15 @@ def load_data_points(quantity_name):
         where index contains information about the data source,
         0 : Song2016
         1 : Bhatawdekar2019
+        
+    mstar : Stellar mass densities.
+        Contains data from Bhatawdekar. Returns dict of form {source: array},
+        where the array contains the data points and the source is a string.
+        
+    Muv : Stellar formation rate density.
+        Contains data from Madau (z=0-8) and Bhatawdekar (z=4-10). Returns dict 
+        of form {source: array}, where the array contains the data points and 
+        the source is a string.
     '''
     if quantity_name == 'mstar_mbh':
         data = np.load(path + '/BHmass/mstar_mbh_Baron2019.npy')
@@ -102,6 +111,11 @@ def load_data_points(quantity_name):
         # Bhatawdekar data
         data = np.load(path + '/Mainsequence/Muv_mstar_Song2016.npz')
         data = {z:data[str(z)] for z in range(4,9)}
+    elif quantity_name == 'mstar':
+        data = dict(np.load(path + '/SMD/Bhatawdekar2018SMD.npz'))
+    elif quantity_name == 'Muv':
+        #data = dict(np.load(path + '/SFRD/Madau2014SFRD.npz'))
+        data = dict(np.load(path + '/SFRD/Bhatawdekar2018SFRD.npz'))
     else:
         raise NameError('quantity_name not known.')
     return(data)
@@ -114,6 +128,26 @@ def load_JWST_UVLF_points():
     data = np.load(path + '/UVLF/JWST_UVLF.npz')
     data = {int(z):data[z] for z in ['12','13','17']}
     return(data)
+
+def load_surveys():
+    '''
+    Load information about different surveys. Instrument-specific arrays
+    are [survey area (arcmin^2), 5sigma depth]. Taken from Casey2022 and
+    van Mierlo2022.
+    '''
+    
+    JWST_surveys    = {'CEERS'        : [100 , 29.2],
+                       'Cosmos-Web'   : [1929, 28.2],
+                       'JADES-Deep'   : [46  , 30.7],
+                       'JADES-Medium' : [190 , 29.8],
+                       'PRIMER'       : [378 , 29.5],
+                       }
+    Euclid_surveys  = {'Euclid DF North/South'  : [72000, 26.4],
+                       'Euclid DF Fornax' : [36000, 26.4],
+                      }
+    surveys = {'JWST': JWST_surveys, 'Euclid': Euclid_surveys}
+    return(surveys)
+    
 
 ################ NUMBER DENSITY FUNCTION DATASETS #############################
 

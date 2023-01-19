@@ -258,6 +258,18 @@ def plot_data_points(ax, ModelResult1, ModelResult2=None, z=0, legend=True,
                    label='Song2016',
                    marker='o', zorder=zorder,
                    **kwargs)
+        
+    elif name in ['mstar', 'Muv']:
+        keys = data.keys()
+        markers = ['o', '>', 'h', '<', 'D', 'v', '*', '^']
+        
+        for i, k in enumerate(keys):
+            d = data[k]
+            ax.scatter(d[:,0], d[:,1], 
+                       s=70, alpha=1, 
+                       color='grey',
+                       label=k,
+                       marker=markers[i], **kwargs)
     return()
     
 def plot_linear_relationship(ax, log_x_range, log_slope, labels = None):

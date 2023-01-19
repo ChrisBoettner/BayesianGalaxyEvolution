@@ -745,7 +745,8 @@ class ModelResult():
         return(ndf_sample)
     
     def calculate_quantity_density(self, z, parameter, num=500,
-                                   log_q_space=None, **kwargs):
+                                   log_q_space=None, number_density=False,
+                                   **kwargs):
         '''
         Calculate the total quantity density at redshift z by integrating
         over the ndf for all included halo masses.
@@ -763,6 +764,9 @@ class ModelResult():
             Space over which ndf should be calculated for integration. The 
             default is none, which defaults to q(M_h_min) to q(M_h_max) with
             num points.
+        number_density: bool, optional
+            If True, calculate number density rather than quantity density. The
+            default is False.
         kwargs:
             Extra arguments passed to calculate_log_abundance.
 
@@ -780,18 +784,23 @@ class ModelResult():
             log_q_space   = self.physics_model.at_z(z).calculate_log_quantity(
                                                             log_m_h_space, 
                                                             *parameter)
-        
+
         # convert units if necessary, calculate ndf values and convert back
         log_q_space = self.unit_conversion(log_q_space, 'lum_to_mag')
         log_phi     = self.calculate_log_abundance(log_q_space, z, 
                                                    parameter, **kwargs)
         log_q_space = self.unit_conversion(log_q_space, 'mag_to_lum')
         
-        # integrate over ndf * value
-        quantity_density = trapezoid(y=10**(log_q_space+log_phi), 
+        # integrate over phi * value if number_density=False, else
+        # integrate phi
+        if number_density:
+            log_y = log_phi
+        else:
+            log_y = log_q_space+log_phi
+        
+        quantity_density = trapezoid(y=10**log_y, 
                                      x=log_q_space)
         return(quantity_density)
-        
     
     def calculate_feedback_regimes(self, z, parameter=None, log_epsilon=-1, 
                                    output='quantity', median=True, num=500,
@@ -1568,7 +1577,8 @@ class ModelResult_QLF(ModelResult):
         return(mean_log_black_hole_mass)
     
     def calculate_quantity_density(self, z, parameter, num=200, 
-                                   log_q_space=None, **kwargs):
+                                   log_q_space=None, number_density=False,
+                                   **kwargs):
         '''
         Calculate the total quantity density at redshift z by integrating
         over the ndf for all included halo masses (within reasonable 
@@ -1582,11 +1592,14 @@ class ModelResult_QLF(ModelResult):
             Input model parameter.
         num : int, optional
             Number of points calculated for the ndf calculated. The default is
-            500.
+            200.
         log_q_space : array, optional
             Space over which ndf should be calculated for integration. The 
             default is none, which defaults to L=38 to L=55 with
             num points.
+        number_density: bool, optional
+            If True, calculate number density rather than quantity density. The
+            default is False.
         kwargs:
             Extra arguments passed to calculate_log_abundance.
 
@@ -1603,8 +1616,14 @@ class ModelResult_QLF(ModelResult):
         # calculate ndf values
         log_phi     = self.calculate_log_abundance(log_q_space, z, 
                                                    parameter, **kwargs)
-        # integrate over ndf * value
-        quantity_density = trapezoid(y=10**(log_q_space+log_phi), 
+        # integrate over phi * value if number_density=False, else
+        # integrate phi
+        if number_density:
+            log_y = log_phi
+        else:
+            log_y = log_q_space+log_phi
+        
+        quantity_density = trapezoid(y=10**log_y, 
                                      x=log_q_space)
         return(quantity_density)
         

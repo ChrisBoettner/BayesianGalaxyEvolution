@@ -29,9 +29,18 @@ def save_plots(quantity, show = False, file_format='pdf'):
                                            quantity_options
                                            ['feedback_change_z'], 
                                            [1,2])).save(file_format)
-        Plot_quantity_density_evolution(model, 
+        
+        if model=='mstar':
+            redshift = np.arange(0, model.quantity_options
+                                 ['extrapolation_end']+1)
+        else:
+            redshift = np.arange(4, model.quantity_options
+                                 ['extrapolation_end']+1)
+        
+        Plot_quantity_density_evolution(model, redshift=redshift,
                         log_q_space = model.quantity_options['density_bounds'],
-                        columns='single').save(file_format)
+                        columns='single', datapoints=True, 
+                        legend=True).save(file_format)
         
         if quantity == 'mstar':
             quantity_range = np.linspace(6.1,10.13,100)

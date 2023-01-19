@@ -9,10 +9,40 @@ from model.interface import load_model, run_model, save_model
 from model.plotting.plotting import *
 
 #%%
-mstar = load_model('mstar', 'stellar_blackhole')
+#mstar = load_model('mstar', 'stellar_blackhole')
 muv   = load_model('Muv', 'stellar_blackhole')
-mbh   = load_model('mbh', 'quasar')
-lbol  = load_model('Lbol', 'eddington')
+#mbh   = load_model('mbh', 'quasar')
+#lbol  = load_model('Lbol', 'eddington')
+
+from model.analysis.surveys import calculate_expected_number
+
+o = np.rint(calculate_expected_number(muv, [7, 9, 11, 13, 15], 1929, 28, 
+                                      sigma=2, num_samples=int(1e+4),                                      
+                                      percentiles_mode='uncertainties')[2]
+                                      ).astype(int)
+
+# then:
+# get lum function from model, integrate up to lim_mag (do for sample)
+# (similar to calculate_quantity_density method, but without multiplying by quantity)
+# multiply by volume to get expected number of sources
+
+
+# JWST redshifts: 7, 9, 11, 13, 15
+# Euclid redshifts: 5, 6, 7, 8, 11
+# use one lim_mag per instrument/field, take from 
+#   https://arxiv.org/pdf/2207.12356.pdf
+#   https://www.aanda.org/articles/aa/pdf/2022/10/aa43950-22.pdf
+#   https://arxiv.org/pdf/2211.07865.pdf (table 3)
+# maybe just use mag = 26 for euclid, mag = 30 for JWST
+# fields:
+#    euclid deep
+#    JWST ceers, cosmos-web, jades..
+# (all results without lensing)
+# upper bounds for depths
+# two tables, one euclid, one jwst
+# reference to papers
+# check area of euclid again
+# only calculate upper bounds?
 
 #%%
 # muv   = load_model('Muv', 'stellar_blackhole',
@@ -80,13 +110,3 @@ lbol  = load_model('Lbol', 'eddington')
 # ax.set_ylabel(r'sSFR [1/yr$^{-1}$]')
 # fig.tight_layout()
 
-#%%
-from model.analysis.parameter import tabulate_parameter
-
-#par_dict = calculate_parameter_with_uncertainties([mstar])
-
-
-gal_table = tabulate_parameter([mstar, muv])
-bh_table  = tabulate_parameter([mbh, lbol], redshift=np.arange(8))
-
-tables = gal_table+bh_table

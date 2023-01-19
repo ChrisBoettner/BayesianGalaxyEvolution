@@ -6,10 +6,10 @@ Created on Tue Apr 12 14:11:04 2022
 @author: chris
 """
 import numpy as np
+from scipy.integrate import cumulative_trapezoid
 
 from model.helper import calculate_percentiles, make_list, make_array,\
                          get_uv_lum_sfr_factor, get_return_fraction, z_to_t
-from scipy.integrate import cumulative_trapezoid
 
 import warnings
 from joblib import Parallel, delayed
@@ -157,7 +157,7 @@ def calculate_ndf_percentiles(ModelResult, z, num = 5000,
     The exact range for the lower and upper percentile limit can be chosen 
     using sigma argument, see model.helper.calculate_percentiles for more 
     infos; multiple values can be chosen. Returns dictonary of form 
-    (sigma:array) if sigma is an array, where the array contains input 
+    (sigma:array), where the array contains input 
     quantity 1 value, median quantity 2 value and lower and upper percentile 
     for every q2 value. hmf_z chooses z of HMF independently of main z.
     Extra kwargs can be passed to get_ndf_sample.
@@ -192,7 +192,7 @@ def calculate_qhmr(ModelResult, z,
     Calculates the quantity distribution for an array of input halo masses at 
     given redshift. You can input different sigma equivalents (see 
     model.helper.calculate_percentiles for more infos). Returns array
-    of form (sigma:array) if sigma is an array, where the array contains 
+    of form (sigma:array), where the array contains 
     input halo mass, median quantity and lower and upper  percentile for
     every halo mass. If ratio is True, return q/m_h, else return q.
     '''
@@ -223,19 +223,22 @@ def calculate_qhmr(ModelResult, z,
 
 def calculate_quantity_density(ModelResult, redshift, log_q_space=None, 
                                num_samples=500, num_integral_points=500, 
-                               sigma=1, return_samples=False):
+                               sigma=1, return_samples=False, 
+                               number_density=False):
     '''
     Calculates the quantity density by integrating over ndf at the given 
     redshift values by drawing a parameter sample at z and integrating over
     resulting ndfs. You can input different sigma equivalents (see 
     model.helper.calculate_percentiles for more infos). Returns dictonary
-    of form (sigma:array) if sigma is an array, where the array contains 
+    of form (sigma:array), where the array contains 
     input redshift, median density and lower and upper percentile for
     every redshift. The number of samples can be adjusted using num_samples, 
     while the number of points calculated for the integral can be adjusted 
     using num_integral_points. You can also manually choose points where ndf 
     should be evaluated using log_q_space.
     If return_samples is True, return dictonaries (z:sample) instead.
+    If number_density is True, calculate number density rather than quantity
+    density.
     '''  
     redshift        = make_array(redshift)
     sigma           = make_list(sigma)
@@ -250,8 +253,9 @@ def calculate_quantity_density(ModelResult, redshift, log_q_space=None,
         # calculate densities parallelized because it's really slow for lbol
         def calc_quantity_density(p):
             dens = ModelResult.calculate_quantity_density(z, p,
-                                                    log_q_space=log_q_space,                
-                                                    num=num_integral_points)
+                                                log_q_space=log_q_space,                
+                                                num=num_integral_points,
+                                                number_density=number_density)
             return(dens)
         quantity_density_at_z = Parallel(n_jobs=4)(delayed
                                                    (calc_quantity_density)(p) 
@@ -286,7 +290,7 @@ def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
     ways, one calculates the stellar mass density directly from the modelled
     SMFs, the other approach estimates a star formation rate density from the
     UV luminosity function which is then integrated. Returns two dictonary
-    of form (sigma:array) if sigma is an array, where the array contains 
+    of form (sigma:array), where the array contains 
     input redshift, median density and lower and upper percentile for
     every redshift, first array is for direct method, second array is for
     UVLF method. Start and stop redshift for integration can be chosen using 

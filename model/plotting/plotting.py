@@ -1405,14 +1405,17 @@ class Plot_quantity_density_evolution(Plot):
         points where ndf should be evaluated using log_q_space. 
         Color for points that are extrapolated is chosen using 
         additional_color. If rasterized=False, create vector graphic, 
-        otherwise fixed resolution graphic.
+        otherwise fixed resolution graphic. If observational data points 
+        are available, you can plot them using datapoints argument. Legend can
+        be added using legend argument.
         '''
         super().__init__(ModelResults, **kwargs)
         self.default_filename = (self.quantity_name + '_density_evolution')
 
     def _plot(self, ModelResult, redshift=None, num_samples=int(1e+4), 
-              num_integral_points=100, log_q_space=None, 
-              additional_color='#7dcc79', rasterized=True):
+              num_integral_points=100, log_q_space=None,
+              additional_color='#7dcc79', rasterized=True, datapoints=False,
+              legend=False):
         
         if redshift is None:
             redshift = np.arange(ModelResult.redshift[0],
@@ -1469,6 +1472,10 @@ class Plot_quantity_density_evolution(Plot):
             ax.scatter(x, sample, c=color, s=0.1, cmap=cm, 
                        rasterized=rasterized)
             
+        # add measured datapoints
+        if datapoints:
+            plot_data_points(ax, ModelResult)
+            
         # add y ticks
         #ax.yaxis.set_major_locator(MaxNLocator(10))
         ax.yaxis.grid(True, which='minor')
@@ -1483,6 +1490,9 @@ class Plot_quantity_density_evolution(Plot):
         for i in range(1,len(xticklabels)+1):
             xticklabels.insert(2*i-1,'')
         ax.set_xticklabels(xticklabels[:len(redshift)])
+        
+        if legend:
+            add_legend(ax, 0, fontsize=32, loc='lower left', ncol=2)
         return(fig, ax)
     
     
@@ -1578,7 +1588,7 @@ class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
         ax.set_xticklabels(redshift)
         
         if legend:
-            add_legend(ax, 0, markersize=128, fontsize=32, loc='lower left')
+            add_legend(ax, 0, fontsize=32, loc='lower left')
         return(fig, ax)
     
     

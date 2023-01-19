@@ -143,7 +143,7 @@ def get_quantity_specifics(quantity_name):
         options['systematic_uncertainties'] = True
         options['extrapolation_z'] = np.array([5,6,7,8,9,10])
         options['extrapolation_end'] = 17
-        options['density_bounds'] = np.linspace(26, 30.64, 50) # M_UV = [-13.5, -25]
+        options['density_bounds'] = np.linspace(27.43, 30.64, 50) # M_UV = [-17, -25]
         # REFERENCE FUNCTION
         options['reference_function_name'] = 'Schechter'
         options['reference_function'] = log_schechter_function_mag
