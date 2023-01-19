@@ -4,6 +4,9 @@
 # publications related to data sources
 data/*.pdf
 
+##############################################################
+## GitHub boilerplate
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
