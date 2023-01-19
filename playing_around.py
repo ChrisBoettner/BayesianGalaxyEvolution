@@ -14,10 +14,6 @@ muv   = load_model('Muv', 'stellar_blackhole')
 mbh   = load_model('mbh', 'quasar')
 lbol  = load_model('Lbol', 'eddington')
 
-from model.data.mcmc_chains import *
-for m in [mstar, muv, mbh, lbol]:
-    process_mcmc_chains(m)
-
 #%%
 # muv   = load_model('Muv', 'stellar_blackhole',
 #                   sfr=True)
