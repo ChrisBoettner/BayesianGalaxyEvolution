@@ -1483,10 +1483,7 @@ class Plot_quantity_density_evolution(Plot):
         #ax.yaxis.set_major_locator(MaxNLocator(10))
         ax.yaxis.grid(True, which='minor')
         # set y lim by calculating percentiles of all available samples
-        all_points = np.array([densities[z] for z in redshift]).flatten()
-        y_lims = np.percentile(all_points[np.isfinite(all_points)], 
-                               [5,99.95])
-        ax.set_ylim(y_lims[0], 1.05*y_lims[1])
+        ax.set_ylim(ModelResult.quantity_options['density_y_axis_limit'])
         # add x tick for every redshift
         ax.set_xticks(redshift)
         xticklabels = list(redshift[::2])

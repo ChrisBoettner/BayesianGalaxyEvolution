@@ -30,10 +30,10 @@ def process_mcmc_chains(ModelResult, redshift=None,
     for z in redshift:
         # load raw chains
         raw_chain_path = ModelResult.directory
-        filename = raw_chain_path + ModelResult.filename.at_z(z) + '.h5'
-        if not Path(filename).is_file():
+        file = raw_chain_path + ModelResult.filename.at_z(z) + '.h5'
+        if not Path(file).is_file():
             raise FileNotFoundError('mcmc data file does not exist.')
-        savefile = emcee.backends.HDFBackend(filename)
+        savefile = emcee.backends.HDFBackend(file)
         
         # discard burn-in
         tau = savefile.get_autocorr_time()
@@ -61,9 +61,9 @@ def process_mcmc_chains(ModelResult, redshift=None,
         chain = pd.DataFrame(chain, index=None, columns=header)
         
         # save to file
-        name = ModelResult.quantity_name + f'_z{z}.csv' 
-        path = (raw_chain_path.split('mcmc_runs')[0] + 'processed_mcmc_chains/'
-                + ModelResult.quantity_name)
+        name = ModelResult.filename.at_z(z) + '.csv' 
+        path = raw_chain_path + '/processed_chains/'
+                
         
         Path(path).mkdir(parents=True, exist_ok=True)
         chain.to_csv(path + '/' + name, index=None)

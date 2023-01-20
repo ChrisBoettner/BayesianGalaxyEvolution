@@ -54,6 +54,7 @@ def get_quantity_specifics(quantity_name):
         ndf_xlabel              : Default xlabel for ndf plots.
         ndf_ylabel              : Default ylabel for ndf plots.     
         ndf_y_axis_limit        : y-axis limit for ndf plots.
+        density_y_axis_limit    : y-axis limit for density plots.
         param_y_labels          : Labels for the model parameter.
         density_ylabel          : Label for quantity density.
         ndf_legend_pos          : Location of (first) legend in ndf plots.
@@ -109,6 +110,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_xlabel'] = r'log $M_\star$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\star)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-6.1, 1.1]
+        options['density_y_axis_limit'] = [0,9]
         options['param_y_labels'] = [r'$\log A_\star$',
                                      r'$\gamma_\star$',
                                      r'$\delta_\star$']
@@ -157,6 +159,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_xlabel'] = r'$\mathcal{M}_\mathrm{UV}$'
         options['ndf_ylabel'] = r'log $\phi(\mathcal{M}_{UV})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-6.1, 1.1]
+        options['density_y_axis_limit'] = [-4.5, -1.3]
         options['param_y_labels'] = [r'$\log A_\mathrm{UV}$',
                                      r'$\gamma_\mathrm{UV}$',
                                      r'$\delta_\mathrm{UV}$']
@@ -207,6 +210,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_xlabel'] = r'log $M_\bullet$ [$M_\odot$]'
         options['ndf_ylabel'] = r'log $\phi(M_\bullet)$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15.1, 3.1]
+        options['density_y_axis_limit'] = [-2, 7]
         options['param_y_labels'] = [r'$\log B$',
                                      r'$\eta$']
         options['density_ylabel'] = r'log $\rho_\bullet$ [$M_\odot$ cMpc$^{-3}$]'
@@ -257,6 +261,7 @@ def get_quantity_specifics(quantity_name):
         options['ndf_xlabel'] = r'log $L_\mathrm{bol}$ [erg s$^{-1}$]'
         options['ndf_ylabel'] = r'log $\phi(L_\mathrm{bol})$ [cMpc$^{-3}$ dex$^{-1}$]'
         options['ndf_y_axis_limit'] = [-15.1, 3.1]
+        options['density_y_axis_limit'] = [34, 42]
         options['param_y_labels'] = [r'$\log C$',
                                      r'$\theta$',
                                      r'$ \log \lambda_\mathrm{c}$',
