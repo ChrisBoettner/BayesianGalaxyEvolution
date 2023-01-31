@@ -5,6 +5,7 @@ Created on Sun Apr 10 18:15:34 2022
 
 @author: chris
 """
+from abc import ABC, abstractmethod
 
 from model.interface import run_model
 from model.data.load import load_data_points
@@ -51,7 +52,7 @@ def get_list_of_plots():
     '''
     return(Plot.__subclasses__())
 
-class Plot(object):
+class Plot(ABC):
     def __init__(self, ModelResult, columns='double', color='C3', **kwargs):
         ''' General Configurations '''
         mpl.style.use('model/plotting/settings.rc') # return to original 
@@ -81,6 +82,7 @@ class Plot(object):
         self.axes = axes
         return
 
+    @abstractmethod
     def _plot(self, ModelResult):
         return
     
