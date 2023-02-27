@@ -134,6 +134,7 @@ def save_plots(quantity, show = False, file_format='pdf'):
         mbh    = load_model('mbh','quasar', redshift=0)
         Plot_q1_q2_relation(mstar,mbh,datapoints=True,
                             scaled_ndf=(mbh, [10,30,100]),
+                            scaled_ndf_color = ['grey', 'black', 'grey'],
                             quantity_range=np.linspace(8.7,11.9,100),
                             sigma=2,
                             columns='single').save(file_format)

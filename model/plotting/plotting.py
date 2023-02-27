@@ -44,6 +44,8 @@ from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 
+mpl.style.use('model/plotting/settings.rc')
+
 ################ MAIN FUNCTIONS AND CLASSES ###################################
 
 def get_list_of_plots():
@@ -379,11 +381,15 @@ class Plot_parameter_sample(Plot):
 
     def _plot(self, ModelResult, num=int(1e+4), time_axis=False,
               marginalise=None, rasterized=True):
+        
+        # adjust fig size
+        figsize    = mpl.rcParams['figure.figsize']
+        figsize[1] *= 1.5
+        
         # general plotting configuration
         param_num = ModelResult.distribution.at_z(ModelResult.
-                                                  redshift[0]).shape[1]        
-        fig, axes = plt.subplots(param_num,
-                                 1, sharex=True)
+                                                  redshift[0]).shape[1]  
+        fig, axes = plt.subplots(param_num, 1, sharex=True, figsize=figsize)
         fig.subplots_adjust(**self.plot_limits)
 
         if ModelResult.distribution.is_None():
@@ -996,7 +1002,8 @@ class Plot_q1_q2_relation(Plot):
         functions (see model for definition of fudge factor) by rerunning the 
         model with the adjusted values. The scaled_ndf parameter needs to 
         be of the form (model, scale factor), where the scale factor can be 
-        scalar of an array.
+        scalar of an array. Different colors for the fudge factors can 
+        be included using the scaled_ndf_color parameter.
         You can choose the redshift using z, the number of sigma equivalents
         shown using sigma, the datapoints using datapoints and the
         q1 range using quantity_range. Also can adjust number of samples drawn
@@ -1031,8 +1038,9 @@ class Plot_q1_q2_relation(Plot):
     
     def _plot(self, ModelResult1, ModelResult2, z=0, ratio = False, sigma=1, 
               num = 100, datapoints=False, scaled_ndf=None, 
-              quantity_range=None, log_slopes=None, log_slope_labels=None, 
-              masks=False, y_lims=None, legend=False, linewidth=5):       
+              scaled_ndf_color = None, quantity_range=None, log_slopes=None, 
+              log_slope_labels=None, masks=False, y_lims=None, legend=False,
+              linewidth=5):       
         # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
         
@@ -1042,6 +1050,14 @@ class Plot_q1_q2_relation(Plot):
             log_q1 = np.linspace(log_q1[0], log_q1[-1], 100)
         else:
             log_q1 = quantity_range
+        
+        if scaled_ndf_color:
+            scaled_ndf_color = make_list(scaled_ndf_color)
+            if len(scaled_ndf_color) != len(make_list(scaled_ndf[1])):
+                raise ValueError("Length of scaled_ndf_alpha values must "
+                                 "match length of scaled_ndf values.")
+        elif (scaled_ndf is not None) and (scaled_ndf_color is None):
+            scaled_ndf_color = ["grey"] * len(make_list(scaled_ndf[1]))
         
         # calculate relation and sigmas for all given sigmas, save as array
         q1_q2_relation = calculate_q1_q2_relation(ModelResult1,
@@ -1118,10 +1134,10 @@ class Plot_q1_q2_relation(Plot):
              
         # plot additional relations with fudge factor
         if scaled_ndf:
-            for fudge_factor in ndf_fudge_factors:
+            for i, fudge_factor in enumerate(ndf_fudge_factors):
                 ax.plot(alt_relations[fudge_factor][:,0],
                         alt_relations[fudge_factor][:,1],
-                        color='grey',
+                        color = scaled_ndf_color[i],
                         linewidth=linewidth)
                               
                 # # add (curved) text
@@ -1590,7 +1606,7 @@ class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
         ax.set_xticklabels(redshift)
         
         if legend:
-            add_legend(ax, 0, fontsize=32, loc='lower left')
+            add_legend(ax, 0, fontsize=32, loc='lower left', markersize=100)
         return(fig, ax)
     
     

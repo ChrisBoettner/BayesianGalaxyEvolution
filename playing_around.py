@@ -9,74 +9,53 @@ from model.interface import load_model, run_model, save_model
 from model.plotting.plotting import *
 
 #%%
-mstar = load_model('mstar', 'stellar_blackhole')
-muv   = load_model('Muv', 'stellar_blackhole')
-mbh   = load_model('mbh', 'quasar')
-lbol  = load_model('Lbol', 'eddington')
+#mstar = load_model('mstar', 'stellar_blackhole')
+#muv   = load_model('Muv', 'stellar_blackhole')
+#mbh   = load_model('mbh', 'quasar')
+#lbol  = load_model('Lbol', 'eddington')
 
 #%%
-# muv   = load_model('Muv', 'stellar_blackhole',
-#                   sfr=True)
+import pandas as pd
 
-# plt.close('all')
+from model.data.load import load_ndf_data
 
-# # Plot_q1_q2_relation(mstar, muv, z=0, ratio=True,
-# #                     quantity_range=np.linspace(8.12,11.92,100), columns='single')
+quantities = ['mstar', 'Muv', 'mbh', 'Lbol']
+ndf = ['SMF', 'UVLF', 'BHMF', 'QLF']
 
-# from model.analysis.calculations import calculate_q1_q2_relation
-# from model.plotting.convience_functions import plot_data_with_confidence_intervals
+columns = ['z', 'fill', 'log10 Phi [ cMpc^-1 dex^-1]', 'lower uncertainity (log10)', 
+           'upper uncertainity (log10)', 'Source']
+quantity_val = ['log10 M_star [M_sun]', 'UV Magnitude', 'log10 M_bh [M_sun]', 
+                'log10 L_bol [erg s^-1]'] 
 
-# rels = {z:calculate_q1_q2_relation(mstar,muv,z,np.linspace(8.12,11.12,100), ratio=True) 
-#         for z in range(8)}
-
-# fig, ax = plt.subplots(1,1)
-# for z in rels.keys():
-#     d = rels[z][1]
-#     ax.plot(d[:,0], d[:,1], label=str(z))
-#     #plot_data_with_confidence_intervals(ax, rels[z], 'black')
+for j in range(4):
+    all_data  = []
+    groups = load_ndf_data(quantities[j], -100)[0]
     
-# plt.legend()
-
-#%%
-# from model.analysis.calculations import calculate_q1_q2_relation
-
-# muv   = load_model('Muv', 'stellar_blackhole',
-#                   sfr=True)
-
-# ms = [8.5,10, 11, 12]
-# zs = range(9)
-
-# rels = {z:calculate_q1_q2_relation(mstar,muv,z, ms, ratio=True) 
-#         for z in zs}
-
-# ssfr = {}
-
-# for i in range(4):
-#     vals = []
-#     for z in zs:
-#         v = 10**rels[z][1][i]
-#         v[2] = v[1]-v[2]
-#         v[3] = v[3]-v[1]
-#         vals.append([z, *v[[1,2,3]]])
-#     ssfr[ms[i]] = np.array(vals)
+    for group in groups:
+        for i in range(len(group.redshift)):
+            data = group._data[str(i)]
+            z = np.repeat(group.redshift[i], len(data))[:,np.newaxis]
+            name =  np.repeat(group.label, len(data))[:,np.newaxis]
+            
+            data = np.append(z, data, axis=1)
+            data = np.append(data, name, axis=1)
+            
+            if len(all_data)==0:
+                all_data = data
+            else:
+                all_data = np.append(all_data, data, axis=0)
+            
+    all_data = pd.DataFrame(all_data)
+    all_data = all_data.astype({0:'float'}).astype({0:'int'})
+    all_data = all_data.astype({1:'float', 2:'float', 3:'float', 4:'float', 5:'str'})
+    all_data = all_data.sort_values([0,5])
     
-# for m in ms:
-#     np.savetxt('m='+str(m)+'.txt', ssfr[m], delimiter='    ',
-#                fmt=('%1.0f','%1.4e','%1.4e','%1.4e'),
-#                header = 'z    median    lower error    upper error')
+    col = columns.copy()
+    col[1] = quantity_val[j]
     
-# plt.close()
+    all_data.columns = col
     
-# fig, ax = plt.subplots(1,1)
-
-# for m in ms[::-1]:
-#     ax.errorbar(ssfr[m][:,0], ssfr[m][:,1], yerr=ssfr[m][:,2:].T,
-#                 elinewidth=3, capsize=7, markersize=10, linewidth=3,
-#                 label=f'log m = {m}' + r' [$M_\odot$]')
+    all_data.to_csv(f'{ndf[j]}.csv', index=False)
     
-# ax.set_yscale('log')
-# ax.legend()
-# ax.set_xlabel('Redshift')
-# ax.set_ylabel(r'sSFR [1/yr$^{-1}$]')
-# fig.tight_layout()
-
+        # z_sort = np.argsort(all_data[:,0].astype(float).astype(int))
+        # all_data = all_data[z_sort]
