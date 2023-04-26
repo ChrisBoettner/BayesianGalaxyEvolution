@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['model/plotting/plotting.py', 'model/plotting/convience_functions.py', 'make_plots.py', 'make_tables.py', 'playing_around.py']
+recent_files = ['playing_around.py', 'model/model.py', 'model/interface.py', 'model/data/load.py', 'model/helper.py', '../../../anaconda3/envs/empirical-galaxy-model/lib/python3.9/site-packages/sklearn/utils/validation.py']
 
 [main]
 version = 0.2.0

@@ -30,7 +30,8 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 plot_feedback_regimes,\
                                                 blend_color,\
                                                 plot_ndf_data_simple,\
-                                                plot_JWST_data
+                                                plot_JWST_data,\
+                                                plot_bh_mass_histogram
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array, log_L_uv_to_log_sfr
 from model.scatter import Joint_distribution, calculate_q1_q2_conditional_pdf
@@ -1327,7 +1328,7 @@ class Plot_black_hole_mass_distribution(Plot):
         self.default_filename = self.quantity_name + '_bh_mass_distribution'
         
     def _plot(self, ModelResult, z=0, lum=45.2, 
-              edd_space=np.linspace(-6, 32.13,10000), num=5000,
+              edd_space=np.linspace(-6, 32.13, 10000), num=5000,
               sigma=1, datapoints=True, legend=False, linewidth=5):
         
         if ModelResult.physics_name not in ['eddington','eddington_free_ERDF',
@@ -1350,11 +1351,6 @@ class Plot_black_hole_mass_distribution(Plot):
                                         eddington_space = edd_space,
                                         num=num, sigma=sigma,
                                         black_hole_mass_distribution=True)
-        
-        # load black hole mass and luminosity data
-        if datapoints:
-            m_bh_data = load_data_points('mbh_Lbol')
-            m_bh_data = m_bh_data[~np.isnan(m_bh_data[:,0])] # remove NaNs
         
         ## calculate upper and lower probable bound of model
         dist = np.copy(m_bh_dist[sigma[0]])
@@ -1404,11 +1400,9 @@ class Plot_black_hole_mass_distribution(Plot):
         # set limits
         ax.set_xlim([0.9*eddington_limit,1.09*Jet_mode_limit])
         
-        # add histogram of data points
+        
         if datapoints:
-            ax.hist(m_bh_data[:,0], bins=15, density=True,
-                    label = 'Observed Distribution\n(Baron2019, Type 1 AGN)',
-                    color='lightgrey', alpha=0.8,zorder=0)
+            plot_bh_mass_histogram(ax, num = num, sigma=sigma[-1])
         
         # add legend
         if legend:

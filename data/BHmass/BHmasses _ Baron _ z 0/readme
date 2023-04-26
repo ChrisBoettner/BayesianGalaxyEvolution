@@ -6,7 +6,7 @@ Collected for Data in Baron2019 (and Reines2015, Bentz2018)
 #################################################################
 mstar_mbh_Baron2019.npy
 
-Ever npy file contains data with rows [log_stellar_mass (in solar masses), log_bh_mass (in solar masses), index],
+Every npy file contains data with rows [log_stellar_mass (in solar masses), log_bh_mass (in solar masses), index],
 index indicates the source of the data:
 0 : Baron2019  (Type 2 AGN)
 1 : Reines2015 (Type 1 AGN)
@@ -15,5 +15,5 @@ index indicates the source of the data:
 #################################################################
 mbh_lbol_Baron2019.npy
 
-Ever npy file contains data with rows [log_bh_mass (in solar masses), log_L_bol (in erg/s)], only Type 1 AGN 
+Every npy file contains data with rows [log_bh_mass (in solar masses), log_L_bol (in erg/s)], only Type 1 AGN 
 (taken from Shen2011)

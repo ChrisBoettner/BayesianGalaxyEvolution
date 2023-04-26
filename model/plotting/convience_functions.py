@@ -395,7 +395,42 @@ def plot_feedback_regimes(axes, ModelResult, color, redshift=None,
                 ax.axvspan(transition_quantity_value[z][1],
                             transition_quantity_value[z][2],
                             facecolor=color, alpha=alpha, zorder= 0)
-    return()
+    return
+
+def plot_bh_mass_histogram(axes, num = 10000, sigma=2):
+    '''
+    Plot histogram for black hole mass distribution of type 1 AGN from Baron&Menard 
+    paper. Estimate uncertainies by creating mock samples using the data uncertainties
+    and calculating their median, lower and upper bounds.
+    '''
+    # load black hole mass and luminosity data
+    m_bh_data = load_data_points('mbh_Lbol')
+    m_bh_data = m_bh_data[~np.isnan(m_bh_data[:,0])] # remove NaNs
+    m_bh_data = m_bh_data[~np.isnan(m_bh_data[:,1])] # remove NaNs
+    
+    # histogram from measurement data
+    _, edges = np.histogram(m_bh_data[:,0], bins='fd',  density=True)
+    
+    # create mock catalogues by drawing from gaussian distribution with errors as 
+    # std
+    mock = np.random.multivariate_normal(mean = m_bh_data[:,0],
+                                         cov = np.diag(m_bh_data[:,1])**2,
+                                         size = num)
+    mock_histograms = np.apply_along_axis(lambda x: np.histogram(x, bins=edges, 
+                                                                 density=True)[0],
+                                          1, mock)
+    
+    median, lower, upper = calculate_percentiles(mock_histograms, sigma_equiv=sigma)
+    # histogram
+    dx = edges[1] - edges[0]
+    axes.bar(edges[:-1]+dx/2, median, width=dx,
+            label = 'Observed Distribution\n(Baron2019, Type 1 AGN)',
+            color='lightgrey', alpha=0.7,zorder=0)
+    # uncertainties
+    for i, edge in enumerate(edges[:-1]):
+        axes.plot([edge+dx/2, edge+dx/2],
+                  [lower[i], upper[i]], color='black', linewidth=3, alpha=0.7)
+    return
 
 ################ LEGEND #######################################################
 

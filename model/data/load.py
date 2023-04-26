@@ -85,7 +85,7 @@ def load_data_points(quantity_name):
        2 : Bentz2018
        
     mbh_lbol : Black hole mass - Bolometric luminosity relation
-       Returns numpy array of form [log_bh_mass, log_l_bol].
+       Returns numpy array of form [log_bh_mass, log_bh_error, log_l_bol].
        
     Muv_mstar : UV luminosity - stellar mass relation. 
         Contains data from Bhatawdekar (z=6-9) and Song (z=4-8).
