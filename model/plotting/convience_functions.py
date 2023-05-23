@@ -14,7 +14,7 @@ from matplotlib.colors import to_rgb
 
 from model.data.load import load_data_points, load_JWST_UVLF_points
 from model.helper import make_array, make_list, pick_from_list, \
-                         calculate_percentiles
+                         calculate_percentiles, get_uv_lum_sfr_factor, mag_to_lum
 from model.analysis.calculations import calculate_best_fit_ndf,\
                                         calculate_expected_black_hole_mass_from_ERDF
 
@@ -556,6 +556,22 @@ def get_distribution_limits(ModelResults):
     limits = list(zip(min_values.values(),max_values.values()))
     return(limits)
  
+    
+def add_second_axis(fig, ax, ModelResult1, ModelResult2):
+    '''
+    Add second axis to Plot_q1_q2_relation plots.
+    '''
+    if ModelResult1.quantity_name=='Muv' and ModelResult2.quantity_name=='mstar':
+        k_uv = get_uv_lum_sfr_factor()
+        
+        secax = ax.secondary_xaxis('top', 
+                                   functions=(lambda x: np.log10(mag_to_lum(x)*k_uv), 
+                                              lambda x: np.log10(mag_to_lum(x)/k_uv)))
+        secax.set_xlabel(r'log SFR [$M_\odot$ yr$^{-1}$]', labelpad=20)
+        secax.set_xticks(np.array([1.5, 1, 0.5, 0]))   
+        fig.subplots_adjust(top=0.820)
+        return secax    
+    
 ################ DATA ######################################################### 
 
 

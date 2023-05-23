@@ -11,51 +11,77 @@ from model.plotting.plotting import *
 #%%
 #mstar = load_model('mstar', 'stellar_blackhole')
 #muv   = load_model('Muv', 'stellar_blackhole')
-#mbh   = load_model('mbh', 'quasar')
+mbh   = load_model('mbh', 'quasar')
 lbol  = load_model('Lbol', 'eddington')
 
-# #%%
-# import pandas as pd
+#%%%
+Plot_black_hole_mass_density_evolution(mbh, lbol,
+                                    columns='single').save('pdf')
 
-# from model.data.load import load_ndf_data
+#%%
+# from model.helper import log_L_bol_to_log_L_band, calculate_percentiles
+# import numpy as np
 
-# quantities = ['mstar', 'Muv', 'mbh', 'Lbol']
-# ndf = ['SMF', 'UVLF', 'BHMF', 'QLF']
+# # mh = np.linspace(8,15,100)
 
-# columns = ['z', 'fill', 'log10 Phi [ cMpc^-1 dex^-1]', 'lower uncertainity (log10)', 
-#            'upper uncertainity (log10)', 'Source']
-# quantity_val = ['log10 M_star [M_sun]', 'UV Magnitude', 'log10 M_bh [M_sun]', 
-#                 'log10 L_bol [erg s^-1]'] 
+# # z = 1
+# # num= 1000
 
-# for j in range(4):
-#     all_data  = []
-#     groups = load_ndf_data(quantities[j], -100)[0]
+# # l = lbol.calculate_quantity_distribution(mh, z=z, num = num)
+# # lx = log_L_bol_to_log_L_band(l)
+# # ms = mstar.calculate_quantity_distribution(mh, z=z, num=num)
+
+# # def lam (ms, lx):
+# #     l = 25* 10**lx
+# #     denom = 1.3e+38 * 0.002 * 10**ms
+# #     return(l/denom)
+
+# # la = lam(ms,lx)
+# # la = np.median(la, axis=0)
+
+# # plt.loglog(10**np.median(ms,axis=0),la)
+
+# data1 = np.array([[9.925, 0.5, 0.3, 1],
+#                  [10.255, 0.71, 0.37, 0.94],
+#                  [10.585, 3.8, 1.6, 2.9],
+#                  [11, 3.7, 1.4, 2.5]])
+        
+# data2 = np.array([[9.925, 2.8, 1.3, 2.8],
+#                  [10.255, 4, 1.5, 2.9],
+#                  [10.585, 12.9, 4.9, 8.8],
+#                  [11, 25, 12, 25]])
+
+# data = {1: data1, 2: data2}
+
+# def calc_lx(ms, z, num=10000):
+#     mh = mstar.calculate_halo_mass_distribution(ms, z=z, num=num//100)
+#     l = lbol.calculate_quantity_distribution(mh, z=z, num=num).flatten()
+#     lx = log_L_bol_to_log_L_band(l) - 42
+#     print(calculate_percentiles(10**lx, sigma_equiv=2))
+#     #return(lx)
+
+# num=10000
+# n =10
+# zs= [1,2]
+# ms = np.linspace(9,11.5,n)
+
+# ls = {}
+# plt.close()
+# for z in zs:
+#     mh = mstar.calculate_halo_mass_distribution(ms, z=z, num=num//100)
+#     l = lbol.calculate_quantity_distribution(mh, z=z, num=num).reshape([num*num//100, n])
+#     lx = log_L_bol_to_log_L_band(l)
+#     percentiles = calculate_percentiles(lx, sigma_equiv=2).T
+#     ls[z] = percentiles
     
-#     for group in groups:
-#         for i in range(len(group.redshift)):
-#             data = group._data[str(i)]
-#             z = np.repeat(group.redshift[i], len(data))[:,np.newaxis]
-#             name =  np.repeat(group.label, len(data))[:,np.newaxis]
-            
-#             data = np.append(z, data, axis=1)
-#             data = np.append(data, name, axis=1)
-            
-#             if len(all_data)==0:
-#                 all_data = data
-#             else:
-#                 all_data = np.append(all_data, data, axis=0)
-            
-#     all_data = pd.DataFrame(all_data)
-#     all_data = all_data.astype({0:'float'}).astype({0:'int'})
-#     all_data = all_data.astype({1:'float', 2:'float', 3:'float', 4:'float', 5:'str'})
-#     all_data = all_data.sort_values([0,5])
+#     #percentiles = 10**(percentiles)
     
-#     col = columns.copy()
-#     col[1] = quantity_val[j]
+#     plt.plot(ms, percentiles[:,0])
+#     plt.fill_between(ms, percentiles[:,1], percentiles[:,2], alpha = 0.3)
+#     d = data[z]
     
-#     all_data.columns = col
+#     plt.scatter(d[:,0], np.log10(d[:,1]*1e+42))
+#     #plt.errorbar(d[:,0], 42+d[:,1], d[:,2:].T, fmt = 'o')
     
-#     all_data.to_csv(f'{ndf[j]}.csv', index=False)
-    
-#         # z_sort = np.argsort(all_data[:,0].astype(float).astype(int))
-#         # all_data = all_data[z_sort]
+# # MAYBE FOR PLOT MAKE GRID WITH PROBABILITIES AND OVERLAY DATA
+# # (scatter in LX, Shen paper?)

@@ -1215,7 +1215,7 @@ class ModelResult_QLF(ModelResult):
         At a given redshift, calculate distribution of observable quantity
         (lbol) for a given halo mass by drawing parameter sample and
         calculating value for each one. 
-        If log_eddington_ratio is None, draw from values from ERDF and combine
+        If log_eddington_ratio is None, draw values from ERDF and combine
         them with random parameter picks. If log_eddington_ratio is given, use
         this fixed value and only sample the remaining parameter (log_C and 
         eta).
@@ -1256,21 +1256,18 @@ class ModelResult_QLF(ModelResult):
                                                    # are used
         else:
             if self.physics_model.at_z(z).name == 'eddington':
-                log_edd_ratio = np.repeat(self.physics_model.at_z(z).\
-                                          draw_eddington_ratio(), num)
+                log_edd_ratio = self.physics_model.at_z(z).draw_eddington_ratio(num)
                 parameter     = parameter_sample # should only contain the two
                                                  # parameter
             elif (self.physics_model.at_z(z).name in 
                   ['eddington_free_ERDF', 'eddington_free_m_c_free_ERDF']):
-                log_edd_ratio = np.array([])
-                for p in parameter_sample[:,-2:]:
-                    log_edd_ratio = np.append(log_edd_ratio, 
-                                              self.physics_model.at_z(z).\
-                                                   draw_eddington_ratio(*p))
+                log_edd_ratio = np.empty(num)
+                for i, p in enumerate(parameter_sample[:,-2:]):
+                    log_edd_ratio[i] = self.physics_model.at_z(z).\
+                                                   draw_eddington_ratio(*p)
                 parameter     = parameter_sample[:,:-2]
             else:
                 raise NameError('physics_name not known.')
-        
         # calculate quantity for each parameter - eddington ratio pair
         log_quantity_dist = []        
         for i in range(len(parameter_sample)):

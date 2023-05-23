@@ -28,7 +28,7 @@ def load_model(quantity_name, physics_name, data_subset=None,
     groups, log_ndfs = load_ndf_data(quantity_name, cutoff, data_subset)
     if redshift is None:
         redshift = list(log_ndfs.keys())
-
+        
     Model = choose_model(quantity_name)
     model = Model(redshift, log_ndfs,
                   quantity_name, physics_name, prior_name,

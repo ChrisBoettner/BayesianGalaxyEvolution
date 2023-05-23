@@ -25,6 +25,7 @@ def get_uv_lum_sfr_factor():
     Chabrier IMF. 
     '''
     return(1.4*1e-28)
+
 def get_return_fraction():
     ''' Get return fraction for Chabrier IMF. '''
     return(0.41)
@@ -61,6 +62,24 @@ def log_sfr_to_log_L_uv(log_sfr):
     log_sfr = make_array(log_sfr)
     k_uv    = get_uv_lum_sfr_factor()
     return(log_sfr-np.log10(k_uv))
+
+def log_L_bol_to_log_L_band(log_Lbol, 
+                            correction_factors=(4.073, -0.026, 12.60, 0.278)):
+    '''
+    Convert AGN bolometric luminosity to band luminosity using correction_factors and
+    relation from Shen2020. Default correction factors are for hard X-ray (2-10 keV) 
+    band.
+    '''
+    log_Lbol = make_array(log_Lbol)
+    
+    log_solar_luminosity = 33.585 # in erg/s
+    ref_L = 10**(log_Lbol - (10 + log_solar_luminosity))
+    
+    power_laws = (correction_factors[0] * ref_L ** correction_factors[1] +
+                  correction_factors[2] * ref_L ** correction_factors[3])
+    
+    log_Lband = log_Lbol - np.log10(power_laws)
+    return(log_Lband)
 
 def z_to_t(redshift, mode='lookback_time'):
     '''

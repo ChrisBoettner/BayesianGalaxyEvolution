@@ -317,7 +317,7 @@ def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
     R    = get_return_fraction()
     
     redshift = np.arange(end_redshift, start_redshift+1)[::-1]
-    t        = z_to_t(redshift, mode='age') * 1e+9 # age in Gyr
+    t        = z_to_t(redshift, mode='age') * 1e+9 # age in yrs
     
     ## CALCULATE STELLAR MASS DENSITY FROM SMF
     # get sample of stellar mass density at every z
@@ -371,6 +371,88 @@ def calculate_stellar_mass_density(mstar, muv, sigma=1, start_redshift=10,
                                                                 sigma_equiv=s))
             log_inf_densities  = np.log10(calculate_percentiles(
                                             inferred_rho_mstar.T, 
+                                            sigma_equiv=s))
+            
+            density_percentiles[s]     = np.array([redshift, 
+                                                   *log_densities]).T[::-1]  
+            inf_density_percentiles[s] = np.array([redshift, 
+                                                   *log_inf_densities]).T[::-1] 
+        return(density_percentiles, inf_density_percentiles)
+    
+    
+def calculate_black_hole_mass_density(mbh, lbol, sigma=1, start_redshift=7,
+                                   end_redshift=0, conversion_efficiency = 0.065,
+                                   log_q_space=None, num_samples=500, 
+                                   num_integral_points=500, return_samples=False):
+    '''
+    Calculates the black hole mass density by integrating the BHMF. Done in two
+    ways, one calculates the black hole density directly from the modelled
+    (active) BHMFs, the other approach estimates a accretion from the
+    QLF (using the Soltan argument) which is then integrated. The conversion efficiency 
+    can be adjusted using conversion_efficiency. Returns two dictonary of form 
+    (sigma:array), where the array contains input redshift, median density and 
+    lower and upper percentile for every redshift, first array is for direct method, 
+    second array is for QLF method. Start and stop redshift for integration can be 
+    chosen using  start_redshift and end_redshift arguments. The number of samples can
+    be adjusted using num_samples, while the number of points calculated
+    for the integral can be adjusted using num_integral_points. You can also
+    manually choose points where ndf should be evaluated using log_q_space.
+    If return_samples is True, return dictonaries (z:sample) instead.
+    '''  
+    if not (mbh.quantity_name=='mbh' and lbol.quantity_name=='Lbol'):
+        raise ValueError('First entry must be mbh model and second '
+                         'lbol model.')
+    sigma           = make_list(sigma)
+    
+    if log_q_space:
+        raise NotImplementedError('If you want to use a custom log_q_space, '
+                                  'change the code so you have same halo '
+                                  'mass space for both quantities. Currently '
+                                  'it uses the same log_q_space for both.')
+        
+    
+    # get conversion factor
+    unit_conversion = 1.765e-38 # erg/s/c^2 to m_sun/Gyr
+    
+    redshift = np.arange(end_redshift, start_redshift+1)[::-1]
+    t        = z_to_t(redshift, mode='age') # age in Gyr
+    
+    ## CALCULATE BLACK HOLE MASS DENSITY FROM BHMF
+    rho_mbh = calculate_quantity_density(mbh, redshift, 
+                                           return_samples=True, 
+                                           num_samples=num_samples)
+    rho_mbh = np.array([10**rho_mbh[z] for z in redshift])
+    
+    ## CALCULATE BLACK HOLE MASS DENSITY FROM BOLOMETRIC LF
+    # get sample of luminosity density at every z
+    rho_lbol = calculate_quantity_density(lbol, redshift, 
+                                           return_samples=True, 
+                                           num_samples=num_samples)
+    rho_lbol = np.array([10**rho_lbol[z] for z in redshift])
+    # convert to mass accretion rate density
+    rho_m_bh_dot = rho_lbol/conversion_efficiency * unit_conversion
+    # integrate SFR density to get stellar mass density
+    inferred_rho_mbh = cumulative_trapezoid(rho_m_bh_dot, t, axis=0, initial=0)
+    
+    # return complete samples
+    if return_samples:
+        rho_dict, inferred_rho_dict = {}, {}
+        for i, z in enumerate(redshift):
+            # fill dicts, ignore division by 0
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                rho_dict[z]          = np.log10(rho_mbh[i,:])
+                inferred_rho_dict[z] = np.log10(inferred_rho_mbh[i,:])
+        return(rho_dict, inferred_rho_dict)
+    # or return percentiles
+    else:
+        density_percentiles          = {}
+        inf_density_percentiles      = {}
+        for s in sigma:
+            log_densities      = np.log10(calculate_percentiles(rho_mbh.T,
+                                                                sigma_equiv=s))
+            log_inf_densities  = np.log10(calculate_percentiles(
+                                            inferred_rho_mbh.T, 
                                             sigma_equiv=s))
             
             density_percentiles[s]     = np.array([redshift, 

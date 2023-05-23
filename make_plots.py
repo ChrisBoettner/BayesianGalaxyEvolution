@@ -147,6 +147,8 @@ def save_plots(quantity, show = False, file_format='pdf'):
         Plot_q1_q2_relation(lbol, mbh, columns='single', color='lightgrey',
                     quantity_range=np.linspace(43,48.3,100),
                     sigma=2).save(file_format)
+        Plot_black_hole_mass_density_evolution(mbh, lbol, 
+                                            columns='single').save('pdf')
         del lbol
         del mbh
         

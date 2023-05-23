@@ -17,7 +17,8 @@ from model.analysis.calculations import calculate_qhmr, calculate_best_fit_ndf,\
                                         calculate_ndf_percentiles,\
                                         calculate_conditional_ERDF_distribution,\
                                         calculate_quantity_density,\
-                                        calculate_stellar_mass_density
+                                        calculate_stellar_mass_density,\
+                                        calculate_black_hole_mass_density
 from model.plotting.convience_functions import  plot_group_data, plot_best_fit_ndf,\
                                                 plot_data_with_confidence_intervals,\
                                                 add_redshift_text, add_legend,\
@@ -31,7 +32,8 @@ from model.plotting.convience_functions import  plot_group_data, plot_best_fit_n
                                                 blend_color,\
                                                 plot_ndf_data_simple,\
                                                 plot_JWST_data,\
-                                                plot_bh_mass_histogram
+                                                plot_bh_mass_histogram,\
+                                                add_second_axis
 from model.helper import make_list, pick_from_list, sort_by_density, t_to_z,\
                          make_array, log_L_uv_to_log_sfr
 from model.scatter import Joint_distribution, calculate_q1_q2_conditional_pdf
@@ -1015,7 +1017,8 @@ class Plot_q1_q2_relation(Plot):
         masks argument controls if plot should highlight which parts of the
         model is constrained by data. legend=True adds legend.
         main color can be set with color argument, sometimes additional_color
-        is used for other parts of the plot.
+        is used for other parts of the plot. A second axis can be added useing the 
+        second_axis argument.
         '''
         self.adjust_style_parameter(columns) # adjust plot style parameter
         self.color     = color
@@ -1041,7 +1044,7 @@ class Plot_q1_q2_relation(Plot):
               num = 100, datapoints=False, scaled_ndf=None, 
               scaled_ndf_color = None, quantity_range=None, log_slopes=None, 
               log_slope_labels=None, masks=False, y_lims=None, legend=False,
-              linewidth=5):       
+              linewidth=5, second_axis=True):       
         # sort sigma in reverse order
         sigma = np.sort(make_array(sigma))[::-1]
         
@@ -1156,6 +1159,9 @@ class Plot_q1_q2_relation(Plot):
         ax.set_xlim((log_q1[1], log_q1[-2]))
         if y_lims:
             ax.set_ylim(y_lims)
+
+        if second_axis:
+            add_second_axis(fig, ax, ModelResult1, ModelResult2)
 
         # add axis labels
         #ax.set_xlabel(ModelResult1.quantity_options['ndf_xlabel'])
@@ -1601,6 +1607,119 @@ class Plot_stellar_mass_density_evolution(Plot_q1_q2_relation):
         
         if legend:
             add_legend(ax, 0, fontsize=32, loc='lower left', markersize=100)
+        return(fig, ax)
+    
+class Plot_black_hole_mass_density_evolution(Plot_q1_q2_relation):
+    def __init__(self, mbh, lbol, **kwargs):
+        '''
+        Plot evolution of integrated black mass density calculated directly
+        from BHMF and by integrating QLF. The two models must be mbh and
+        lbol. The number of samples drawn can be adjusted using num_samples
+        and the number of points calculated for integrating the ndf can be
+        controlled using num_integral_points. You can also manually choose 
+        points where ndf should be evaluated using log_q_space. The conversion 
+        efficiency between bolometric luminosity and accretion rate is given by
+        conversion_efficiency. The range over which values are calculated and plotted 
+        is adjusted using redshift argument.
+        Color for points that are extrapolated is chosen using 
+        additional_color. Legend can be toggled using legend argument. If 
+        rasterized=False, create vector graphic, otherwise fixed resolution
+        graphic.
+        '''
+        super().__init__(mbh, lbol, **kwargs)
+        self.default_filename = (self.quantity_name + '_BHMD_evolution')
+
+    def _plot(self, mbh, lbol, num_samples=int(1e+4), conversion_efficiency = 0.065,
+              redshift= [0,1,2,3,4,5], num_integral_points=100, log_q_space=None, 
+              legend=True, rasterized=True, datapoints = True):
+        # calculate stellar mass densities
+        bhmd_dict, inferred_bhmd_dict = calculate_black_hole_mass_density(mbh,
+                                       lbol, return_samples=True,
+                                       log_q_space=log_q_space,
+                                       conversion_efficiency = conversion_efficiency,
+                                       num_samples=num_samples, 
+                                       num_integral_points=num_integral_points)
+        
+        #redshift = list(bhmd_dict.keys())
+        
+        # general plotting configuration
+        fig, ax = plt.subplots(1, 1)
+        fig.subplots_adjust(**self.plot_limits)
+        
+        # quantity specific settings
+        xlabel = 'Redshift'
+        ylabel = mbh.quantity_options['density_ylabel']
+        # add axes labels
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel, labelpad=20)
+        
+        # create custom color map
+        washed_out_color = blend_color(self.color, 0.2)
+        cm = LinearSegmentedColormap.from_list("Custom", 
+                                               [washed_out_color,self.color],
+                                               N=num_samples)
+        cm_greys = LinearSegmentedColormap.from_list("Custom", 
+                                                     ['lightgrey','grey'],
+                                                     N=num_samples)
+        # plot stellar mass densities
+        for z in redshift:
+            bhmd_sample          = bhmd_dict[z]
+            bhmd_sample          = bhmd_sample[np.isfinite(bhmd_sample)]
+            inferred_bhmd_sample = inferred_bhmd_dict[z]
+            inferred_bhmd_sample = inferred_bhmd_sample[np.isfinite(
+                                                          inferred_bhmd_sample)]
+            
+            bhmd_sample, bhmd_color = sort_by_density(bhmd_sample)
+            # create xvalues and add scatter for easier visibility
+            x1 = (np.repeat(z, len(bhmd_sample)) 
+                  + np.random.normal(scale=0.02, size=len(bhmd_sample)))
+            
+            ax.scatter(x1[:-1], bhmd_sample[:-1], c=bhmd_color[:-1], s=0.1, 
+                       cmap=cm_greys, rasterized=rasterized)
+            # last points drawn seperately just to get the colors for the 
+            # legend right
+            ax.scatter(x1[-1], bhmd_sample[-1], c='grey', s=0.1, 
+                       label='Type 1 AGN', rasterized=rasterized)
+            
+            # repeat for inferred values, if available
+            if len(inferred_bhmd_sample)>0:
+                inferred_bhmd_sample, inferred_bhmd_color = sort_by_density(
+                                                            inferred_bhmd_sample)
+                x2 = (np.repeat(z, len(inferred_bhmd_sample)) 
+                      + np.random.normal(scale=0.06, 
+                                         size=len(inferred_bhmd_sample)))
+    
+                ax.scatter(x2[:-1], inferred_bhmd_sample[:-1], 
+                           c=inferred_bhmd_color[:-1], s=0.5, cmap=cm,
+                           rasterized=rasterized)
+    
+                ax.scatter(x2[-1], inferred_bhmd_sample[-1], c=self.color, s=0.1,
+                           label='Total (integrated QLF)', rasterized=rasterized)
+    
+        # add y ticks
+        #ax.yaxis.set_major_locator(MaxNLocator(5))
+        ax.yaxis.grid(True, which='minor')
+        ax.tick_params(axis='x', which='minor', bottom=False)
+        # set y lim by calculating percentiles of all available samples
+        #all_points = np.array([inferred_bhmd_dict[z] 
+        #                       for z in redshift]).flatten()
+        #y_lims = np.percentile(all_points[np.isfinite(all_points)],
+        #                       [0.05,99.99])
+        ax.set_ylim(*[1,8])
+        # add x tick for every redshift
+        ax.set_xticks(redshift)
+        ax.set_xticklabels(redshift)
+        
+        if datapoints:
+            total_bhmf = np.array([3.1, 5.3])*1e+5 # Shankar2019
+            active_bhmf = np.array([1388, 1767]) # Schulze2010
+        
+            x = -0.4
+            ax.plot([x, x], np.log10(total_bhmf), linewidth = 18, c=self.color)
+            ax.plot([x, x], np.log10(active_bhmf), linewidth = 18, c='grey')
+        
+        if legend:
+            add_legend(ax, 0, fontsize=32, markersize=100)
         return(fig, ax)
     
     

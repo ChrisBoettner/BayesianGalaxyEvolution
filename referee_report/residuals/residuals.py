@@ -27,7 +27,9 @@ plt.plot(x,y_l, color='black', label = f'residual variance = {np.var(y_l-y):.2f}
 plt.plot(x,y2_l, color='red', label = f'residual variance = {np.var(y2_l-y):.2f}')
 plt.xlabel('x')
 plt.ylabel('y')
-plt.title('Figure 1')
+#plt.title('Figure 1')
 plt.legend()
+
+plt.savefig('residuals.png')
 
 print(np.var(noise), np.var(y_l-y), np.var(y), np.var(y2_l-y))
