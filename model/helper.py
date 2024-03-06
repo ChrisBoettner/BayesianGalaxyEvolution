@@ -33,12 +33,17 @@ def get_return_fraction():
 def lum_to_mag(L_nu):
     '''
     Convert luminosity (ergs s^-1 Hz^-1) to Absolute Magnitude.
+    
+    Reference:
+    https://astronomy.stackexchange.com/questions/39806/relation-between-absolute-
+    magnitude-of-uv-and-star-formation-rate
     '''
     L_nu = make_array(L_nu)
     d = 3.086e+19                # 10pc in cm
     flux = L_nu / (4 * np.pi * d**2)
     M_uv = -2.5 * np.log10(flux) - 48.6  # definition in AB magnitude system
     return(M_uv)
+
 def mag_to_lum(M_uv):
     '''
     Convert Absolute Magnitude to luminosity (ergs s^-1 Hz^-1).

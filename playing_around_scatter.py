@@ -5,7 +5,7 @@ Created on Wed Nov  2 18:28:54 2022
 
 @author: chris
 """
-
+#%%
 from model.interface import load_model, run_model, save_model
 from model.plotting.plotting import *
 
@@ -87,3 +87,4 @@ plt.plot(log_q_space, probs)
 plt.axvline(no_scatter)
 plt.plot(log_q_space, probs_skew) 
     
+# %%

@@ -5,20 +5,51 @@ Created on Wed Apr 27 13:41:12 2022
 
 @author: chris
 """
+# %%
 from model.interface import load_model, run_model, save_model
 from model.plotting.plotting import *
 
-#%%
-#mstar = load_model('mstar', 'stellar_blackhole')
-#muv   = load_model('Muv', 'stellar_blackhole')
-mbh   = load_model('mbh', 'quasar')
-lbol  = load_model('Lbol', 'eddington')
+import warnings
 
-#%%%
-Plot_black_hole_mass_density_evolution(mbh, lbol,
-                                    columns='single').save('pdf')
+warnings.filterwarnings("ignore")
 
-#%%
+# %%
+mstar = load_model("mstar", "stellar_blackhole")
+muv = load_model("Muv", "stellar_blackhole")
+mbh = load_model("mbh", "quasar")
+lbol = load_model("Lbol", "eddington")
+
+# %%
+for quantity in [
+    (mstar, "mstar", "stellar_blackhole"),
+    (muv, "Muv", "stellar_blackhole"),
+    (mbh, "mbh", "quasar"),
+    # (lbol, "Lbol", "eddington"),
+]:
+
+    models = []
+    for subset in quantity[0].groups:
+        try:
+            models.append(
+                run_model(
+                    quantity[1],
+                    quantity[2],
+                    fitting_method="annealing",
+                    data_subset=subset.label,
+                )
+            )
+        except:
+            continue
+
+    Plot_ndf_intervals(
+        quantity[0],
+        sigma=[1, 2, 3],
+        datapoints=True,
+        additional_models=models,
+        additional_model_color="blue",
+    ).save("pdf", file_name=quantity[1] + "_ndf_groups")
+
+# %%
 # from model.helper import log_L_bol_to_log_L_band, calculate_percentiles
 # import numpy as np
 
@@ -45,7 +76,7 @@ Plot_black_hole_mass_density_evolution(mbh, lbol,
 #                  [10.255, 0.71, 0.37, 0.94],
 #                  [10.585, 3.8, 1.6, 2.9],
 #                  [11, 3.7, 1.4, 2.5]])
-        
+
 # data2 = np.array([[9.925, 2.8, 1.3, 2.8],
 #                  [10.255, 4, 1.5, 2.9],
 #                  [10.585, 12.9, 4.9, 8.8],
@@ -73,15 +104,15 @@ Plot_black_hole_mass_density_evolution(mbh, lbol,
 #     lx = log_L_bol_to_log_L_band(l)
 #     percentiles = calculate_percentiles(lx, sigma_equiv=2).T
 #     ls[z] = percentiles
-    
+
 #     #percentiles = 10**(percentiles)
-    
+
 #     plt.plot(ms, percentiles[:,0])
 #     plt.fill_between(ms, percentiles[:,1], percentiles[:,2], alpha = 0.3)
 #     d = data[z]
-    
+
 #     plt.scatter(d[:,0], np.log10(d[:,1]*1e+42))
 #     #plt.errorbar(d[:,0], 42+d[:,1], d[:,2:].T, fmt = 'o')
-    
+
 # # MAYBE FOR PLOT MAKE GRID WITH PROBABILITIES AND OVERLAY DATA
 # # (scatter in LX, Shen paper?)
